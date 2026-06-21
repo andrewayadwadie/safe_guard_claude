@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SafeGuard</string>
+    <string name="app_description">Parental Control System</string>
+
+    <!-- Authentication -->
+    <string name="login_title">Welcome Back</string>
+    <string name="login_subtitle">Sign in to continue</string>
+    <string name="register_title">Create Account</string>
+    <string name="email_label">Email</string>
+    <string name="password_label">Password</string>
+    <string name="confirm_password_label">Confirm Password</string>
+    <string name="full_name_label">Full Name</string>
+    <string name="sign_in">Sign In</string>
+    <string name="sign_up">Sign Up</string>
+    <string name="dont_have_account">Don\'t have an account?</string>
+    <string name="already_have_account">Already have an account?</string>
+
+    <!-- Roles -->
+    <string name="role_parent">Parent</string>
+    <string name="role_child">Child</string>
+    <string name="role_parent_description">Monitor and manage children\'s devices</string>
+    <string name="role_child_description">Device to be monitored</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">Dashboard</string>
+    <string name="screen_time_today">Today\'s Screen Time</string>
+    <string name="top_apps">Top Apps Today</string>
+    <string name="recent_alerts">Recent Alerts</string>
+    <string name="see_all">See All</string>
+    <string name="unlocks">unlocks</string>
+    <string name="limit">Limit: %s</string>
+
+    <!-- Devices -->
+    <string name="devices_title">Devices</string>
+    <string name="device_active">Active</string>
+    <string name="device_suspended">Suspended</string>
+    <string name="device_inactive">Inactive</string>
+
+    <!-- Alerts -->
+    <string name="alerts_title">Alerts</string>
+    <string name="mark_all_read">Mark All Read</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="logout">Logout</string>
+    <string name="logout_confirmation">Are you sure you want to logout?</string>
+
+    <!-- Notifications -->
+    <string name="notification_monitoring_title">SafeGuard Active</string>
+    <string name="notification_monitoring_text">Monitoring device activity</string>
+
+    <!-- Permissions -->
+    <string name="permission_usage_stats_title">Usage Access Required</string>
+    <string name="permission_usage_stats_message">SafeGuard needs access to app usage data to track screen time.</string>
+    <string name="permission_accessibility_title">Accessibility Access Required</string>
+    <string name="permission_accessibility_message">SafeGuard needs accessibility access to monitor text content for safety.</string>
+    <string name="permission_vpn_title">VPN Permission Required</string>
+    <string name="permission_vpn_message">SafeGuard needs VPN permission to filter inappropriate content.</string>
+    <string name="grant_permission">Grant Permission</string>
+
+    <!-- Errors -->
+    <string name="error_network">Network error. Please try again.</string>
+    <string name="error_invalid_credentials">Invalid email or password</string>
+    <string name="error_email_exists">Email already registered</string>
+    <string name="error_unknown">An error occurred. Please try again.</string>
+
+    <!-- Accessibility -->
+    <string name="accessibility_service_description">SafeGuard monitors text content to detect potentially harmful or inappropriate content and protect your child online.</string>
+</resources>

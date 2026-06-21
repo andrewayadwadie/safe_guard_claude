@@ -1,0 +1,382 @@
+package com.safeguard.parentalcontrol.presentation.alerts
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.safeguard.parentalcontrol.data.model.Alert
+import com.safeguard.parentalcontrol.data.model.AlertSeverity
+import com.safeguard.parentalcontrol.data.model.AlertType
+import com.safeguard.parentalcontrol.util.formatAsRelative
+
+/**
+ * Alerts screen showing all alerts for parent
+ * Optionally filtered by device if deviceId is provided
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AlertsScreen(
+    onNavigateBack: () -> Unit,
+    deviceId: Int? = null,
+    deviceName: String? = null,
+    viewModel: AlertsViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Set device filter when screen loads
+    LaunchedEffect(deviceId, deviceName) {
+        viewModel.setDevice(deviceId, deviceName)
+    }
+
+    // Show error snackbar
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearError()
+        }
+    }
+
+    // Show success snackbar
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearSuccessMessage()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("Alerts")
+                        uiState.deviceName?.let { name ->
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.markAllAsRead() }) {
+                        Icon(Icons.Default.DoneAll, contentDescription = "Mark all as read")
+                    }
+                    IconButton(onClick = { viewModel.loadAlerts() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Filter chips
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    FilterChip(
+                        selected = uiState.selectedFilter == AlertFilter.ALL,
+                        onClick = { viewModel.setFilter(AlertFilter.ALL) },
+                        label = { Text("All") }
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = uiState.selectedFilter == AlertFilter.UNREAD,
+                        onClick = { viewModel.setFilter(AlertFilter.UNREAD) },
+                        label = { Text("Unread") },
+                        leadingIcon = if (uiState.selectedFilter == AlertFilter.UNREAD) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        } else null
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = uiState.selectedFilter == AlertFilter.CRITICAL,
+                        onClick = { viewModel.setFilter(AlertFilter.CRITICAL) },
+                        label = { Text("Critical") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color.Red.copy(alpha = 0.2f)
+                        )
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = uiState.selectedFilter == AlertFilter.HIGH,
+                        onClick = { viewModel.setFilter(AlertFilter.HIGH) },
+                        label = { Text("High") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFFFF9800).copy(alpha = 0.2f)
+                        )
+                    )
+                }
+            }
+
+            when {
+                uiState.isLoading && uiState.alerts.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+                uiState.alerts.isEmpty() -> {
+                    EmptyAlertsState(
+                        modifier = Modifier.fillMaxSize(),
+                        filter = uiState.selectedFilter
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = uiState.alerts,
+                            key = { it.id }
+                        ) { alert ->
+                            AlertCard(
+                                alert = alert,
+                                onMarkAsRead = { viewModel.markAsRead(alert.id) },
+                                onDismiss = { viewModel.dismissAlert(alert.id) },
+                                onDelete = { viewModel.deleteAlert(alert.id) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyAlertsState(
+    modifier: Modifier = Modifier,
+    filter: AlertFilter
+) {
+    Column(
+        modifier = modifier.padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.NotificationsOff,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = when (filter) {
+                AlertFilter.ALL -> "No alerts"
+                AlertFilter.UNREAD -> "No unread alerts"
+                AlertFilter.CRITICAL -> "No critical alerts"
+                AlertFilter.HIGH -> "No high priority alerts"
+            },
+            style = MaterialTheme.typography.titleLarge
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "You're all caught up!",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AlertCard(
+    alert: Alert,
+    onMarkAsRead: () -> Unit,
+    onDismiss: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    val (icon, color) = when (alert.severity) {
+        AlertSeverity.CRITICAL -> Icons.Default.Error to Color.Red
+        AlertSeverity.HIGH -> Icons.Default.Warning to Color(0xFFFF9800)
+        AlertSeverity.MEDIUM -> Icons.Default.Info to Color(0xFF2196F3)
+        AlertSeverity.LOW -> Icons.Default.CheckCircle to Color(0xFF4CAF50)
+    }
+
+    val typeIcon = when (alert.alertType) {
+        AlertType.CONTENT_BLOCK -> Icons.Default.Block
+        AlertType.SCREEN_TIME_LIMIT -> Icons.Default.Timer
+        AlertType.APP_BLOCKED -> Icons.Default.AppBlocking
+        AlertType.INAPPROPRIATE_IMAGE -> Icons.Default.Image
+        AlertType.INAPPROPRIATE_TEXT -> Icons.Default.TextFields
+        AlertType.SCREENSHOT_CAPTURED -> Icons.Default.Screenshot
+        AlertType.DEVICE_ADMIN_DISABLED -> Icons.Default.AdminPanelSettings
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (!alert.isRead) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+                // Severity icon
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(24.dp)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    // Title with unread indicator
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = alert.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (!alert.isRead) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Badge(modifier = Modifier.size(8.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Message
+                    Text(
+                        text = alert.message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Type and time
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = typeIcon,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = alert.alertType.name.replace("_", " ").lowercase()
+                                .replaceFirstChar { it.uppercase() },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "•",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = alert.createdAt.formatAsRelative(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Menu
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        if (!alert.isRead) {
+                            DropdownMenuItem(
+                                text = { Text("Mark as read") },
+                                onClick = {
+                                    showMenu = false
+                                    onMarkAsRead()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Done, contentDescription = null)
+                                }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Dismiss") },
+                            onClick = {
+                                showMenu = false
+                                onDismiss()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Close, contentDescription = null)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            onClick = {
+                                showMenu = false
+                                onDelete()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, contentDescription = null)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

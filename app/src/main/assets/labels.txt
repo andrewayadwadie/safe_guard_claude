@@ -1,0 +1,7 @@
+safe
+toxicity
+severe_toxicity
+obscene
+threat
+insult
+sexual_explicit

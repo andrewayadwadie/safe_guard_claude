@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"/c/Program Files/Android/Android Studio/jbr/bin/java\" -version)",
+      "Bash(\"/c/Users/Dell/AppData/Local/Android/Sdk/emulator/emulator\" -list-avds)",
+      "Bash(\"/c/Users/Dell/AppData/Local/Android/Sdk/emulator/emulator\" -avd test_emulator -no-snapshot-save)",
+      "Bash(export JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\")",
+      "Bash(./gradlew assembleDebug --console=plain)"
+    ]
+  }
+}
