@@ -40,11 +40,8 @@ interface ApiService {
 
     // ==================== OAuth Endpoints ====================
 
-    /**
-     * Check if Google OAuth is enabled on the server
-     */
-    @GET("oauth/google/status")
-    suspend fun getGoogleOAuthStatus(): Response<GoogleOAuthStatus>
+    // NOTE: GET oauth/google/status removed in Edit 2 — the Google button is always shown
+    // (FR-017/FR-018), so the status check is no longer called.
 
     /**
      * Authenticate or register user via Google Sign-In

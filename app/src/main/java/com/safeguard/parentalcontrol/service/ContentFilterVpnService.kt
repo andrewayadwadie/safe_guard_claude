@@ -200,7 +200,7 @@ class ContentFilterVpnService : VpnService() {
         refreshJob?.cancel()
         refreshJob = serviceScope.launch {
             while (isActive) {
-                delay(5 * 60 * 1000L) // Refresh every 5 minutes
+                delay(90 * 1000L) // Refresh every 90s (ISSUE-023: cut filter propagation latency; no push yet)
                 Log.d(TAG, "Refreshing content filter settings...")
                 syncBlacklistFromBackend()
             }

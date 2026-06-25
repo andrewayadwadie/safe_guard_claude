@@ -238,7 +238,7 @@ class AlertRepository @Inject constructor(
     ): NetworkResult<Alert> {
         return createAlert(
             alertType = AlertType.INAPPROPRIATE_IMAGE,
-            severity = AlertSeverity.CRITICAL,
+            severity = mapImageConfidenceToSeverity(confidence),
             title = "Inappropriate Image Detected",
             message = "NSFW content detected with ${(confidence * 100).toInt()}% confidence",
             metadata = mapOf(
@@ -326,6 +326,20 @@ class AlertRepository @Inject constructor(
             message = message,
             metadata = metadata
         )
+    }
+
+    /**
+     * Map NSFW image-detection confidence to alert severity (ISSUE-025).
+     * Previously every image alert was hardcoded CRITICAL, so a low-confidence
+     * detection (e.g. 0.45) escalated to a "critical" parent notification. Tie
+     * severity to confidence so only high-confidence detections are critical.
+     */
+    private fun mapImageConfidenceToSeverity(confidence: Float): AlertSeverity {
+        return when {
+            confidence >= 0.85f -> AlertSeverity.CRITICAL
+            confidence >= 0.60f -> AlertSeverity.HIGH
+            else -> AlertSeverity.MEDIUM
+        }
     }
 
     /**

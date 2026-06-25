@@ -3,6 +3,8 @@ package com.safeguard.parentalcontrol.presentation.dashboard
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import android.text.format.DateUtils
+import java.util.Date
 import com.safeguard.parentalcontrol.service.MonitoringService
 import timber.log.Timber
 import androidx.compose.animation.*
@@ -411,6 +413,41 @@ private fun DashboardContent(
         ),
         verticalArrangement = Arrangement.spacedBy(SafeGuardDimens.spacingLg)
     ) {
+        // Monitoring offline warning (parents). A child device that was reporting has
+        // gone silent — the only way to surface a force-stop / uninstall / OEM kill,
+        // since a dead app can't report its own death. Server-side this is
+        // indistinguishable from "powered off / no network", so the copy covers all three.
+        if (isParent) {
+            val now = System.currentTimeMillis()
+            // Loud banner only after 30 min of silence (2 missed 15-min sync cycles) so
+            // it doesn't flap; the per-device status dot still flips at the 15-min mark.
+            val offlineDevices = uiState.devices.filter { d ->
+                d.status == DeviceStatus.ACTIVE &&
+                    (d.lastSync?.let { now - it.time > 30 * 60 * 1000L } ?: false)
+            }
+            if (offlineDevices.isNotEmpty()) {
+                item(key = "monitoring_offline_banner") {
+                    AnimatedCard(visible = showContent) {
+                        val first = offlineDevices.first()
+                        val message = if (offlineDevices.size == 1) {
+                            "${first.deviceName} last checked in ${first.lastSync?.formatAsRelative() ?: "a while ago"}. " +
+                                "It may be turned off, offline, or monitoring may have stopped."
+                        } else {
+                            "${offlineDevices.size} devices haven't checked in for a while. " +
+                                "They may be turned off, offline, or monitoring may have stopped."
+                        }
+                        InfoBanner(
+                            message = message,
+                            type = BannerType.WARNING,
+                            icon = Icons.Default.CloudOff,
+                            actionLabel = "View",
+                            onAction = { onDeviceSelected(first.id) }
+                        )
+                    }
+                }
+            }
+        }
+
         // Permission setup banner for child devices
         if (uiState.showPermissionBanner && !isParent) {
             item(key = "permission_banner") {
@@ -463,6 +500,8 @@ private fun DashboardContent(
                         limitSeconds = uiState.dailyLimit,
                         unlockCount = uiState.todayUnlocks,
                         isParent = true,
+                        isStale = !uiState.hasTodayScreenTimeData,
+                        lastSync = uiState.currentDevice?.lastSync,
                         onManageLimits = uiState.currentDevice?.let { device ->
                             { onNavigateToScreenTimeLimits(device.id, device.deviceName) }
                         }
@@ -1139,7 +1178,11 @@ private fun EnhancedScreenTimeHeroCard(
     limitSeconds: Int?,
     unlockCount: Int,
     isParent: Boolean,
-    onManageLimits: (() -> Unit)?
+    onManageLimits: (() -> Unit)?,
+    // When the phone hasn't reported today, the shown time is 0 and this flags the
+    // card to display a "last seen" note (from lastSync) instead of the usual subtitle.
+    isStale: Boolean = false,
+    lastSync: Date? = null
 ) {
     val usedMinutes = usedSeconds / 60
     val limitMinutes = limitSeconds?.let { it / 60 }
@@ -1178,11 +1221,34 @@ private fun EnhancedScreenTimeHeroCard(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    Text(
-                        text = if (progress >= 1f) "Limit reached" else "Keep it balanced",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (isStale) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.CloudOff,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = lastSync?.let {
+                                    "Last active ${DateUtils.getRelativeTimeSpanString(
+                                        it.time,
+                                        System.currentTimeMillis(),
+                                        DateUtils.MINUTE_IN_MILLIS
+                                    )}"
+                                } ?: "No activity reported yet",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = if (progress >= 1f) "Limit reached" else "Keep it balanced",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 // Status indicator

@@ -1,9 +1,25 @@
 pluginManagement {
+    // Override the R8 version that AGP 8.5.2 bundles (8.5.35). That build of R8 has
+    // a ConcurrentModificationException in its full-mode tree-shaker that is hit by
+    // Retrofit 2.11.0's consumer rule for kotlin.coroutines.Continuation. 8.8.34
+    // fixes it while keeping R8 full mode on.
+    buildscript {
+        repositories {
+            google()
+            mavenCentral()
+        }
+        dependencies {
+            classpath 'com.android.tools:r8:8.8.34'
+        }
+    }
     repositories {
         google()
         mavenCentral()
         gradlePluginPortal()
     }
+}
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.10.0'
 }
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)

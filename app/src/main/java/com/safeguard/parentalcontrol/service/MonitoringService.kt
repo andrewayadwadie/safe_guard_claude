@@ -7,6 +7,10 @@ import android.app.Service
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -23,6 +27,7 @@ import com.safeguard.parentalcontrol.presentation.MainActivity
 import com.safeguard.parentalcontrol.presentation.lockscreen.LockScreenActivity
 import com.safeguard.parentalcontrol.util.Constants
 import com.safeguard.parentalcontrol.util.PreferencesManager
+import com.safeguard.parentalcontrol.util.getAppName
 import com.safeguard.parentalcontrol.worker.ImageScanWorker
 import com.safeguard.parentalcontrol.worker.SyncWorker
 import dagger.hilt.android.AndroidEntryPoint
@@ -93,6 +98,15 @@ class MonitoringService : Service() {
     private var lastSyncWorkerEnqueueTime = 0L
     private val SYNC_WORKER_ENQUEUE_INTERVAL_MS = 300000L // Only re-enqueue every 5 minutes max
 
+    // Network connectivity monitoring - re-sync immediately when connectivity is restored.
+    // Without this, a child device that loses internet (Wi-Fi drop, dead zone, scheduled
+    // router block) stays "offline" on the parent dashboard until the app is restarted,
+    // because the periodic heartbeat does not re-fire on its own when the network returns.
+    private var connectivityManager: ConnectivityManager? = null
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private var lastNetworkSyncTime = 0L
+    private val NETWORK_RESYNC_DEBOUNCE_MS = 10000L // avoid duplicate syncs on rapid network flaps
+
     // Whitelisted phone/dialer apps - these should ALWAYS be allowed for emergency calls
     private val PHONE_DIALER_PACKAGES = setOf(
         "com.android.phone",           // Android Phone app
@@ -111,7 +125,46 @@ class MonitoringService : Service() {
     override fun onCreate() {
         super.onCreate()
         serviceJob = SupervisorJob()
+        registerNetworkCallback()
         Timber.d("MonitoringService created")
+    }
+
+    /**
+     * Register a callback that fires an immediate sync when network connectivity is
+     * (re)established. This lets a child device recover automatically after any network
+     * outage instead of waiting for the next periodic cycle (or a manual app restart).
+     */
+    private fun registerNetworkCallback() {
+        if (networkCallback != null) return
+        val cm = getSystemService(ConnectivityManager::class.java) ?: return
+        connectivityManager = cm
+        // Stamp now so the onAvailable that fires at registration time (when already
+        // online) is debounced - onStartCommand performs the startup sync separately.
+        lastNetworkSyncTime = System.currentTimeMillis()
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                val now = System.currentTimeMillis()
+                if (now - lastNetworkSyncTime < NETWORK_RESYNC_DEBOUNCE_MS) {
+                    Timber.d("Network available - resync debounced")
+                    return
+                }
+                lastNetworkSyncTime = now
+                Timber.i("Network connectivity restored - triggering immediate resync")
+                performInitialSync()
+                triggerImmediateSync()
+            }
+        }
+        networkCallback = callback
+        try {
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            cm.registerNetworkCallback(request, callback)
+            Timber.d("Network connectivity callback registered")
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to register network callback")
+            networkCallback = null
+        }
     }
 
     // Track if enforcement loop is already running to prevent multiple starts
@@ -202,6 +255,14 @@ class MonitoringService : Service() {
         } catch (e: Exception) {
             Timber.e(e, "Error stopping MediaFileObserver")
         }
+        // Unregister network connectivity callback
+        try {
+            networkCallback?.let { connectivityManager?.unregisterNetworkCallback(it) }
+        } catch (e: Exception) {
+            Timber.w(e, "Error unregistering network callback")
+        }
+        networkCallback = null
+        connectivityManager = null
         // Cancel all coroutines
         serviceJob?.cancel()
         serviceJob = null
@@ -333,7 +394,7 @@ class MonitoringService : Service() {
 
             var loopCount = 0
             var lastRulesRefreshTime = System.currentTimeMillis()
-            val rulesRefreshIntervalMs = 5 * 60 * 1000L // Refresh rules every 5 minutes
+            val rulesRefreshIntervalMs = 90 * 1000L // Refresh rules every 90s (ISSUE-023: cut parent->child propagation latency; no push yet)
 
             while (isActive) {
                 try {
@@ -534,7 +595,7 @@ class MonitoringService : Service() {
             showLockScreen(
                 LockScreenActivity.LOCK_TYPE_APP_BLOCKED,
                 "This app has been blocked.",
-                foregroundApp
+                getAppName(foregroundApp) ?: foregroundApp
             )
             return
         }
@@ -548,7 +609,7 @@ class MonitoringService : Service() {
                 showLockScreen(
                     LockScreenActivity.LOCK_TYPE_APP_LIMIT,
                     "Time limit for this app has been reached.",
-                    foregroundApp
+                    getAppName(foregroundApp) ?: foregroundApp
                 )
                 return
             }

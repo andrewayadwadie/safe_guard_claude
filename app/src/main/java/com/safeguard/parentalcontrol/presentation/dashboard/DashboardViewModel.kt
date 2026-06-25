@@ -24,6 +24,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.Calendar
+import java.util.Date
+import java.util.TimeZone
 import javax.inject.Inject
 
 /**
@@ -35,6 +38,10 @@ data class DashboardUiState(
     val isParent: Boolean = false,
     val todayScreenTime: Int = 0, // seconds
     val todayUnlocks: Int = 0,
+    // True only when the latest screen-time log is actually from today. When false,
+    // the phone hasn't reported today (offline/stale) and todayScreenTime is 0; the
+    // UI shows a "last seen" note from currentDevice.lastSync instead.
+    val hasTodayScreenTimeData: Boolean = false,
     val dailyLimit: Int? = null, // seconds, null if no limit
     val topApps: List<AppUsageLog> = emptyList(),
     val recentAlerts: List<Alert> = emptyList(),
@@ -265,18 +272,22 @@ class DashboardViewModel @Inject constructor(
                 else -> {}
             }
 
-            // Load today's screen time from the most recent log (not aggregate stats)
+            // Load today's screen time. The backend returns the most recent log
+            // regardless of date, so a phone that last synced days ago would return a
+            // stale record. Only surface it as "today" if its date is actually today;
+            // otherwise show 0 (the UI then shows a "last seen" note from lastSync).
             when (val logsResult = screenTimeRepository.getScreenTimeLogs(deviceId, 1)) {
                 is NetworkResult.Success -> {
-                    // Get the most recent (today's) log entry
-                    val todayLog = logsResult.data.firstOrNull()
+                    val latestLog = logsResult.data.firstOrNull()
+                    val isToday = isLoggedToday(latestLog?.date)
                     _uiState.update {
                         it.copy(
-                            todayScreenTime = todayLog?.totalScreenTime ?: 0,
-                            todayUnlocks = todayLog?.unlocksCount ?: 0
+                            todayScreenTime = if (isToday) latestLog!!.totalScreenTime else 0,
+                            todayUnlocks = if (isToday) latestLog!!.unlocksCount else 0,
+                            hasTodayScreenTimeData = isToday
                         )
                     }
-                    Timber.d("Parent dashboard: loaded today's screen time = ${todayLog?.totalScreenTime ?: 0}s, unlocks = ${todayLog?.unlocksCount ?: 0}")
+                    Timber.d("Parent dashboard: latest log date=${latestLog?.date}, isToday=$isToday, screenTime=${if (isToday) latestLog!!.totalScreenTime else 0}s")
                 }
                 is NetworkResult.Error -> {
                     Timber.e("Failed to load screen time logs: ${logsResult.message}")
@@ -295,6 +306,22 @@ class DashboardViewModel @Inject constructor(
 
             _uiState.update { it.copy(isLoading = false) }
         }
+    }
+
+    /**
+     * Whether a screen-time log's date is today.
+     *
+     * The backend stores the log date as midnight UTC of the child's local calendar
+     * date, so we recover that calendar date by reading the instant in UTC and compare
+     * it to the viewer's local "today". A phone offline for days will never match.
+     */
+    private fun isLoggedToday(logDate: Date?): Boolean {
+        if (logDate == null) return false
+        val logCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { time = logDate }
+        val today = Calendar.getInstance()
+        return logCal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+            logCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
+            logCal.get(Calendar.DAY_OF_MONTH) == today.get(Calendar.DAY_OF_MONTH)
     }
 
     /**

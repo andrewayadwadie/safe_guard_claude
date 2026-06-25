@@ -408,13 +408,6 @@ data class BlacklistDomainRequest(
     val domain: String
 )
 
-// ========== OAuth Models ==========
-
-data class GoogleOAuthStatus(
-    val enabled: Boolean,
-    val message: String
-)
-
 // ========== Custom Word List Models ==========
 
 /**

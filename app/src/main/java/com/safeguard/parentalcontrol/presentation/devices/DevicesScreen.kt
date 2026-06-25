@@ -3,6 +3,8 @@ package com.safeguard.parentalcontrol.presentation.devices
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -365,6 +367,10 @@ private fun DeviceDetailsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // Sheet content is taller than one screen (info + content filtering +
+                // actions incl. Remove Device); without this the bottom buttons get
+                // clipped off-screen with no way to reach them.
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp)
         ) {

@@ -9,6 +9,7 @@ import com.safeguard.parentalcontrol.data.model.UserRole
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.AuthRepository
 import com.safeguard.parentalcontrol.data.repository.DeviceRepository
+import com.safeguard.parentalcontrol.util.AnalyticsHelper
 import com.safeguard.parentalcontrol.util.GoogleSignInManager
 import com.safeguard.parentalcontrol.util.GoogleSignInResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,7 +32,6 @@ data class AuthUiState(
     val validationErrors: ValidationErrors = ValidationErrors(),
     // Google Sign-In state
     val isGoogleSignInLoading: Boolean = false,
-    val isGoogleSignInEnabled: Boolean = false,  // Server-side flag
     val needsRoleSelection: Boolean = false,
     val pendingGoogleIdToken: String? = null
 )
@@ -58,7 +58,8 @@ data class ValidationErrors(
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val deviceRepository: DeviceRepository,
-    private val googleSignInManager: GoogleSignInManager
+    private val googleSignInManager: GoogleSignInManager,
+    private val analyticsHelper: AnalyticsHelper
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -75,18 +76,9 @@ class AuthViewModel @Inject constructor(
             }
         }
 
-        // Check if Google OAuth is enabled on server
-        checkGoogleOAuthStatus()
-    }
-
-    /**
-     * Check if Google OAuth is enabled on the server
-     */
-    private fun checkGoogleOAuthStatus() {
-        viewModelScope.launch {
-            val isEnabled = authRepository.isGoogleOAuthEnabled()
-            _uiState.update { it.copy(isGoogleSignInEnabled = isEnabled) }
-        }
+        // Google Sign-In button is always shown (FR-017). No server status gating —
+        // the previous checkGoogleOAuthStatus() call was removed because a false/unreachable
+        // status hid the button ~3s after render (FR-018, Edit 2).
     }
 
     /**
@@ -262,23 +254,21 @@ class AuthViewModel @Inject constructor(
      */
     fun signInWithGoogle(activityContext: Context) {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(isGoogleSignInLoading = true, error = null)
-            }
+            _uiState.update { it.copy(isGoogleSignInLoading = true, error = null) }
+            analyticsHelper.logGoogleSignInTapped()
 
             when (val result = googleSignInManager.signIn(activityContext)) {
                 is GoogleSignInResult.Success -> {
-                    // Try to authenticate with backend (for existing users)
                     authenticateWithGoogle(result.idToken, null)
                 }
 
                 is GoogleSignInResult.Cancelled -> {
-                    _uiState.update {
-                        it.copy(isGoogleSignInLoading = false)
-                    }
+                    analyticsHelper.logGoogleSignInFailed("cancelled")
+                    _uiState.update { it.copy(isGoogleSignInLoading = false) }
                 }
 
                 is GoogleSignInResult.NoAccounts -> {
+                    analyticsHelper.logGoogleSignInFailed("cancelled")
                     _uiState.update {
                         it.copy(
                             isGoogleSignInLoading = false,
@@ -288,10 +278,11 @@ class AuthViewModel @Inject constructor(
                 }
 
                 is GoogleSignInResult.Error -> {
+                    analyticsHelper.logGoogleSignInFailed("error")
                     _uiState.update {
                         it.copy(
                             isGoogleSignInLoading = false,
-                            error = result.message
+                            error = "Sign-in failed. Please try again."
                         )
                     }
                 }
@@ -309,6 +300,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = authRepository.googleSignIn(idToken, role)) {
                 is NetworkResult.Success -> {
+                    analyticsHelper.logGoogleSignInSuccess()
                     _uiState.update {
                         it.copy(
                             isGoogleSignInLoading = false,
@@ -322,8 +314,12 @@ class AuthViewModel @Inject constructor(
                 }
 
                 is NetworkResult.Error -> {
-                    // Check if error is due to missing role (new user)
-                    if (result.message.contains("Role is required", ignoreCase = true)) {
+                    // Normalize to tolerate both machine code ("role_required") and
+                    // human phrase ("Role is required"); match both key tokens.
+                    val normalized = result.message.lowercase().replace(Regex("[^a-z]"), "")
+                    if (normalized.contains("rolerequired") ||
+                        (normalized.contains("role") && normalized.contains("required"))
+                    ) {
                         _uiState.update {
                             it.copy(
                                 isGoogleSignInLoading = false,
@@ -332,10 +328,11 @@ class AuthViewModel @Inject constructor(
                             )
                         }
                     } else {
+                        analyticsHelper.logGoogleSignInFailed("error")
                         _uiState.update {
                             it.copy(
                                 isGoogleSignInLoading = false,
-                                error = result.message
+                                error = "Sign-in failed. Please try again."
                             )
                         }
                     }
@@ -363,6 +360,7 @@ class AuthViewModel @Inject constructor(
             return
         }
 
+        analyticsHelper.logGoogleRoleSelected(role)
         _uiState.update { it.copy(isGoogleSignInLoading = true) }
         authenticateWithGoogle(idToken, role)
     }
@@ -374,7 +372,8 @@ class AuthViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 needsRoleSelection = false,
-                pendingGoogleIdToken = null
+                pendingGoogleIdToken = null,
+                isGoogleSignInLoading = false
             )
         }
     }

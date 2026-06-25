@@ -1,6 +1,7 @@
 package com.safeguard.parentalcontrol.di
 
 import android.content.Context
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.safeguard.parentalcontrol.data.remote.ApiService
 import com.safeguard.parentalcontrol.data.repository.CustomWordRepository
 import com.safeguard.parentalcontrol.ml.ContentClassifier
@@ -20,6 +21,12 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    @Provides
+    @Singleton
+    fun provideFirebaseAnalytics(
+        @ApplicationContext context: Context
+    ): FirebaseAnalytics = FirebaseAnalytics.getInstance(context)
 
     @Provides
     @Singleton

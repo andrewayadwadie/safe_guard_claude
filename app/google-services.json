@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "safeguard-stub",
-    "storage_bucket": "safeguard-stub.appspot.com"
+    "project_number": "216776621097",
+    "project_id": "haris-2a948",
+    "storage_bucket": "haris-2a948.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "mobilesdk_app_id": "1:216776621097:android:430278a2092535f0bdf038",
         "android_client_info": {
           "package_name": "com.safeguard.parentalcontrol"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaStubKeyStubKeyStubKeyStubKeyStubKey0"
+          "current_key": "AIzaSyDWwcDUx4gm4e4I7n1vt855aUHJM8QDMN0"
         }
       ],
       "services": {

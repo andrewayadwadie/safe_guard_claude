@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
@@ -24,10 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.safeguard.parentalcontrol.data.model.UserRole
+import com.safeguard.parentalcontrol.presentation.auth.components.GoogleSignInButton
+import com.safeguard.parentalcontrol.presentation.auth.components.RoleSelectionDialog
 
-/**
- * Registration screen composable
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
@@ -38,6 +38,7 @@ fun RegisterScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
 
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -46,10 +47,8 @@ fun RegisterScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var selectedRole by remember { mutableStateOf(UserRole.PARENT) }
 
-    // Navigate on successful registration
     LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) {
-            // Child users need device registration
             if (selectedRole == UserRole.CHILD) {
                 onNeedDeviceSetup()
             } else {
@@ -58,14 +57,10 @@ fun RegisterScreen(
         }
     }
 
-    // Show error snackbar
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
-            snackbarHostState.showSnackbar(
-                message = error,
-                duration = SnackbarDuration.Short
-            )
+            snackbarHostState.showSnackbar(message = error, duration = SnackbarDuration.Short)
             viewModel.clearError()
         }
     }
@@ -93,7 +88,6 @@ fun RegisterScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Role Selection
             Text(
                 text = "I am a",
                 style = MaterialTheme.typography.titleMedium,
@@ -129,15 +123,12 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Full Name Field
             OutlinedTextField(
                 value = fullName,
                 onValueChange = { fullName = it },
                 label = { Text("Full Name") },
                 placeholder = { Text("Enter your name") },
-                leadingIcon = {
-                    Icon(Icons.Default.Person, contentDescription = "Name")
-                },
+                leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Name") },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Next
@@ -151,15 +142,12 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Email Field
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email") },
                 placeholder = { Text("Enter your email") },
-                leadingIcon = {
-                    Icon(Icons.Default.Email, contentDescription = "Email")
-                },
+                leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Email") },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
                     imeAction = ImeAction.Next
@@ -173,15 +161,12 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Password Field
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Password") },
                 placeholder = { Text("At least 8 characters") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = "Password")
-                },
+                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password") },
                 trailingIcon = {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
@@ -210,15 +195,12 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Confirm Password Field
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
                 label = { Text("Confirm Password") },
                 placeholder = { Text("Re-enter your password") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = "Confirm Password")
-                },
+                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Confirm Password") },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
@@ -239,16 +221,13 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Register Button
             val isValid = fullName.isNotBlank() &&
                     email.isNotBlank() &&
                     password.length >= 8 &&
                     password == confirmPassword
 
             Button(
-                onClick = {
-                    viewModel.register(email, password, fullName, selectedRole)
-                },
+                onClick = { viewModel.register(email, password, fullName, selectedRole) },
                 enabled = !uiState.isLoading && isValid,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -266,7 +245,29 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Terms text
+            // Google Sign-In is always shown (FR-017, Edit 2). No status-flag gating.
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Divider(modifier = Modifier.weight(1f))
+                Text(
+                    text = "  OR  ",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Divider(modifier = Modifier.weight(1f))
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            GoogleSignInButton(
+                onClick = { viewModel.signInWithGoogle(context) },
+                isLoading = uiState.isGoogleSignInLoading,
+                enabled = !uiState.isLoading && !uiState.isGoogleSignInLoading
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Text(
                 text = "By creating an account, you agree to our Terms of Service and Privacy Policy",
                 style = MaterialTheme.typography.bodySmall,
@@ -276,6 +277,13 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+
+    if (uiState.needsRoleSelection) {
+        RoleSelectionDialog(
+            onRoleSelected = { viewModel.completeGoogleRegistration(it) },
+            onDismiss = { viewModel.cancelGoogleRoleSelection() }
+        )
     }
 }
 

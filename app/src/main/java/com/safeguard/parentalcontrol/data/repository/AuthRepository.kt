@@ -212,20 +212,4 @@ class AuthRepository @Inject constructor(
         return preferencesManager.isChild
     }
 
-    /**
-     * Check if Google OAuth is enabled on the server
-     */
-    suspend fun isGoogleOAuthEnabled(): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val response = apiService.getGoogleOAuthStatus()
-            if (response.isSuccessful) {
-                response.body()?.enabled ?: false
-            } else {
-                false
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "Failed to check Google OAuth status")
-            false
-        }
-    }
 }

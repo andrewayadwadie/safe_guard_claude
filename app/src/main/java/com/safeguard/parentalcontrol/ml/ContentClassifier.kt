@@ -36,6 +36,13 @@ class ContentClassifier @Inject constructor(
 ) {
     companion object {
         private const val MAX_IMAGE_DIMENSION = 224
+
+        // Don't run the NSFW model on tiny/degenerate images: real screenshots and
+        // photos are far larger, and the model returns meaningless probabilities on
+        // out-of-distribution inputs (e.g. an 8x8 solid color scored "hentai" 0.45,
+        // ISSUE-025). Anything smaller than this on either axis is treated as safe.
+        private const val MIN_IMAGE_DIMENSION = 64
+
         private const val MIN_ANALYSIS_INTERVAL_MS = 5000L
 
         // Text length thresholds
@@ -221,6 +228,15 @@ class ContentClassifier @Inject constructor(
             // ===== STAGE 2: TFLite NSFW Model =====
             val bitmap = loadScaledBitmap(imagePath)
                 ?: return@withContext ImageAnalysisResult.error("Failed to load image")
+
+            // Skip degenerate/tiny images (ISSUE-025): the model is unreliable on
+            // out-of-distribution inputs and produces false positives. loadScaledBitmap
+            // never upscales, so a small result means a small source.
+            if (bitmap.width < MIN_IMAGE_DIMENSION || bitmap.height < MIN_IMAGE_DIMENSION) {
+                Timber.d("Image too small for reliable analysis (${bitmap.width}x${bitmap.height}) - treating as safe")
+                bitmap.recycle()
+                return@withContext ImageAnalysisResult.safe()
+            }
 
             try {
                 val aiResult = imageClassifierModel.classify(bitmap)
