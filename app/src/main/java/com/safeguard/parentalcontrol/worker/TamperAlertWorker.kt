@@ -62,20 +62,20 @@ class TamperAlertWorker @AssistedInject constructor(
         val (title, message, severity) = when (tamperType) {
             TamperDetectionReceiver.TAMPER_TYPE_DATA_CLEARED -> Triple(
                 "App Data Cleared",
-                "SafeGuard data was cleared on ${preferencesManager.deviceName ?: Build.MODEL}. " +
+                "Haris data was cleared on ${preferencesManager.deviceName ?: Build.MODEL}. " +
                     "All monitoring settings and history have been lost. " +
                     "The child may be attempting to bypass parental controls.",
                 AlertSeverity.CRITICAL
             )
             TamperDetectionReceiver.TAMPER_TYPE_APP_DISABLED -> Triple(
-                "SafeGuard Disabled",
-                "SafeGuard was disabled on ${preferencesManager.deviceName ?: Build.MODEL}. " +
+                "Haris Disabled",
+                "Haris was disabled on ${preferencesManager.deviceName ?: Build.MODEL}. " +
                     "Monitoring is no longer active. Please re-enable the app.",
                 AlertSeverity.CRITICAL
             )
             TamperDetectionReceiver.TAMPER_TYPE_FORCE_STOPPED -> Triple(
-                "SafeGuard Force Stopped",
-                "SafeGuard was force stopped on ${preferencesManager.deviceName ?: Build.MODEL}. " +
+                "Haris Force Stopped",
+                "Haris was force stopped on ${preferencesManager.deviceName ?: Build.MODEL}. " +
                     "Monitoring has been interrupted.",
                 AlertSeverity.HIGH
             )
@@ -83,12 +83,20 @@ class TamperAlertWorker @AssistedInject constructor(
                 "VPN Content Filter Disabled",
                 "The VPN content filter was disconnected on ${preferencesManager.deviceName ?: Build.MODEL}. " +
                     "Web content filtering is no longer protecting this device. " +
-                    "Please reconnect the VPN in the SafeGuard app.",
+                    "Please reconnect the VPN in the Haris app.",
+                AlertSeverity.HIGH
+            )
+            "foreign_vpn" -> Triple(
+                "Another VPN App Detected",
+                "A third-party VPN app is active on ${preferencesManager.deviceName ?: Build.MODEL}. " +
+                    "Android allows only one VPN at a time, so SafeGuard's content filter cannot run " +
+                    "while it is on and web filtering is bypassed. Check the device for a VPN app " +
+                    "(e.g. ProtonVPN) and remove it or turn it off.",
                 AlertSeverity.HIGH
             )
             "service_stopped" -> Triple(
                 "Monitoring Service Stopped",
-                "The SafeGuard monitoring service was stopped on ${preferencesManager.deviceName ?: Build.MODEL}. " +
+                "The Haris monitoring service was stopped on ${preferencesManager.deviceName ?: Build.MODEL}. " +
                     "Screen time tracking and app monitoring are interrupted.",
                 AlertSeverity.HIGH
             )

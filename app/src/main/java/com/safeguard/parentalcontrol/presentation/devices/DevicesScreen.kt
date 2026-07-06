@@ -12,12 +12,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.safeguard.parentalcontrol.presentation.theme.SemanticColors
+import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveScreenPadding
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.safeguard.parentalcontrol.data.model.Device
 import com.safeguard.parentalcontrol.data.model.DeviceStatus
+import androidx.compose.ui.tooling.preview.Preview
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardDimens
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardShapes
+import com.safeguard.parentalcontrol.presentation.theme.shimmerEffect
+import androidx.compose.ui.draw.clip
+import java.util.Date
 import com.safeguard.parentalcontrol.util.formatAsRelative
 
 /**
@@ -117,17 +128,33 @@ fun DevicesScreen(
         ) {
             when {
                 uiState.isLoading && uiState.devices.isEmpty() -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(SafeGuardDimens.screenPadding),
+                        verticalArrangement = Arrangement.spacedBy(SafeGuardDimens.stackMd)
+                    ) {
+                        repeat(4) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(88.dp)
+                                    .clip(SafeGuardShapes.large)
+                                    .shimmerEffect()
+                            )
+                        }
+                    }
                 }
                 uiState.devices.isEmpty() -> {
                     EmptyState(modifier = Modifier.align(Alignment.Center))
                 }
                 else -> {
+                    val screenWidth = rememberScreenWidth()
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .responsiveContentWidth(screenWidth),
+                        contentPadding = PaddingValues(responsiveScreenPadding(screenWidth)),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         item {
@@ -176,7 +203,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Your children's devices will appear here once they install SafeGuard and link to your account",
+            text = "Your children's devices will appear here once they install Haris and link to your account",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -191,14 +218,14 @@ private fun DeviceCard(
     onNavigateToScreenTimeLimits: () -> Unit
 ) {
     // Online/Offline status based on lastSync time (15 min threshold)
-    val connectivityColor = if (device.isOnline) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
+    val connectivityColor = if (device.isOnline) SemanticColors.statusOnline else SemanticColors.statusOffline
     val connectivityIcon = if (device.isOnline) Icons.Default.Wifi else Icons.Default.WifiOff
 
     // Parental control status (active/suspended/inactive)
     val statusColor = when (device.status) {
-        DeviceStatus.ACTIVE -> Color(0xFF4CAF50)
-        DeviceStatus.SUSPENDED -> Color(0xFFFF9800)
-        DeviceStatus.INACTIVE -> Color(0xFF9E9E9E)
+        DeviceStatus.ACTIVE -> SemanticColors.statusOnline
+        DeviceStatus.SUSPENDED -> SemanticColors.statusSuspended
+        DeviceStatus.INACTIVE -> SemanticColors.statusOffline
     }
 
     val statusText = when (device.status) {
@@ -273,7 +300,7 @@ private fun DeviceCard(
                         )
                         device.lastSync?.let { lastSync ->
                             Text(
-                                text = " • ${lastSync.formatAsRelative()}",
+                                text = " â€¢ ${lastSync.formatAsRelative()}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -429,9 +456,9 @@ private fun DeviceDetailsSheet(
                 label = "Status",
                 value = device.status.name.lowercase().replaceFirstChar { it.uppercase() },
                 valueColor = when (device.status) {
-                    DeviceStatus.ACTIVE -> Color(0xFF4CAF50)
-                    DeviceStatus.SUSPENDED -> Color(0xFFFF9800)
-                    DeviceStatus.INACTIVE -> Color(0xFF9E9E9E)
+                    DeviceStatus.ACTIVE -> SemanticColors.statusOnline
+                    DeviceStatus.SUSPENDED -> SemanticColors.statusSuspended
+                    DeviceStatus.INACTIVE -> SemanticColors.statusOffline
                 }
             )
             device.lastSync?.let { lastSync ->
@@ -569,7 +596,7 @@ private fun DeviceDetailsSheet(
                     onClick = onSuspend,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFFF9800)
+                        contentColor = SemanticColors.statusSuspended
                     )
                 ) {
                     Icon(Icons.Default.PauseCircle, contentDescription = null)
@@ -581,7 +608,7 @@ private fun DeviceDetailsSheet(
                     onClick = onActivate,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFF4CAF50)
+                        contentColor = SemanticColors.success
                     )
                 ) {
                     Icon(Icons.Default.PlayCircle, contentDescription = null)
@@ -664,4 +691,35 @@ private fun DeviceInfoRow(
             color = valueColor
         )
     }
+}
+
+private fun sampleDevice(status: DeviceStatus) = Device(
+    id = 1, userId = 1, deviceId = "dev-1", deviceName = "Alex's Phone",
+    deviceModel = "Pixel 7", androidVersion = "14", appVersion = "1.1.2",
+    status = status, lastSync = Date(), createdAt = Date()
+)
+
+@Composable
+private fun DevicesPreviewContent() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(
+            modifier = Modifier.padding(SafeGuardDimens.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(SafeGuardDimens.stackMd)
+        ) {
+            DeviceCard(sampleDevice(DeviceStatus.ACTIVE), {}, {}, {})
+            DeviceCard(sampleDevice(DeviceStatus.SUSPENDED), {}, {}, {})
+        }
+    }
+}
+
+@Preview(name = "Devices · Light", showBackground = true)
+@Composable
+private fun DevicesScreenLightPreview() {
+    SafeGuardTheme(darkTheme = false) { DevicesPreviewContent() }
+}
+
+@Preview(name = "Devices · Dark", showBackground = true)
+@Composable
+private fun DevicesScreenDarkPreview() {
+    SafeGuardTheme(darkTheme = true) { DevicesPreviewContent() }
 }

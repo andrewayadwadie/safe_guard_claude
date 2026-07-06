@@ -1,5 +1,12 @@
 package com.safeguard.parentalcontrol.presentation.blacklist
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
+
+import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveScreenPadding
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -110,8 +117,8 @@ fun BlacklistScreen(
                 }
                 else -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        modifier = Modifier.fillMaxHeight().responsiveContentWidth(rememberScreenWidth()),
+                        contentPadding = PaddingValues(responsiveScreenPadding(rememberScreenWidth())),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         item {
@@ -315,3 +322,17 @@ private fun EmptyBlacklistView(modifier: Modifier = Modifier) {
         )
     }
 }
+
+@Composable
+private fun BlacklistPreviewContent() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            BlacklistItem("example.com", {}, false)
+            BlacklistItem("ads.tracker.net", {}, true)
+        }
+    }
+}
+@Preview(name = "Blacklist · Light", showBackground = true)
+@Composable private fun BlacklistLightPreview() { SafeGuardTheme(darkTheme = false) { BlacklistPreviewContent() } }
+@Preview(name = "Blacklist · Dark", showBackground = true)
+@Composable private fun BlacklistDarkPreview() { SafeGuardTheme(darkTheme = true) { BlacklistPreviewContent() } }

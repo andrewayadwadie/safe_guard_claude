@@ -4,6 +4,9 @@ import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.media.MediaScannerConnection
 import android.os.Build
 import android.os.Environment
@@ -60,6 +63,9 @@ class ImageBlurManager @Inject constructor(
 
         // Metadata file extension
         private const val METADATA_EXT = ".meta"
+
+        // Banner stamped onto the blurred image so the parent can tell why it looks like this
+        private const val BANNER_TEXT = "Protected by Haris"
     }
 
     // Directory for storing original backups
@@ -290,11 +296,45 @@ class ImageBlurManager @Inject constructor(
                 bitmap = applyStackBlur(bitmap)
             }
 
+            // Stamp the "Protected by Hareth" banner over the blur
+            drawBanner(bitmap)
+
             bitmap
         } catch (e: Exception) {
             Timber.e(e, "$TAG: Error creating blurred bitmap")
             null
         }
+    }
+
+    /**
+     * Draw the "Protected by Hareth" banner across the bottom of the blurred bitmap.
+     * Sizes are relative to the bitmap width so the banner reads at any scale.
+     */
+    private fun drawBanner(bitmap: Bitmap) {
+        val canvas = Canvas(bitmap)
+        val width = bitmap.width.toFloat()
+        val height = bitmap.height.toFloat()
+
+        val textSize = width * 0.06f
+        val barHeight = textSize * 1.8f
+        val barTop = height - barHeight
+
+        // Translucent bar so the text stays legible over any blurred background
+        val barPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(150, 0, 0, 0)
+        }
+        canvas.drawRect(0f, barTop, width, height, barPaint)
+
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            this.textSize = textSize
+            textAlign = Paint.Align.CENTER
+            isFakeBoldText = true
+            setShadowLayer(textSize * 0.12f, 0f, 0f, Color.BLACK)
+        }
+        // Vertically center the text within the bar
+        val baseline = barTop + barHeight / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
+        canvas.drawText(BANNER_TEXT, width / 2f, baseline, textPaint)
     }
 
     /**

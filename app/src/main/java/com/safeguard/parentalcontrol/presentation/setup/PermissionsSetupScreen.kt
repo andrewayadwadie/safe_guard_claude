@@ -1,5 +1,8 @@
 package com.safeguard.parentalcontrol.presentation.setup
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
+
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
@@ -166,7 +169,7 @@ fun PermissionsSetupScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "To protect your child, SafeGuard needs the following permissions. " +
+                text = "To protect your child, Haris needs the following permissions. " +
                         "These permissions allow us to monitor activity and enforce screen time limits.",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
@@ -333,7 +336,7 @@ fun PermissionsSetupScreen(
             PermissionCard(
                 title = "Photos & Media",
                 description = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                    "Required for sexting prevention. Enable 'All files access' to allow SafeGuard " +
+                    "Required for sexting prevention. Enable 'All files access' to allow Haris " +
                     "to detect and blur inappropriate images, protecting your child from harmful content."
                 } else {
                     viewModel.getMediaDescription()
@@ -515,3 +518,18 @@ private fun PermissionCard(
         }
     }
 }
+
+@Composable
+private fun PermissionsPreviewContent() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            PermissionCard("Accessibility Service", "Monitor app text for safety", Icons.Default.Lock, false, true, {})
+            PermissionCard("Usage Access", "Track screen time", Icons.Default.CheckCircle, true, false, {})
+        }
+    }
+}
+
+@Preview(name = "Permissions · Light", showBackground = true)
+@Composable private fun PermissionsLightPreview() { SafeGuardTheme(darkTheme = false) { PermissionsPreviewContent() } }
+@Preview(name = "Permissions · Dark", showBackground = true)
+@Composable private fun PermissionsDarkPreview() { SafeGuardTheme(darkTheme = true) { PermissionsPreviewContent() } }

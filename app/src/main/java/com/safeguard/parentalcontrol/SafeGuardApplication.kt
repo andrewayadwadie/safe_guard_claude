@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.ProtectionStatusHelper
 import com.safeguard.parentalcontrol.worker.ProtectionMonitorWorker
 import com.safeguard.parentalcontrol.worker.SyncWorker
@@ -14,7 +15,7 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * SafeGuard Application class
+ * Haris Application class
  * Initializes Hilt dependency injection, WorkManager, and logging
  */
 @HiltAndroidApp
@@ -22,6 +23,9 @@ class SafeGuardApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject
+    lateinit var preferencesManager: PreferencesManager
 
     override fun onCreate() {
         super.onCreate()
@@ -31,13 +35,17 @@ class SafeGuardApplication : Application(), Configuration.Provider {
             Timber.plant(Timber.DebugTree())
         }
 
+        // Grandfather already-registered devices into the monitoring-consent gate before
+        // any service start path can evaluate it (see migrateMonitoringConsentIfNeeded).
+        preferencesManager.migrateMonitoringConsentIfNeeded()
+
         // Create notification channels
         createNotificationChannels()
 
         // Start periodic workers
         startWorkers()
 
-        Timber.d("SafeGuard Application initialized")
+        Timber.d("Haris Application initialized")
     }
 
     /**
@@ -78,7 +86,7 @@ class SafeGuardApplication : Application(), Configuration.Provider {
                 "Monitoring Service",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows when SafeGuard is actively monitoring"
+                description = "Shows when Haris is actively monitoring"
                 setShowBadge(false)
             }
             notificationManager.createNotificationChannel(monitoringChannel)

@@ -1,5 +1,9 @@
 package com.safeguard.parentalcontrol.presentation.alerts
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
+import java.util.Date
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -11,6 +15,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.safeguard.parentalcontrol.presentation.theme.SemanticColors
+import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveScreenPadding
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardShapes
+import com.safeguard.parentalcontrol.presentation.theme.shimmerEffect
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -127,7 +138,7 @@ fun AlertsScreen(
                         onClick = { viewModel.setFilter(AlertFilter.CRITICAL) },
                         label = { Text("Critical") },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Color.Red.copy(alpha = 0.2f)
+                            selectedContainerColor = SemanticColors.severityCritical.copy(alpha = 0.2f)
                         )
                     )
                 }
@@ -137,7 +148,7 @@ fun AlertsScreen(
                         onClick = { viewModel.setFilter(AlertFilter.HIGH) },
                         label = { Text("High") },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Color(0xFFFF9800).copy(alpha = 0.2f)
+                            selectedContainerColor = SemanticColors.severityHigh.copy(alpha = 0.2f)
                         )
                     )
                 }
@@ -145,11 +156,21 @@ fun AlertsScreen(
 
             when {
                 uiState.isLoading && uiState.alerts.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        CircularProgressIndicator()
+                        repeat(5) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(72.dp)
+                                    .clip(SafeGuardShapes.large)
+                                    .shimmerEffect()
+                            )
+                        }
                     }
                 }
                 uiState.alerts.isEmpty() -> {
@@ -159,9 +180,12 @@ fun AlertsScreen(
                     )
                 }
                 else -> {
+                    val screenWidth = rememberScreenWidth()
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .responsiveContentWidth(screenWidth),
+                        contentPadding = PaddingValues(responsiveScreenPadding(screenWidth)),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(
@@ -228,10 +252,10 @@ private fun AlertCard(
     var showMenu by remember { mutableStateOf(false) }
 
     val (icon, color) = when (alert.severity) {
-        AlertSeverity.CRITICAL -> Icons.Default.Error to Color.Red
-        AlertSeverity.HIGH -> Icons.Default.Warning to Color(0xFFFF9800)
-        AlertSeverity.MEDIUM -> Icons.Default.Info to Color(0xFF2196F3)
-        AlertSeverity.LOW -> Icons.Default.CheckCircle to Color(0xFF4CAF50)
+        AlertSeverity.CRITICAL -> Icons.Default.Error to SemanticColors.severityCritical
+        AlertSeverity.HIGH -> Icons.Default.Warning to SemanticColors.severityHigh
+        AlertSeverity.MEDIUM -> Icons.Default.Info to SemanticColors.severityMedium
+        AlertSeverity.LOW -> Icons.Default.CheckCircle to SemanticColors.severityLow
     }
 
     val typeIcon = when (alert.alertType) {
@@ -380,3 +404,22 @@ private fun AlertCard(
         }
     }
 }
+
+private fun sampleAlert() = Alert(
+    id = 1, userId = 1, deviceId = 1, alertType = AlertType.INAPPROPRIATE_TEXT,
+    severity = AlertSeverity.HIGH, title = "Flagged message",
+    message = "Detected risky language in a chat app.", metadata = null,
+    isRead = false, isDismissed = false, createdAt = Date(), updatedAt = null, occurrenceCount = 3
+)
+@Composable
+private fun AlertsPreviewContent() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            AlertCard(sampleAlert(), {}, {}, {})
+        }
+    }
+}
+@Preview(name = "Alerts · Light", showBackground = true)
+@Composable private fun AlertsLightPreview() { SafeGuardTheme(darkTheme = false) { AlertsPreviewContent() } }
+@Preview(name = "Alerts · Dark", showBackground = true)
+@Composable private fun AlertsDarkPreview() { SafeGuardTheme(darkTheme = true) { AlertsPreviewContent() } }

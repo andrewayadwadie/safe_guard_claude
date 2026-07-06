@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark (canonical) Haris theme. Mirrors Theme.SafeGuard with dark brand chrome. -->
+    <style name="Theme.SafeGuard" parent="android:Theme.Material.NoActionBar">
+        <!-- Primary brand color -->
+        <item name="android:colorPrimary">@color/primary</item>
+        <item name="android:colorPrimaryDark">@color/primary_dark</item>
+        <item name="android:colorAccent">@color/accent</item>
+
+        <!-- Status bar matches the dark brand surface -->
+        <item name="android:statusBarColor">#0F1719</item>
+        <item name="android:navigationBarColor">#0F1719</item>
+
+        <!-- Window (dark theme: light status-bar icons over the dark surface) -->
+        <item name="android:windowBackground">#0F1719</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

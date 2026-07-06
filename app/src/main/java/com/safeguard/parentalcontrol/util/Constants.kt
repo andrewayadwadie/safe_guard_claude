@@ -16,6 +16,21 @@ object Constants {
     const val KEY_DEVICE_NAME = "device_name"
     const val KEY_IS_LOGGED_IN = "is_logged_in"
     const val KEY_IS_DEVICE_REGISTERED = "is_device_registered"
+    // Set once the backend confirms this child account has at least one linked parent
+    // (family link). Gates whether child monitoring may start; refreshed from
+    // GET /family/parents at service start. Cleared on logout by clearAll().
+    const val KEY_HAS_LINKED_PARENT = "has_linked_parent"
+    // Set once the parent acknowledges the in-app monitoring disclosure. Gates every
+    // monitoring service start (Google Play Prominent Disclosure & Consent).
+    const val KEY_MONITORING_CONSENT_GRANTED = "monitoring_consent_granted"
+    // Salted SHA-256 of the parent's review PIN (+ its salt). Gates the on-device
+    // flagged-photo / flagged-text review so the child cannot open them. Never leaves
+    // the device; cleared on logout by clearAll().
+    const val KEY_PARENT_PIN_HASH = "parent_pin_hash"
+    const val KEY_PARENT_PIN_SALT = "parent_pin_salt"
+    // On-device-only log of flagged text phrases for parent review (JSON). Stored in
+    // EncryptedSharedPreferences, never transmitted, auto-purged after a retention window.
+    const val KEY_FLAGGED_TEXT_EVENTS = "flagged_text_events"
     const val KEY_LAST_SYNC_TIME = "last_sync_time"
     const val KEY_LAST_IMAGE_SCAN_TIME = "last_image_scan_time"
     const val KEY_CONTENT_FILTERING_ENABLED = "content_filtering_enabled"
@@ -76,6 +91,11 @@ object Constants {
     // Security - Certificate Pinning
     // IMPORTANT: Replace with actual certificate hashes before production deployment
     const val API_HOST = "api.safeguard.app"
+
+    // Privacy policy / terms shown during the monitoring-consent flow and Settings.
+    // TODO: replace with the hosted URLs before release.
+    const val PRIVACY_POLICY_URL = "https://api.safeguard.app/privacy"
+    const val TERMS_OF_SERVICE_URL = "https://api.safeguard.app/terms"
     const val CERTIFICATE_PIN_PRIMARY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
     const val CERTIFICATE_PIN_BACKUP = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="
 

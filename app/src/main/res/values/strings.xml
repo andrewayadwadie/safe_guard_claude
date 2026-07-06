@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SafeGuard</string>
+    <string name="app_name">Haris</string>
     <string name="app_description">Parental Control System</string>
 
     <!-- Authentication -->
@@ -47,16 +47,16 @@
     <string name="logout_confirmation">Are you sure you want to logout?</string>
 
     <!-- Notifications -->
-    <string name="notification_monitoring_title">SafeGuard Active</string>
+    <string name="notification_monitoring_title">Haris Active</string>
     <string name="notification_monitoring_text">Monitoring device activity</string>
 
     <!-- Permissions -->
     <string name="permission_usage_stats_title">Usage Access Required</string>
-    <string name="permission_usage_stats_message">SafeGuard needs access to app usage data to track screen time.</string>
+    <string name="permission_usage_stats_message">Haris needs access to app usage data to track screen time.</string>
     <string name="permission_accessibility_title">Accessibility Access Required</string>
-    <string name="permission_accessibility_message">SafeGuard needs accessibility access to monitor text content for safety.</string>
+    <string name="permission_accessibility_message">Haris needs accessibility access to monitor text content for safety.</string>
     <string name="permission_vpn_title">VPN Permission Required</string>
-    <string name="permission_vpn_message">SafeGuard needs VPN permission to filter inappropriate content.</string>
+    <string name="permission_vpn_message">Haris needs VPN permission to filter inappropriate content.</string>
     <string name="grant_permission">Grant Permission</string>
 
     <!-- Errors -->
@@ -66,5 +66,5 @@
     <string name="error_unknown">An error occurred. Please try again.</string>
 
     <!-- Accessibility -->
-    <string name="accessibility_service_description">SafeGuard monitors text content to detect potentially harmful or inappropriate content and protect your child online.</string>
+    <string name="accessibility_service_description">Haris monitors text content to detect potentially harmful or inappropriate content and protect your child online.</string>
 </resources>

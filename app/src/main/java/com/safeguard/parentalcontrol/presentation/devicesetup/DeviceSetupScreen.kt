@@ -1,5 +1,8 @@
 package com.safeguard.parentalcontrol.presentation.devicesetup
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
+
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
@@ -134,7 +137,7 @@ private fun DeviceRegistrationContent(
 
     // Subtitle
     Text(
-        text = "Register this device to enable SafeGuard protection and allow your parent to monitor your online activity.",
+        text = "Register this device to enable Haris protection and allow your parent to monitor your online activity.",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center
@@ -214,9 +217,9 @@ private fun DeviceRegistrationContent(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "• Your parent will be able to see your screen time\n" +
-                        "• Content filtering will block inappropriate websites\n" +
-                        "• You'll need to grant usage access permission",
+                text = "â€¢ Your parent will be able to see your screen time\n" +
+                        "â€¢ Content filtering will block inappropriate websites\n" +
+                        "â€¢ You'll need to grant usage access permission",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )
@@ -288,8 +291,8 @@ private fun PermissionSetupContent(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                "To track your screen time, SafeGuard needs permission to access usage data. " +
-                        "Tap the button below, find 'SafeGuard' in the list, and enable access.",
+                "To track your screen time, Haris needs permission to access usage data. " +
+                        "Tap the button below, find 'Haris' in the list, and enable access.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
@@ -338,3 +341,16 @@ private fun PermissionSetupContent(
         textAlign = TextAlign.Center
     )
 }
+
+@Composable
+private fun DeviceSetupPreviewContent() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.padding(16.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+            DeviceRegistrationContent("Alex's Phone", {}, false, {})
+        }
+    }
+}
+@Preview(name = "DeviceSetup · Light", showBackground = true)
+@Composable private fun DeviceSetupLightPreview() { SafeGuardTheme(darkTheme = false) { DeviceSetupPreviewContent() } }
+@Preview(name = "DeviceSetup · Dark", showBackground = true)
+@Composable private fun DeviceSetupDarkPreview() { SafeGuardTheme(darkTheme = true) { DeviceSetupPreviewContent() } }

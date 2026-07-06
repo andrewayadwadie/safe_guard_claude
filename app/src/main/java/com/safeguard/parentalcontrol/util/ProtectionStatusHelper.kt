@@ -3,7 +3,6 @@ package com.safeguard.parentalcontrol.util
 import android.app.AppOpsManager
 import android.app.NotificationManager
 import android.content.Context
-import android.net.VpnService
 import android.os.Build
 import android.os.PowerManager
 import android.os.Process
@@ -108,7 +107,7 @@ enum class ProtectionType(
     BATTERY_OPTIMIZATION(
         displayName = "Background Running",
         alertTitle = "Battery Optimization Enabled",
-        alertMessage = "Battery optimization is enabled for SafeGuard. The app may be killed by the system, disabling all protections.",
+        alertMessage = "Battery optimization is enabled for Haris. The app may be killed by the system, disabling all protections.",
         isCritical = true
     ),
     VPN_SERVICE(
@@ -119,14 +118,14 @@ enum class ProtectionType(
     ),
     APP_KILLED(
         displayName = "App Running",
-        alertTitle = "SafeGuard App Stopped",
-        alertMessage = "The SafeGuard app has been stopped or force-closed. All protections are disabled until the app is restarted.",
+        alertTitle = "Haris App Stopped",
+        alertMessage = "The Haris app has been stopped or force-closed. All protections are disabled until the app is restarted.",
         isCritical = true
     ),
     AUTO_START(
         displayName = "Auto-Start",
         alertTitle = "Auto-Start Disabled",
-        alertMessage = "SafeGuard did not start automatically after the device was restarted. Auto-start may be disabled in device settings. Without auto-start, protections won't be active after a reboot until someone manually opens the app.",
+        alertMessage = "Haris did not start automatically after the device was restarted. Auto-start may be disabled in device settings. Without auto-start, protections won't be active after a reboot until someone manually opens the app.",
         isCritical = true
     )
 }
@@ -335,15 +334,12 @@ object ProtectionStatusHelper {
      * This checks if our VPN service has an active connection.
      */
     fun isVpnConnected(context: Context): Boolean {
-        return try {
-            // Check if VPN is prepared for our app
-            val intent = VpnService.prepare(context)
-            // If prepare() returns null, VPN is already prepared/connected
-            intent == null
-        } catch (e: Exception) {
-            Timber.e(e, "$TAG: Error checking VPN status")
-            false
-        }
+        // Real liveness: is OUR content-filter tunnel actually established right now?
+        // Previously this returned VpnService.prepare(context) == null, which only reports
+        // whether we still hold VPN consent - that stays "granted" even while the tunnel is
+        // down, so it missed genuine drops AND flipped false on benign consent re-evaluation
+        // (another VPN app, permission auto-reset), minting false "VPN stopped" alerts.
+        return com.safeguard.parentalcontrol.service.ContentFilterVpnService.isActive
     }
 
     /**

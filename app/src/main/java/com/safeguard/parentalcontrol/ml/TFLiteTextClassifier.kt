@@ -2,308 +2,253 @@ package com.safeguard.parentalcontrol.ml
 
 import android.content.Context
 import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.support.common.FileUtil
 import timber.log.Timber
 import java.io.Closeable
+import java.io.File
+import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
+import java.nio.channels.FileChannel
 
 /**
- * TensorFlow Lite text classifier for detecting inappropriate content.
+ * Two-backend, script-routed on-device toxicity classifier (Stage 2).
  *
- * Uses a pre-trained toxicity model that detects:
- * - General toxicity
- * - Severe toxicity (threats, violence)
- * - Obscene language
- * - Threats
- * - Insults
- * - Sexual explicit content
+ * Replaces the old single keyword model. Routes by script:
+ *  - Latin / mixed  -> toxic-bert (EN), 6 sigmoid labels [toxic, severe_toxic, obscene,
+ *                      threat, insult, identity_hate]
+ *  - Arabic-script  -> MARBERTv2 (AR, Egyptian-locked), 2 softmax [Neutral, Hate]
  *
- * The model uses word embeddings with pre-trained weights for toxic patterns.
+ * Both are INT8 TFLite with the SAME I/O shape: two int64 inputs (input_ids, attention_mask)
+ * of [1,128] and a float32 [1,N] output of probabilities (sigmoid/softmax already applied in
+ * the exported graph). Tokenization is real BERT WordPiece ({@link WordPieceTokenizer}),
+ * parity-locked to HuggingFace.
+ *
+ * DELIVERY: the models are large (toxic-bert ~112 MB, MARBERT ~166 MB) and are NOT bundled in
+ * the APK. They are loaded from {@code filesDir/models/} — the target of the on-demand
+ * download (scope §5.6). Vocabs are small and ARE bundled in assets. For local testing before
+ * the downloader exists, push the files manually:
+ *   adb push toxicbert_en_int8.tflite /data/data/<pkg>/files/models/
+ *   adb push marbert_ar_int8.tflite   /data/data/<pkg>/files/models/
+ * If a model file is absent the backend stays unloaded and {@link #classify} returns safe()
+ * (Stage-1 regex already ran upstream), so the app degrades to regex-only, never crashes.
+ *
+ * MEMORY: single-resident — only one model is held at a time; switching script evicts the
+ * other. Emits the same {@code categoryScores} map the (unchanged) FlagGating layer consumes.
  */
-class TFLiteTextClassifier(private val context: Context) : Closeable {
+class TFLiteTextClassifier(
+    private val context: Context,
+    // Invoked when a text needs a backend whose model file is not present yet, so the caller can
+    // trigger the on-demand download (scope §5.6). Fires only on genuine absence, not on load/OOM
+    // errors. No-op by default.
+    private val onModelUnavailable: (Backend) -> Unit = {},
+) : Closeable {
+
+    enum class Backend { EN, AR }
+
+    private data class ModelSpec(
+        val backend: Backend,
+        val modelFile: String,   // file name under filesDir/models/
+        val vocabAsset: String,  // asset file name (bundled)
+        val clsId: Int,
+        val sepId: Int,
+        val padId: Int,
+        val unkId: Int,
+        val numLabels: Int,
+    )
 
     companion object {
         private const val TAG = "TFLiteTextClassifier"
-        private const val MODEL_FILE = "text_classifier.tflite"
-        private const val VOCAB_FILE = "vocab.txt"
-        private const val LABELS_FILE = "labels.txt"
+        private const val MODELS_SUBDIR = "models"
+        private const val MAX_SEQ_LEN = 128
 
-        // Model input/output configuration
-        private const val MAX_SEQUENCE_LENGTH = 128
-        private const val NUM_CLASSES = 7
-
-        // Classification thresholds
-        private const val TOXICITY_THRESHOLD = 0.5f
-        private const val SEVERE_THRESHOLD = 0.4f  // Lower threshold for severe content
-
-        // Default category labels (used if labels.txt not found)
-        private val DEFAULT_CATEGORIES = listOf(
-            "safe",
-            "toxicity",
-            "severe_toxicity",
-            "obscene",
-            "threat",
-            "insult",
-            "sexual_explicit"
+        // Special-token ids are per-vocab (verified against each vocab.txt).
+        private val EN_SPEC = ModelSpec(
+            Backend.EN, "toxicbert_en_int8.tflite", "toxicbert_en_vocab.txt",
+            clsId = 101, sepId = 102, padId = 0, unkId = 100, numLabels = 6,
+        )
+        private val AR_SPEC = ModelSpec(
+            Backend.AR, "marbert_ar_int8.tflite", "marbert_ar_vocab.txt",
+            clsId = 2, sepId = 3, padId = 0, unkId = 1, numLabels = 2,
         )
 
-        // Map model categories to app categories
-        private val CATEGORY_MAPPING = mapOf(
-            "toxicity" to "profanity",
-            "severe_toxicity" to "self_harm",
-            "obscene" to "profanity",
-            "threat" to "violence",
-            "insult" to "bullying",
-            "sexual_explicit" to "sexual"
-        )
+        // toxic-bert sigmoid label order -> app categories. NO sexual label exists in
+        // toxic-bert (it recognizes sexual content only as generic toxic/obscene); the
+        // `sexual` category is owned by Stage-1 regex (TextPatternMatcher), not this model.
+        // identity_hate = targeted hate -> bullying. self_harm is regex-only (ML is blind to
+        // its polite phrasing), so it is intentionally absent here.
+        private const val L_TOXIC = 0
+        private const val L_SEVERE = 1
+        private const val L_OBSCENE = 2
+        private const val L_THREAT = 3
+        private const val L_INSULT = 4
+        private const val L_IDENTITY_HATE = 5
+
+        // MARBERT softmax label order.
+        private const val AR_HATE = 1  // [Neutral=0, Hate=1]
+
+        // Soft heap gate; the real protection is the try/catch around native load below.
+        private const val MIN_AVAILABLE_HEAP_MB = 64L
     }
 
+    private val modelsDir: File by lazy { File(context.filesDir, MODELS_SUBDIR) }
+
+    // Single-resident state: at most one backend loaded at a time.
+    private var loaded: Backend? = null
     private var interpreter: Interpreter? = null
-    private var vocabulary: Map<String, Int> = emptyMap()
-    private var categories: List<String> = DEFAULT_CATEGORIES
-    private var isInitialized = false
-    private var initAttempted = false
+    private var tokenizer: WordPieceTokenizer? = null
 
-    // MEMORY OPTIMIZATION: Don't load model in init{} - defer until first use
-    // This prevents loading ~10-20MB model into memory at app startup
+    private fun specFor(backend: Backend) = if (backend == Backend.EN) EN_SPEC else AR_SPEC
 
-    private fun initializeModel() {
-        try {
-            // Load model
-            val modelBuffer = loadModelFile()
-            if (modelBuffer != null) {
-                val options = Interpreter.Options().apply {
-                    setNumThreads(2)  // Limit threads for battery efficiency
-                }
-                interpreter = Interpreter(modelBuffer, options)
-
-                // Load vocabulary
-                vocabulary = loadVocabulary()
-
-                // Load labels
-                categories = loadLabels()
-
-                isInitialized = true
-                Timber.d("$TAG: TFLite text classifier initialized successfully")
-                Timber.d("$TAG: Vocabulary size: ${vocabulary.size}, Categories: $categories")
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "$TAG: Failed to initialize TFLite text classifier")
-            isInitialized = false
-        }
-    }
-
-    private fun loadModelFile(): MappedByteBuffer? {
-        return try {
-            FileUtil.loadMappedFile(context, MODEL_FILE)
-        } catch (e: Exception) {
-            Timber.d("$TAG: Text classifier model not found: $MODEL_FILE")
-            null
-        }
-    }
-
-    private fun loadVocabulary(): Map<String, Int> {
-        return try {
-            val vocabList = FileUtil.loadLabels(context, VOCAB_FILE)
-            vocabList.mapIndexed { index, word -> word.lowercase() to index }.toMap()
-        } catch (e: Exception) {
-            Timber.d("$TAG: Vocabulary file not found, using built-in vocabulary")
-            createBuiltInVocabulary()
-        }
-    }
-
-    private fun loadLabels(): List<String> {
-        return try {
-            FileUtil.loadLabels(context, LABELS_FILE)
-        } catch (e: Exception) {
-            Timber.d("$TAG: Labels file not found, using defaults")
-            DEFAULT_CATEGORIES
-        }
-    }
+    /** Text to classify (possibly transliterated) + the backend to run it on. */
+    private data class Route(val text: String, val backend: Backend)
 
     /**
-     * Built-in vocabulary for when vocab.txt is not available.
-     * Contains common toxic words with their token IDs.
+     * Route by dominant script: Arabic-script-dominant -> AR as-is; Latin text that is detected
+     * 3arabizi -> transliterate to Arabic script and run AR; all other Latin -> EN. Digit-less
+     * arabizi is not separable from English and falls through to EN (scope §5.4 gap).
      */
-    private fun createBuiltInVocabulary(): Map<String, Int> {
-        return mapOf(
-            "[pad]" to 0,
-            "[unk]" to 1,
-            // Threats/violence
-            "kill" to 100, "murder" to 101, "die" to 102, "dead" to 103,
-            "shoot" to 105, "stab" to 106, "attack" to 108, "suicide" to 111,
-            // Profanity
-            "fuck" to 200, "fucking" to 201, "shit" to 203, "bitch" to 204,
-            "bastard" to 205, "ass" to 206, "asshole" to 207, "cunt" to 214,
-            // Insults
-            "stupid" to 300, "idiot" to 301, "dumb" to 302, "moron" to 303,
-            "retard" to 304, "loser" to 306, "pathetic" to 307, "worthless" to 308,
-            "ugly" to 309, "fat" to 310, "disgusting" to 311, "hate" to 317,
-            // Sexual
-            "porn" to 400, "xxx" to 402, "nsfw" to 403, "nude" to 404,
-            "nudes" to 405, "naked" to 406, "sex" to 407, "horny" to 410,
-            "hentai" to 414,
-            // Slurs
-            "nigger" to 500, "faggot" to 502, "fag" to 503,
-            // Bullying
-            "kys" to 801, "yourself" to 800,
-            // Common words
-            "you" to 900, "your" to 901, "i" to 902, "should" to 943,
-            "don't" to 946, "dont" to 945, "tell" to 947,
-            "parent" to 948, "parents" to 949
-        )
+    private fun route(text: String): Route {
+        var arabic = 0
+        var latin = 0
+        var i = 0
+        while (i < text.length) {
+            val cp = text.codePointAt(i)
+            i += Character.charCount(cp)
+            when {
+                isArabicScript(cp) -> arabic++
+                cp in 0x41..0x5A || cp in 0x61..0x7A -> latin++
+            }
+        }
+        if (arabic > latin) return Route(text, Backend.AR)
+        if (Arabizi.looksLikeArabizi(text)) return Route(Arabizi.normalize(text), Backend.AR)
+        return Route(text, Backend.EN)
     }
 
+    private fun isArabicScript(cp: Int): Boolean =
+        cp in 0x0600..0x06FF || cp in 0x0750..0x077F || cp in 0x08A0..0x08FF ||
+            cp in 0xFB50..0xFDFF || cp in 0xFE70..0xFEFF
+
+    /** Lazily (re)load the backend for [backend]; evict the other. Returns false (degrade to
+     *  safe) if the model file is missing, memory is tight, or native load fails. */
+    private fun ensureLoaded(backend: Backend): Boolean {
+        if (loaded == backend && interpreter != null) return true
+
+        // Evict the currently-resident model before loading the other.
+        if (loaded != null && loaded != backend) {
+            Timber.d("$TAG: evicting $loaded to load $backend")
+            close()
+        }
+
+        val runtime = Runtime.getRuntime()
+        val availableHeapMb = (runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())) / (1024 * 1024)
+        if (availableHeapMb < MIN_AVAILABLE_HEAP_MB) {
+            Timber.w("$TAG: low heap (${availableHeapMb}MB), skipping model load -> regex-only")
+            return false
+        }
+
+        val spec = specFor(backend)
+        val modelFile = File(modelsDir, spec.modelFile)
+        if (!modelFile.exists()) {
+            Timber.d("$TAG: model not present yet: ${modelFile.absolutePath} -> regex-only for $backend")
+            return false
+        }
+
+        return try {
+            val buffer = mapModelFile(modelFile)
+            val interp = Interpreter(buffer, Interpreter.Options().apply { setNumThreads(2) })
+            val vocab = context.assets.open(spec.vocabAsset).bufferedReader(Charsets.UTF_8).useLines { it.toList() }
+            val tok = WordPieceTokenizer.fromVocabLines(vocab, spec.clsId, spec.sepId, spec.padId, spec.unkId, MAX_SEQ_LEN)
+            interpreter = interp
+            tokenizer = tok
+            loaded = backend
+            Timber.d("$TAG: loaded $backend (${spec.modelFile}, vocab ${vocab.size})")
+            true
+        } catch (e: Exception) {
+            Timber.w(e, "$TAG: failed to load $backend model -> regex-only")
+            false
+        } catch (e: OutOfMemoryError) {
+            Timber.w("$TAG: OOM loading $backend model -> regex-only")
+            false
+        }
+    }
+
+    private fun mapModelFile(file: File): MappedByteBuffer =
+        FileInputStream(file).use { fis ->
+            fis.channel.map(FileChannel.MapMode.READ_ONLY, 0, file.length())
+        }
+
     /**
-     * Classify text for inappropriate content.
-     *
-     * @param text Text to classify
-     * @return TextAnalysisResult with classification details
+     * Classify [text] for inappropriate content. The returned [TextAnalysisResult.categoryScores]
+     * is the authoritative output (FlagGating decides the flag); isFlagged/categories/confidence
+     * are informational for logging.
      */
     fun classify(text: String): TextAnalysisResult {
-        // MEMORY OPTIMIZATION: Lazy initialize model on first use
-        if (!initAttempted) {
-            initAttempted = true
-            try {
-                // Check available memory before loading model
-                val runtime = Runtime.getRuntime()
-                val freeMemory = runtime.freeMemory()
-                val maxMemory = runtime.maxMemory()
-                val usedMemory = runtime.totalMemory() - freeMemory
-                val availableMemory = maxMemory - usedMemory
-
-                // Only load if we have at least 50MB available
-                if (availableMemory > 50 * 1024 * 1024) {
-                    initializeModel()
-                } else {
-                    Timber.w("$TAG: Low memory (${availableMemory / 1024 / 1024}MB available), skipping TFLite model")
-                }
-            } catch (e: Exception) {
-                Timber.w(e, "$TAG: TFLite text model not available, using fallback")
-            } catch (e: Error) {
-                Timber.w("$TAG: TFLite text model error, using fallback: ${e.message}")
-            }
-        }
-
-        if (!isInitialized || interpreter == null) {
-            Timber.d("$TAG: Model not initialized, returning safe")
+        if (text.isBlank()) return TextAnalysisResult.safe()
+        val (routedText, backend) = route(text)
+        if (!ensureLoaded(backend)) {
+            // If the model simply isn't downloaded yet, ask the caller to fetch it. Degrade to
+            // safe() for now (Stage-1 regex already ran upstream).
+            if (!File(modelsDir, specFor(backend).modelFile).exists()) onModelUnavailable(backend)
             return TextAnalysisResult.safe()
         }
 
         return try {
-            // Tokenize and pad input
-            val inputBuffer = tokenizeText(text)
+            val enc = tokenizer!!.encode(routedText)
+            val ids = ByteBuffer.allocateDirect(MAX_SEQ_LEN * 8).order(ByteOrder.nativeOrder())
+            val mask = ByteBuffer.allocateDirect(MAX_SEQ_LEN * 8).order(ByteOrder.nativeOrder())
+            for (v in enc.inputIds) ids.putLong(v.toLong())
+            for (v in enc.attentionMask) mask.putLong(v.toLong())
+            ids.rewind(); mask.rewind()
 
-            // Prepare output buffer - model outputs [1, NUM_CLASSES]
-            val outputBuffer = Array(1) { FloatArray(NUM_CLASSES) }
+            // Two int64 inputs in declared order: args_0=input_ids, args_1=attention_mask.
+            val out = Array(1) { FloatArray(specFor(backend).numLabels) }
+            interpreter!!.runForMultipleInputsOutputs(arrayOf<Any>(ids, mask), mapOf(0 to out))
 
-            // Run inference
-            interpreter?.run(inputBuffer, outputBuffer)
-
-            // Process results
-            val result = processOutput(outputBuffer[0], text)
-
-            Timber.d("$TAG: Classification result for '${text.take(30)}...': " +
-                    "flagged=${result.isFlagged}, categories=${result.categories}, " +
-                    "confidence=${result.confidence}")
-
-            result
-
+            val scores = when (backend) {
+                Backend.EN -> adaptEn(out[0])
+                Backend.AR -> adaptAr(out[0])
+            }
+            buildResult(scores)
         } catch (e: Exception) {
-            Timber.e(e, "$TAG: TFLite text classification failed")
+            Timber.e(e, "$TAG: classification failed ($backend)")
             TextAnalysisResult.safe()
         }
     }
 
-    private fun tokenizeText(text: String): ByteBuffer {
-        // Allocate buffer for int32 tokens
-        val buffer = ByteBuffer.allocateDirect(MAX_SEQUENCE_LENGTH * 4)
-        buffer.order(ByteOrder.nativeOrder())
-
-        // Tokenize text
-        val words = text.lowercase()
-            .replace(Regex("[^a-z0-9'\\s]"), " ")
-            .split(Regex("\\s+"))
-            .filter { it.isNotBlank() }
-
-        var position = 0
-        for (word in words) {
-            if (position >= MAX_SEQUENCE_LENGTH) break
-
-            // Look up word in vocabulary, use UNK (1) for unknown words
-            val tokenId = vocabulary[word] ?: vocabulary["[unk]"] ?: 1
-            buffer.putInt(tokenId)
-            position++
-        }
-
-        // Pad remaining positions with zeros (PAD token)
-        while (position < MAX_SEQUENCE_LENGTH) {
-            buffer.putInt(0)
-            position++
-        }
-
-        buffer.rewind()
-        return buffer
+    /** toxic-bert 6 sigmoids -> app categories (max-merge where several labels collapse). */
+    private fun adaptEn(p: FloatArray): Map<String, Float> {
+        val cs = HashMap<String, Float>(4)
+        fun put(cat: String, v: Float) { if (v > (cs[cat] ?: 0f)) cs[cat] = v }
+        put("profanity", maxOf(p[L_TOXIC], p[L_SEVERE], p[L_OBSCENE]))
+        put("violence", p[L_THREAT])
+        put("bullying", maxOf(p[L_INSULT], p[L_IDENTITY_HATE]))
+        return cs
     }
 
-    private fun processOutput(probabilities: FloatArray, originalText: String): TextAnalysisResult {
-        val detectedCategories = mutableListOf<String>()
-        var maxConfidence = 0f
-        var reason: String? = null
+    /** MARBERT is binary: the Hate prob maps to one coarse category (bullying, HIGH). Arabic
+     *  category granularity comes from Stage-1 regex; see scope §4. */
+    private fun adaptAr(p: FloatArray): Map<String, Float> = mapOf("bullying" to p[AR_HATE])
 
-        // Log all probabilities for debugging
-        Timber.v("$TAG: Raw probabilities: ${probabilities.mapIndexed { i, p ->
-            "${categories.getOrElse(i) { "cat$i" }}=${"%.3f".format(p)}"
-        }.joinToString(", ")}")
-
-        // Check each category (skip index 0 which is "safe")
-        for (i in 1 until probabilities.size) {
-            val probability = probabilities[i]
-            val categoryName = categories.getOrElse(i) { "unknown" }
-
-            // Use lower threshold for severe categories
-            val threshold = when (categoryName) {
-                "severe_toxicity", "threat", "sexual_explicit" -> SEVERE_THRESHOLD
-                else -> TOXICITY_THRESHOLD
-            }
-
-            if (probability >= threshold) {
-                // Map to app's category names
-                val mappedCategory = CATEGORY_MAPPING[categoryName] ?: categoryName
-                if (mappedCategory !in detectedCategories) {
-                    detectedCategories.add(mappedCategory)
-                }
-
-                if (probability > maxConfidence) {
-                    maxConfidence = probability
-                    reason = "AI detected: $categoryName (${(probability * 100).toInt()}% confidence)"
-                }
-            }
-        }
-
-        return if (detectedCategories.isNotEmpty()) {
-            TextAnalysisResult(
-                isFlagged = true,
-                confidence = maxConfidence,
-                categories = detectedCategories,
-                reason = reason
-            )
-        } else {
-            TextAnalysisResult.safe()
-        }
+    private fun buildResult(scores: Map<String, Float>): TextAnalysisResult {
+        val flagged = scores.filterValues { it >= 0.5f }
+        val maxConfidence = scores.values.maxOrNull() ?: 0f
+        return TextAnalysisResult(
+            isFlagged = flagged.isNotEmpty(),
+            confidence = if (flagged.isNotEmpty()) maxConfidence else 0f,
+            categories = flagged.keys.toList(),
+            reason = if (flagged.isNotEmpty()) "AI detected: ${flagged.keys.joinToString()}" else null,
+            categoryScores = scores,
+        )
     }
 
-    /**
-     * Check if the model is ready for inference.
-     */
-    fun isReady(): Boolean = isInitialized
+    fun isReady(): Boolean = interpreter != null
 
     override fun close() {
         interpreter?.close()
         interpreter = null
-        isInitialized = false
-        Timber.d("$TAG: TFLite text classifier closed")
+        tokenizer = null
+        loaded = null
+        Timber.d("$TAG: text classifier closed")
     }
 }

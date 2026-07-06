@@ -330,7 +330,7 @@ fun PermissionDeniedState(
         Spacer(modifier = Modifier.height(SafeGuardDimens.spacingSm))
 
         Text(
-            text = "SafeGuard needs $permissionName permission to work properly. Please grant access in settings.",
+            text = "Haris needs $permissionName permission to work properly. Please grant access in settings.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant

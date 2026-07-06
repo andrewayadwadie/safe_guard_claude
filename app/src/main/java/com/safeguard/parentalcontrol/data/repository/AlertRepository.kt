@@ -274,7 +274,8 @@ class AlertRepository @Inject constructor(
         reason: String,
         categories: List<String> = emptyList(),
         confidence: Float = 0.0f,
-        textForDedup: String? = null
+        textForDedup: String? = null,
+        severityLabel: String? = null
     ): NetworkResult<Alert> = withContext(Dispatchers.IO) {
         val primaryCategory = categories.firstOrNull() ?: "unknown"
 
@@ -296,8 +297,11 @@ class AlertRepository @Inject constructor(
             return@withContext NetworkResult.Error("Daily limit reached for category: $primaryCategory")
         }
 
-        // Determine severity based on category
-        val severity = mapCategoryToSeverity(primaryCategory)
+        // Severity: prefer the gating-provided label (Stage-2 AI path); otherwise derive
+        // from the primary category (Stage-1 regex path, custom blacklist, or fallback).
+        val severity = severityLabel
+            ?.let { runCatching { AlertSeverity.valueOf(it.uppercase()) }.getOrNull() }
+            ?: mapCategoryToSeverity(primaryCategory)
 
         // Create privacy-safe metadata (NO actual text content)
         val metadata = buildMap<String, Any> {

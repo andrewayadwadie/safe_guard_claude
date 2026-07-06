@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -41,6 +42,8 @@ class MainActivity : ComponentActivity() {
     lateinit var preferencesManager: PreferencesManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install the splash screen before super.onCreate so the Haris logo shows during startup
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -96,7 +99,8 @@ fun SafeGuardApp(
 
     SafeGuardNavGraph(
         navController = navController,
-        startDestination = if (isLoggedIn) Screen.Dashboard.route else Screen.Login.route
+        isLoggedIn = isLoggedIn,
+        startDestination = Screen.Splash.route
     )
 }
 
@@ -117,8 +121,8 @@ private fun navigateToLogin(navController: NavHostController) {
  */
 private fun MainActivity.startMonitoringServiceIfNeeded() {
     try {
-        if (preferencesManager.isLoggedIn && preferencesManager.isDeviceRegistered) {
-            Timber.d("MainActivity: Starting MonitoringService (user logged in, device registered)")
+        if (preferencesManager.shouldRunMonitoring) {
+            Timber.d("MainActivity: Starting MonitoringService (logged in, registered, consent granted)")
             val serviceIntent = Intent(this, MonitoringService::class.java)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -128,7 +132,7 @@ private fun MainActivity.startMonitoringServiceIfNeeded() {
             }
             Timber.d("MainActivity: MonitoringService start command sent")
         } else {
-            Timber.d("MainActivity: Not starting MonitoringService (loggedIn=${preferencesManager.isLoggedIn}, deviceRegistered=${preferencesManager.isDeviceRegistered})")
+            Timber.d("MainActivity: Not starting MonitoringService (loggedIn=${preferencesManager.isLoggedIn}, deviceRegistered=${preferencesManager.isDeviceRegistered}, consent=${preferencesManager.monitoringConsentGranted})")
         }
     } catch (e: Exception) {
         Timber.e(e, "MainActivity: Failed to start MonitoringService")

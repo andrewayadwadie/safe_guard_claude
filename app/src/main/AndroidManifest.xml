@@ -88,7 +88,7 @@
             android:name=".presentation.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:theme="@style/Theme.SafeGuard"
+            android:theme="@style/Theme.Haris.Starting"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

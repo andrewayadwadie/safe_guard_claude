@@ -14,7 +14,7 @@ import com.safeguard.parentalcontrol.worker.TamperAlertWorker
 import timber.log.Timber
 
 /**
- * BroadcastReceiver for detecting tamper attempts on the SafeGuard app.
+ * BroadcastReceiver for detecting tamper attempts on the Haris app.
  *
  * Monitors for:
  * - App data being cleared (ACTION_PACKAGE_DATA_CLEARED)
@@ -85,7 +85,7 @@ class TamperDetectionReceiver : BroadcastReceiver() {
                             enqueueTamperAlert(
                                 context = context,
                                 tamperType = TAMPER_TYPE_APP_DISABLED,
-                                details = "SafeGuard app was disabled by user"
+                                details = "Haris app was disabled by user"
                             )
                         }
                     } catch (e: Exception) {

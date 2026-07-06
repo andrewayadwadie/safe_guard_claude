@@ -1,341 +1,362 @@
 package com.safeguard.parentalcontrol.presentation.theme
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.googlefonts.GoogleFont
+import androidx.compose.ui.text.intl.Locale
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import com.safeguard.parentalcontrol.R
 
 // ============================================================================
-// SAFEGUARD BRAND FONTS — "Warm Hearth" (see DESIGN.md)
-// Bundled OFL fonts. Drop the .ttf files in res/font/ (see FONTS.md):
-//   Display:  Bricolage Grotesque (SemiBold 600, Bold 700)
-//   Text/UI:  Hanken Grotesk      (Regular 400, Medium 500, SemiBold 600, Bold 700)
-// The No-Roboto Rule: FontFamily.Default must not appear in the product.
+// HARIS BRAND COLORS — petrol/teal protective ring + gold family mark.
+// Public token names preserved where call sites depend on them; brand vals
+// renamed SafeGuard* -> Haris*. Depth comes from tonal surface stepping, not
+// heavy shadows. DARK is the canonical brand design.
 // ============================================================================
 
-val BricolageGrotesque = FontFamily(
-    Font(R.font.bricolage_grotesque_semibold, FontWeight.SemiBold),
-    Font(R.font.bricolage_grotesque_bold, FontWeight.Bold)
-)
+// Primary brand — Petrol/Teal family
+val HarisPetrol = Color(0xFF168BB6)       // primary (light)
+val HarisPetrolDark = Color(0xFF0E6A86)   // gradient start, pressed/deep fills
+val HarisPetrolLight = Color(0xFFA4DFF4)  // primary (dark)
 
-val HankenGrotesk = FontFamily(
-    Font(R.font.hanken_grotesk_regular, FontWeight.Normal),
-    Font(R.font.hanken_grotesk_medium, FontWeight.Medium),
-    Font(R.font.hanken_grotesk_semibold, FontWeight.SemiBold),
-    Font(R.font.hanken_grotesk_bold, FontWeight.Bold)
-)
+// Tertiary brand — Aqua family
+val HarisAqua = Color(0xFF2799A5)         // tertiary (light), gradient end
+val HarisAquaLight = Color(0xFFACE5EC)    // tertiary (dark)
 
-// ============================================================================
-// SAFEGUARD BRAND COLORS — "Warm Hearth" palette (see DESIGN.md)
-// Public token names are preserved so existing call sites keep compiling;
-// only the values change. Deep Pine anchor + reserved Ember Amber warmth on
-// warm-tinted Linen neutrals. No textbook blue, no pure black/white.
-// ============================================================================
+// Secondary/accent brand — Gold family (solid accent only — never in gradient)
+val HarisGold = Color(0xFFC8941E)         // solid gold accent
+val HarisGoldLight = Color(0xFFF1DCA7)    // secondary (dark)
+val HarisGoldDark = Color(0xFFAF861D)     // secondary (light)
 
-// Primary Brand Colors — Deep Pine family (was textbook blue)
-val SafeGuardBlue = Color(0xFF2D5A4C)        // Deep Pine — calm, safe, capable anchor
-val SafeGuardBlueDark = Color(0xFF224A3E)    // Pine Strong — pressed / deep header fills
-val SafeGuardBlueLight = Color(0xFF8FCBB8)   // Pine Light — dark-mode primary, mint-sage
-val SafeGuardBlueVeryLight = Color(0xFFCDE5DC) // Pine Container — soft sage tint
-
-// Secondary Colors — Meadow family (positive / healthy / online)
-val SafeGuardGreen = Color(0xFF4F9E6A)       // Meadow — success, online, within-limit
-val SafeGuardGreenLight = Color(0xFF79BB90)  // light meadow — dark-mode secondary
-val SafeGuardGreenDark = Color(0xFF3C855B)
-
-// Accent/Tertiary Colors — Ember Amber family (reserved hearth warmth)
-val SafeGuardOrange = Color(0xFFE5A84C)      // Ember Amber — warmth, welcome, accent
-val SafeGuardOrangeLight = Color(0xFFEFC07E) // light ember — dark-mode tertiary
-val SafeGuardOrangeDark = Color(0xFFD9912F)  // Ember Strong
-
-// Alert Colors — Signal Coral family (was fire-engine red)
-val SafeGuardRed = Color(0xFFC24A3A)         // Signal Coral — serious, warm, reserved
-val SafeGuardRedLight = Color(0xFFD5786B)    // light coral — dark-mode error
-val SafeGuardRedDark = Color(0xFFA93B2E)
-
-// Neutral Colors — Warm Linen → Bark ramp (every neutral tinted warm; no #000/#fff)
-val SafeGuardGray50 = Color(0xFFF7F3EC)      // Warm Linen — app background
-val SafeGuardGray100 = Color(0xFFEFE9DE)     // Oat — lowered surfaces
-val SafeGuardGray200 = Color(0xFFE7E0D3)
-val SafeGuardGray300 = Color(0xFFDED6C8)     // Sand — borders, dividers
-val SafeGuardGray400 = Color(0xFFC7BEB0)     // offline / muted
-val SafeGuardGray500 = Color(0xFF9C9286)
-val SafeGuardGray600 = Color(0xFF6B6359)     // Stone — secondary text
-val SafeGuardGray700 = Color(0xFF544E45)
-val SafeGuardGray800 = Color(0xFF3C372F)
-val SafeGuardGray900 = Color(0xFF2A2622)     // Bark — primary text, warm near-black
-
-// Gradient Colors — within-hue pine depth (was blue → light blue)
-val GradientStart = Color(0xFF2D5A4C)        // Deep Pine
-val GradientEnd = Color(0xFF3F7666)          // mid pine
+// Brand gradient stops (petrol -> aqua). Gold never appears here.
+val GradientStart = Color(0xFF0E6A86)
+val GradientEnd = Color(0xFF2799A5)
 
 // ============================================================================
 // LIGHT THEME COLOR SCHEME
 // ============================================================================
 
 private val LightColorScheme = lightColorScheme(
-    // Primary — Deep Pine
-    primary = SafeGuardBlue,
-    onPrimary = Color(0xFFFCFAF5),               // Cream
-    primaryContainer = SafeGuardBlueVeryLight,   // Pine Container
-    onPrimaryContainer = Color(0xFF15291F),      // deep pine
-    inversePrimary = SafeGuardBlueLight,
+    primary = HarisPetrol,
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFC9ECF8),
+    onPrimaryContainer = Color(0xFF072A36),
+    inversePrimary = Color(0xFFA4DFF4),
 
-    // Secondary — Meadow (dark on-content: Meadow is mid-tone, white fails AA)
-    secondary = SafeGuardGreen,
-    onSecondary = Color(0xFF14331F),
-    secondaryContainer = Color(0xFFD7EBDD),
-    onSecondaryContainer = Color(0xFF163826),
+    secondary = HarisGoldDark,
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFF6EACA),
+    onSecondaryContainer = Color(0xFF352809),
 
-    // Tertiary — Ember Amber (warm accent; needs dark text)
-    tertiary = SafeGuardOrange,
-    onTertiary = Color(0xFF2A2622),              // Bark
-    tertiaryContainer = Color(0xFFFBE6C8),
-    onTertiaryContainer = Color(0xFF5C3D10),
+    tertiary = HarisAqua,
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFCDF0F3),
+    onTertiaryContainer = Color(0xFF0C2E32),
 
-    // Error — Signal Coral
-    error = SafeGuardRed,
-    onError = Color(0xFFFCFAF5),
-    errorContainer = Color(0xFFF6D8D1),
-    onErrorContainer = Color(0xFF451511),
+    error = Color(0xFFBA1A1A),
+    onError = Color(0xFFFFFFFF),
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
 
-    // Background — Warm Linen
-    background = Color(0xFFF7F3EC),
-    onBackground = Color(0xFF2A2622),            // Bark
+    background = Color(0xFFFAFCFC),
+    onBackground = Color(0xFF1C2022),
 
-    // Surface — Cream
-    surface = Color(0xFFFCFAF5),
-    onSurface = Color(0xFF2A2622),
-    surfaceVariant = Color(0xFFEFE9DE),          // Oat
-    onSurfaceVariant = Color(0xFF6B6359),        // Stone
-    surfaceTint = SafeGuardBlue,
-    inverseSurface = Color(0xFF2A2622),
-    inverseOnSurface = Color(0xFFF7F3EC),
-
-    // Outline — warm
-    outline = Color(0xFF9C9286),
-    outlineVariant = Color(0xFFDED6C8),          // Sand
-
-    // Scrim — warm dark (not pure black)
-    scrim = Color(0xFF2A2622)
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF1C2022),
+    surfaceVariant = Color(0xFFDCE3E5),
+    onSurfaceVariant = Color(0xFF3C4E53),
+    surfaceTint = HarisPetrol,
+    inverseSurface = Color(0xFF2E3538),
+    inverseOnSurface = Color(0xFFF1F3F4),
+    outline = Color(0xFF6B8C94),
+    outlineVariant = Color(0xFFC4D1D4),
+    scrim = Color(0xFF000000)
 )
 
 // ============================================================================
-// DARK THEME COLOR SCHEME
+// DARK THEME COLOR SCHEME — canonical brand design
 // ============================================================================
 
 private val DarkColorScheme = darkColorScheme(
-    // Primary — Pine Light on warm char
-    primary = SafeGuardBlueLight,
-    onPrimary = Color(0xFF15291F),
-    primaryContainer = SafeGuardBlueDark,        // Pine Strong
-    onPrimaryContainer = SafeGuardBlueVeryLight, // Pine Container
-    inversePrimary = SafeGuardBlue,
+    primary = HarisPetrolLight,
+    onPrimary = Color(0xFF0B465B),
+    primaryContainer = Color(0xFF10617F),
+    onPrimaryContainer = Color(0xFFC9ECF8),
+    inversePrimary = Color(0xFF168BB6),
 
-    // Secondary — light Meadow
-    secondary = SafeGuardGreenLight,
-    onSecondary = Color(0xFF163826),
-    secondaryContainer = Color(0xFF2C6B49),
-    onSecondaryContainer = Color(0xFFD7EBDD),
+    secondary = HarisGoldLight,
+    onSecondary = Color(0xFF58430E),
+    secondaryContainer = Color(0xFF7B5E14),
+    onSecondaryContainer = Color(0xFFF6EACA),
 
-    // Tertiary — light Ember
-    tertiary = SafeGuardOrangeLight,
-    onTertiary = Color(0xFF5C3D10),
-    tertiaryContainer = Color(0xFFA8721F),
-    onTertiaryContainer = Color(0xFFFBE6C8),
+    tertiary = HarisAquaLight,
+    onTertiary = Color(0xFF134C53),
+    tertiaryContainer = Color(0xFF1B6B74),
+    onTertiaryContainer = Color(0xFFCDF0F3),
 
-    // Error — light Coral
-    error = SafeGuardRedLight,
-    onError = Color(0xFF451511),
-    errorContainer = SafeGuardRedDark,
-    onErrorContainer = Color(0xFFF6D8D1),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
 
-    // Background — Warm Char (not pure black)
-    background = Color(0xFF1E1B18),
-    onBackground = Color(0xFFEDE7DD),            // Linen Light
+    background = Color(0xFF0F1719),
+    onBackground = Color(0xFFDDE1E3),
 
-    // Surface — elevation by lighter warm surfaces, not heavier shadow
-    surface = Color(0xFF1E1B18),
-    onSurface = Color(0xFFEDE7DD),
-    surfaceVariant = Color(0xFF28241F),          // Umber
-    onSurfaceVariant = Color(0xFFC7BEB0),
-    surfaceTint = SafeGuardBlueLight,
-    inverseSurface = Color(0xFFEDE7DD),
-    inverseOnSurface = Color(0xFF2A2622),
-
-    // Outline — warm
-    outline = Color(0xFF9C9286),
-    outlineVariant = Color(0xFF3C372F),
-
-    // Scrim — deep warm
-    scrim = Color(0xFF14110F)
+    surface = Color(0xFF0F1719),
+    onSurface = Color(0xFFDDE1E3),
+    surfaceVariant = Color(0xFF3C4E53),
+    onSurfaceVariant = Color(0xFFC4D1D4),
+    surfaceTint = HarisPetrolLight,
+    inverseSurface = Color(0xFFDDE1E3),
+    inverseOnSurface = Color(0xFF2E3538),
+    outline = Color(0xFF8FA7AE),
+    outlineVariant = Color(0xFF3C4E53),
+    scrim = Color(0xFF000000)
 )
 
 // ============================================================================
-// TYPOGRAPHY
+// HARIS TONAL SURFACE TIERS
+// Material 3 1.1.2 predates the surfaceContainer* roles, so the brand's tonal
+// stepping is provided here and exposed via [LocalHarisColors] / [harisColors].
 // ============================================================================
 
-// Display & Headline use Bricolage Grotesque; Title/Body/Label use Hanken Grotesk.
-// Sizes and line-heights are unchanged from the prior scale to avoid layout
-// regressions; only the families (and tightened display tracking) change.
+@androidx.compose.runtime.Immutable
+data class HarisColors(
+    val surfaceContainerLowest: Color,
+    val surfaceContainerLow: Color,
+    val surfaceContainer: Color,
+    val surfaceContainerHigh: Color,
+    val surfaceContainerHighest: Color,
+    val surfaceBright: Color,
+    val surfaceDim: Color
+)
+
+private val LightHarisColors = HarisColors(
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF5F9FA),
+    surfaceContainer = Color(0xFFF0F5F7),
+    surfaceContainerHigh = Color(0xFFE8F0F3),
+    surfaceContainerHighest = Color(0xFFE2EBEE),
+    surfaceBright = Color(0xFFFFFFFF),
+    surfaceDim = Color(0xFFDDE5E8)
+)
+
+private val DarkHarisColors = HarisColors(
+    surfaceContainerLowest = Color(0xFF0A1012),
+    surfaceContainerLow = Color(0xFF161F22),
+    surfaceContainer = Color(0xFF1A2427),
+    surfaceContainerHigh = Color(0xFF242F33),
+    surfaceContainerHighest = Color(0xFF2E3A3E),
+    surfaceBright = Color(0xFF343B3E),
+    surfaceDim = Color(0xFF0F1719)
+)
+
+val LocalHarisColors = androidx.compose.runtime.staticCompositionLocalOf { LightHarisColors }
+
+/** Brand tonal surface tiers for the active theme. */
+val harisColors: HarisColors
+    @Composable
+    @androidx.compose.runtime.ReadOnlyComposable
+    get() = LocalHarisColors.current
+
+// ============================================================================
+// TYPOGRAPHY — Inter (Latin) + Cairo (Arabic/RTL) via Google downloadable fonts
+// The No-Roboto Rule: FontFamily.Default must not appear in the product.
+// ============================================================================
+
+private val googleFontProvider = GoogleFont.Provider(
+    providerAuthority = "com.google.android.gms.fonts",
+    providerPackage = "com.google.android.gms",
+    certificates = R.array.com_google_android_gms_fonts_certs
+)
+
+private val InterGoogle = GoogleFont("Inter")
+private val CairoGoogle = GoogleFont("Cairo")
+
+val Inter = FontFamily(
+    Font(InterGoogle, googleFontProvider, FontWeight.Normal),    // 400
+    Font(InterGoogle, googleFontProvider, FontWeight.SemiBold),  // 600
+    Font(InterGoogle, googleFontProvider, FontWeight.Bold),      // 700
+    Font(InterGoogle, googleFontProvider, FontWeight.ExtraBold)  // 800
+)
+
+val Cairo = FontFamily(
+    Font(CairoGoogle, googleFontProvider, FontWeight.Normal),    // 400
+    Font(CairoGoogle, googleFontProvider, FontWeight.SemiBold),  // 600
+    Font(CairoGoogle, googleFontProvider, FontWeight.Bold),      // 700
+    Font(CairoGoogle, googleFontProvider, FontWeight.ExtraBold)  // 800
+)
+
+/** Default app family (Latin). RTL/Arabic surfaces use [Cairo] via [rememberAppFontFamily]. */
+val AppFontFamily = Inter
+
+/**
+ * Returns [Cairo] when the layout direction is RTL or the active locale is Arabic,
+ * otherwise [Inter]. Use to override the family for locale-specific text.
+ */
+@Composable
+fun rememberAppFontFamily(): FontFamily {
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val isArabic = Locale.current.language.equals("ar", ignoreCase = true)
+    return if (isRtl || isArabic) Cairo else Inter
+}
+
 private val SafeGuardTypography = Typography(
-    // Display styles - Bricolage Grotesque, for large, impactful text
     displayLarge = TextStyle(
-        fontFamily = BricolageGrotesque,
-        fontWeight = FontWeight.Bold,
-        fontSize = 57.sp,
-        lineHeight = 64.sp,
-        letterSpacing = (-0.5).sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.Bold,
+        fontSize = 30.sp, lineHeight = 38.sp, letterSpacing = (-0.25).sp
     ),
     displayMedium = TextStyle(
-        fontFamily = BricolageGrotesque,
-        fontWeight = FontWeight.Bold,
-        fontSize = 45.sp,
-        lineHeight = 52.sp,
-        letterSpacing = (-0.25).sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.Bold,
+        fontSize = 28.sp, lineHeight = 36.sp, letterSpacing = (-0.25).sp
     ),
     displaySmall = TextStyle(
-        fontFamily = BricolageGrotesque,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 36.sp,
-        lineHeight = 44.sp,
-        letterSpacing = 0.sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.Bold,
+        fontSize = 26.sp, lineHeight = 34.sp, letterSpacing = 0.sp
     ),
 
-    // Headline styles - Bricolage Grotesque, for section headers
     headlineLarge = TextStyle(
-        fontFamily = BricolageGrotesque,
-        fontWeight = FontWeight.Bold,
-        fontSize = 32.sp,
-        lineHeight = 40.sp,
-        letterSpacing = (-0.25).sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.Bold,
+        fontSize = 24.sp, lineHeight = 32.sp, letterSpacing = 0.sp
     ),
     headlineMedium = TextStyle(
-        fontFamily = BricolageGrotesque,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 28.sp,
-        lineHeight = 36.sp,
-        letterSpacing = 0.sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp, lineHeight = 28.sp, letterSpacing = 0.sp
     ),
     headlineSmall = TextStyle(
-        fontFamily = BricolageGrotesque,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 24.sp,
-        lineHeight = 32.sp,
-        letterSpacing = 0.sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.SemiBold,
+        fontSize = 18.sp, lineHeight = 26.sp, letterSpacing = 0.sp
     ),
 
-    // Title styles - Hanken Grotesk, for card titles, dialog titles
     titleLarge = TextStyle(
-        fontFamily = HankenGrotesk,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.SemiBold,
+        fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = 0.sp
     ),
     titleMedium = TextStyle(
-        fontFamily = HankenGrotesk,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.15.sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.SemiBold,
+        fontSize = 16.sp, lineHeight = 24.sp, letterSpacing = 0.15.sp
     ),
     titleSmall = TextStyle(
-        fontFamily = HankenGrotesk,
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.1.sp
     ),
 
-    // Body styles - Hanken Grotesk, for main content
     bodyLarge = TextStyle(
-        fontFamily = HankenGrotesk,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.Normal,
+        fontSize = 15.sp, lineHeight = 22.sp, letterSpacing = 0.sp
     ),
     bodyMedium = TextStyle(
-        fontFamily = HankenGrotesk,
-        fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.Normal,
+        fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.sp
     ),
     bodySmall = TextStyle(
-        fontFamily = HankenGrotesk,
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.2.sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.Normal,
+        fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 0.2.sp
     ),
 
-    // Label styles - Hanken Grotesk, for buttons, chips, tabs
     labelLarge = TextStyle(
-        fontFamily = HankenGrotesk,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.4.sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.SemiBold,
+        fontSize = 16.sp, lineHeight = 24.sp, letterSpacing = 0.1.sp
     ),
     labelMedium = TextStyle(
-        fontFamily = HankenGrotesk,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.4.sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.SemiBold,
+        fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.4.sp
     ),
     labelSmall = TextStyle(
-        fontFamily = HankenGrotesk,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.4.sp
+        fontFamily = AppFontFamily, fontWeight = FontWeight.SemiBold,
+        fontSize = 11.sp, lineHeight = 16.sp, letterSpacing = 0.4.sp
     )
+)
+
+/** Returns a copy of this type scale with every style rebased on [family]. */
+private fun Typography.withFamily(family: FontFamily): Typography = copy(
+    displayLarge = displayLarge.copy(fontFamily = family),
+    displayMedium = displayMedium.copy(fontFamily = family),
+    displaySmall = displaySmall.copy(fontFamily = family),
+    headlineLarge = headlineLarge.copy(fontFamily = family),
+    headlineMedium = headlineMedium.copy(fontFamily = family),
+    headlineSmall = headlineSmall.copy(fontFamily = family),
+    titleLarge = titleLarge.copy(fontFamily = family),
+    titleMedium = titleMedium.copy(fontFamily = family),
+    titleSmall = titleSmall.copy(fontFamily = family),
+    bodyLarge = bodyLarge.copy(fontFamily = family),
+    bodyMedium = bodyMedium.copy(fontFamily = family),
+    bodySmall = bodySmall.copy(fontFamily = family),
+    labelLarge = labelLarge.copy(fontFamily = family),
+    labelMedium = labelMedium.copy(fontFamily = family),
+    labelSmall = labelSmall.copy(fontFamily = family)
 )
 
 // ============================================================================
 // SHAPES
 // ============================================================================
 
-// Warm Hearth uses generous, soft rounding (DESIGN.md rounded scale).
 val SafeGuardShapes = Shapes(
-    // Extra small - for chips, small badges
-    extraSmall = RoundedCornerShape(6.dp),
-    // Small - for buttons, text fields
-    small = RoundedCornerShape(10.dp),
-    // Medium - for cards, dialogs
-    medium = RoundedCornerShape(14.dp),
-    // Large - for bottom sheets, large cards
-    large = RoundedCornerShape(20.dp),
-    // Extra large - for full screen dialogs / child surfaces
-    extraLarge = RoundedCornerShape(28.dp)
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(24.dp)
 )
+
+/** Fully rounded pill — primary/secondary/ghost buttons and pill chips. */
+val PillShape = RoundedCornerShape(percent = 50)
+
+/** Top-only rounded sheet — bottom sheets (20dp top corners). */
+val BottomSheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
 
 // ============================================================================
 // CUSTOM DIMENSIONS
 // ============================================================================
 
 object SafeGuardDimens {
-    // Spacing
+    // Brand spacing rhythm (new Haris tokens)
+    val screenPadding = 20.dp
+    val gutter = 16.dp
+    val stackSm = 8.dp
+    val stackMd = 16.dp
+    val stackLg = 24.dp
+    val listItemMinHeight = 56.dp
+    val listSeparatorInset = 16.dp
+
+    // Spacing (existing — kept)
     val spacingXxs = 2.dp
     val spacingXs = 4.dp
     val spacingSm = 8.dp
@@ -345,7 +366,7 @@ object SafeGuardDimens {
     val spacingXxl = 32.dp
     val spacingXxxl = 48.dp
 
-    // Padding
+    // Padding (existing — kept)
     val paddingScreen = 16.dp
     val paddingCard = 16.dp
     val paddingCardSmall = 12.dp
@@ -387,12 +408,10 @@ object SafeGuardDimens {
 }
 
 // ============================================================================
-// ANIMATION SPECS
+// ANIMATION SPECS (kept — call sites depend on them; extended in Motion.kt)
 // ============================================================================
 
 object SafeGuardAnimations {
-    // Warm Hearth motion: calm ease-out, no bounce, no elastic, no overshoot.
-    // The springs below are kept (call sites depend on them) but de-bounced.
     val defaultSpring = spring<Float>(
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessMediumLow
@@ -418,78 +437,80 @@ object SafeGuardAnimations {
         stiffness = Spring.StiffnessHigh
     )
 
-    // Preferred easings for tween-based animation (DESIGN.md motion tokens).
-    val EaseOutQuart = CubicBezierEasing(0.165f, 0.84f, 0.44f, 1f)   // entrances, state changes
-    val EaseInOutSoft = CubicBezierEasing(0.45f, 0f, 0.2f, 1f)       // morph / travel
+    val EaseOutQuart = CubicBezierEasing(0.165f, 0.84f, 0.44f, 1f)
+    val EaseInOutSoft = CubicBezierEasing(0.45f, 0f, 0.2f, 1f)
 
-    // Durations stay snappy: nothing entering exceeds ~360ms; exits stay shorter.
     const val ANIMATION_DURATION_INSTANT = 100
     const val ANIMATION_DURATION_SHORT = 160
     const val ANIMATION_DURATION_MEDIUM = 240
     const val ANIMATION_DURATION_LONG = 360
     const val ANIMATION_DURATION_EXTRA_LONG = 500
 
-    // Stagger delay for list item animations
     const val STAGGER_DELAY_MS = 50
 }
 
 // ============================================================================
-// SEMANTIC COLORS (for specific use cases)
+// SEMANTIC COLORS — recolored to the Haris brand
 // ============================================================================
 
 object SemanticColors {
-    // Status colors — reserved, warm (DESIGN.md status palette)
-    val success = SafeGuardGreen              // Meadow
-    val successContainer = Color(0xFFD7EBDD)
-    val successOnContainer = Color(0xFF163826)
-    val warning = Color(0xFFCC6B2C)           // Amber Signal (more orange than the Ember accent)
-    val warningContainer = Color(0xFFF8E0C9)
-    val warningOnContainer = Color(0xFF4A2208)
-    val error = SafeGuardRed                  // Signal Coral
-    val errorContainer = Color(0xFFF6D8D1)
-    val errorOnContainer = Color(0xFF451511)
-    val info = SafeGuardBlue                  // Deep Pine
-    val infoContainer = SafeGuardBlueVeryLight
-    val infoOnContainer = Color(0xFF15291F)
+    // Status / meaning
+    val success = Color(0xFF2E9E8F)
+    val successContainer = Color(0xFFCDEFE8)
+    val successOnContainer = Color(0xFF06302A)
+    val warning = HarisGold                       // #C8941E solid gold accent
+    val warningContainer = Color(0xFFF6EACA)
+    val warningOnContainer = Color(0xFF4A3608)
+    val error = Color(0xFFD2483F)
+    val errorContainer = Color(0xFFFBD9D5)
+    val errorOnContainer = Color(0xFF410E0A)
+    val info = HarisPetrol                         // #168BB6
+    val infoContainer = Color(0xFFC9ECF8)
+    val infoOnContainer = Color(0xFF072A36)
 
-    // Alert severity colors: critical→Coral, high→Amber Signal, medium→Pine, low→Meadow
-    val severityCritical = Color(0xFFC24A3A)
-    val severityCriticalContainer = Color(0xFFF6D8D1)
-    val severityHigh = Color(0xFFCC6B2C)
-    val severityHighContainer = Color(0xFFF8E0C9)
-    val severityMedium = Color(0xFF2D5A4C)
-    val severityMediumContainer = Color(0xFFCDE5DC)
-    val severityLow = Color(0xFF4F9E6A)
-    val severityLowContainer = Color(0xFFD7EBDD)
+    // Alert severity — calm -> loud
+    val severityCritical = Color(0xFFD2483F)
+    val severityCriticalContainer = Color(0xFFFBD9D5)
+    val severityHigh = Color(0xFFE8833A)
+    val severityHighContainer = Color(0xFFFBE0CC)
+    val severityMedium = HarisGold                 // #C8941E
+    val severityMediumContainer = Color(0xFFF6EACA)
+    val severityLow = Color(0xFF2E9E8F)
+    val severityLowContainer = Color(0xFFCDEFE8)
 
-    // Device status colors
-    val statusOnline = SafeGuardGreen         // Meadow
-    val statusOffline = SafeGuardGray400      // warm muted
-    val statusSuspended = Color(0xFFCC6B2C)   // Amber Signal
+    // Device status
+    val statusOnline = Color(0xFF2E9E8F)
+    val statusOffline = Color(0xFF6B8C94)
+    val statusSuspended = HarisGold                // #C8941E
 
-    // Screen time colors
-    val screenTimeNormal = SafeGuardGreen          // Meadow
-    val screenTimeWarning = Color(0xFFCC6B2C)      // Amber Signal
-    val screenTimeExceeded = SafeGuardRed          // Signal Coral
+    // Screen time
+    val screenTimeNormal = Color(0xFF2E9E8F)
+    val screenTimeWarning = HarisGold
+    val screenTimeExceeded = Color(0xFFD2483F)
 
-    // Progress colors
-    val progressBackground = Color(0xFFDED6C8)     // Sand
-    val progressTrack = SafeGuardBlueVeryLight     // Pine Container
+    // Progress
+    val progressBackground = Color(0xFFC4D1D4)
+    val progressTrack = Color(0xFFC9ECF8)
 
-    // Child surfaces: warm dialect (no purple/cyan) — Clay + Meadow + Ember
-    val childPrimary = Color(0xFFC7613F)   // Warm Clay
-    val childSecondary = Color(0xFF4F9E6A) // Meadow
-    val childAccent = Color(0xFFE5A84C)    // Ember Amber
-    val childBackground = Color(0xFFF7DCCF) // Clay Container
-    val childSuccess = Color(0xFF79BB90)   // light Meadow
-    val childWarning = Color(0xFFEFC07E)   // light Ember
+    // Child surfaces — brand dialect
+    val childPrimary = HarisPetrol
+    val childSecondary = HarisAqua
+    val childAccent = HarisGold
+    val childBackground = Color(0xFFC9ECF8)
+    val childSuccess = Color(0xFF2E9E8F)
+    val childWarning = Color(0xFFF1DCA7)
 
-    // Gradient presets — within-hue, warm (no blue→light-blue)
-    val gradientPrimary = listOf(SafeGuardBlue, Color(0xFF3F7666))      // pine depth
-    val gradientSuccess = listOf(SafeGuardGreen, SafeGuardGreenLight)   // meadow
-    val gradientWarning = listOf(Color(0xFFCC6B2C), Color(0xFFDD8F5A))  // amber signal
-    val gradientError = listOf(SafeGuardRed, SafeGuardRedLight)         // coral
-    val gradientChild = listOf(Color(0xFFC7613F), Color(0xFFE5A84C))    // clay → ember
+    // Leaderboard rank medals (decorative)
+    val rankGold = HarisGold
+    val rankSilver = Color(0xFFC0C0C0)
+    val rankBronze = Color(0xFFCD7F32)
+
+    // Gradient presets — petrol -> aqua (gold never in gradient)
+    val gradientPrimary = listOf(GradientStart, GradientEnd)
+    val gradientSuccess = listOf(Color(0xFF2E9E8F), Color(0xFF5FC0B3))
+    val gradientWarning = listOf(Color(0xFFC8941E), Color(0xFFE0B45A))
+    val gradientError = listOf(Color(0xFFD2483F), Color(0xFFE2776F))
+    val gradientChild = listOf(GradientStart, GradientEnd)
 }
 
 // ============================================================================
@@ -498,10 +519,10 @@ object SemanticColors {
 
 @Composable
 fun SafeGuardTheme(
-    // Dark mode is disabled: the app ships light-only (Warm Hearth) until the dark
-    // palette is properly tuned. Pinned to false so it ignores the system setting.
-    darkTheme: Boolean = false,
-    dynamicColor: Boolean = false, // Disabled by default for consistent branding
+    // Dark is the canonical brand design; the app follows the device system
+    // preference. No persisted theme state / in-app toggle.
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = false, // Disabled for consistent branding
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -516,28 +537,56 @@ fun SafeGuardTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
+            // view.context is an Activity when the theme hosts a screen, but it is the
+            // Application when the theme is hosted in a system overlay window (the lock
+            // overlay - see LockOverlayController). Skip status-bar tinting when there is
+            // no Activity rather than crashing on the cast; the overlay is fullscreen and
+            // draws its own background, so the system bars are irrelevant there.
+            val window = (view.context.findActivity())?.window ?: return@SideEffect
             // Use surface color for status bar for a cleaner look
             window.statusBarColor = colorScheme.surface.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = SafeGuardTypography,
-        shapes = SafeGuardShapes,
-        content = content
-    )
+    val harisColorTiers = if (darkTheme) DarkHarisColors else LightHarisColors
+
+    // Locale-aware family: Cairo for Arabic/RTL, Inter otherwise (bilingual support).
+    val family = rememberAppFontFamily()
+    val typography = remember(family) { SafeGuardTypography.withFamily(family) }
+
+    androidx.compose.runtime.CompositionLocalProvider(LocalHarisColors provides harisColorTiers) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = typography,
+            shapes = SafeGuardShapes,
+            content = content
+        )
+    }
+}
+
+/** Brand alias for [SafeGuardTheme]. Names are kept stable; this is additive. */
+@Composable
+fun HarisTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit
+) = SafeGuardTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, content = content)
+/**
+ * Walk the [Context] wrapper chain to find the hosting [Activity], or null if there is none
+ * (e.g. when the theme is hosted in a system overlay window whose context is the Application).
+ */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 // ============================================================================
-// EXTENSION FUNCTIONS FOR THEME
+// EXTENSION FUNCTIONS FOR THEME (helper fns kept — only referenced values change)
 // ============================================================================
 
-/**
- * Get the appropriate color for screen time progress
- */
+/** Get the appropriate color for screen time progress. */
 fun getScreenTimeColor(usedMinutes: Int, limitMinutes: Int?): Color {
     if (limitMinutes == null) return SemanticColors.screenTimeNormal
 
@@ -549,9 +598,7 @@ fun getScreenTimeColor(usedMinutes: Int, limitMinutes: Int?): Color {
     }
 }
 
-/**
- * Get color for alert severity
- */
+/** Get color for alert severity. */
 fun getAlertSeverityColor(severity: String): Color {
     return when (severity.uppercase()) {
         "CRITICAL" -> SemanticColors.severityCritical
@@ -562,9 +609,7 @@ fun getAlertSeverityColor(severity: String): Color {
     }
 }
 
-/**
- * Get color for device status
- */
+/** Get color for device status. */
 fun getDeviceStatusColor(status: String): Color {
     return when (status.uppercase()) {
         "ACTIVE" -> SemanticColors.statusOnline
@@ -574,9 +619,7 @@ fun getDeviceStatusColor(status: String): Color {
     }
 }
 
-/**
- * Get container color for alert severity
- */
+/** Get container color for alert severity. */
 fun getAlertSeverityContainerColor(severity: String): Color {
     return when (severity.uppercase()) {
         "CRITICAL" -> SemanticColors.severityCriticalContainer
@@ -587,9 +630,7 @@ fun getAlertSeverityContainerColor(severity: String): Color {
     }
 }
 
-/**
- * Get gradient colors for screen time based on usage percentage
- */
+/** Get gradient colors for screen time based on usage percentage. */
 fun getScreenTimeGradient(usedMinutes: Int, limitMinutes: Int?): List<Color> {
     if (limitMinutes == null) return SemanticColors.gradientSuccess
 
@@ -599,4 +640,47 @@ fun getScreenTimeGradient(usedMinutes: Int, limitMinutes: Int?): List<Color> {
         percentage >= 80 -> SemanticColors.gradientWarning
         else -> SemanticColors.gradientSuccess
     }
+}
+
+// ============================================================================
+// TYPE RAMP PREVIEW
+// ============================================================================
+
+@Composable
+private fun TypeRamp() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(SafeGuardDimens.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(SafeGuardDimens.stackSm)
+        ) {
+            val t = MaterialTheme.typography
+            Text("displayLarge", style = t.displayLarge)
+            Text("displayMedium", style = t.displayMedium)
+            Text("displaySmall", style = t.displaySmall)
+            Text("headlineLarge", style = t.headlineLarge)
+            Text("headlineMedium", style = t.headlineMedium)
+            Text("headlineSmall", style = t.headlineSmall)
+            Text("titleLarge", style = t.titleLarge)
+            Text("titleMedium", style = t.titleMedium)
+            Text("titleSmall", style = t.titleSmall)
+            Text("bodyLarge", style = t.bodyLarge)
+            Text("bodyMedium", style = t.bodyMedium)
+            Text("bodySmall", style = t.bodySmall)
+            Text("labelLarge", style = t.labelLarge)
+            Text("labelMedium", style = t.labelMedium)
+            Text("labelSmall", style = t.labelSmall)
+        }
+    }
+}
+
+@Preview(name = "Type ramp · Light", showBackground = true)
+@Composable
+private fun TypeRampLightPreview() {
+    SafeGuardTheme(darkTheme = false) { TypeRamp() }
+}
+
+@Preview(name = "Type ramp · Dark", showBackground = true)
+@Composable
+private fun TypeRampDarkPreview() {
+    SafeGuardTheme(darkTheme = true) { TypeRamp() }
 }

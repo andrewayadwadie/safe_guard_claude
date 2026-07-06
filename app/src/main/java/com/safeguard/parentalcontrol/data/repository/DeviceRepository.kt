@@ -12,6 +12,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -139,11 +140,16 @@ class DeviceRepository @Inject constructor(
             return@withContext NetworkResult.Error("Device not registered")
         }
 
-        val result = safeApiCall { apiService.syncDevice(deviceId) }
+        // Report the device's current UTC offset on every heartbeat so the backend's
+        // per-device offset stays fresh even for children who don't upload app usage
+        // (usage access revoked, tampering). Without this the offset only refreshed on
+        // app-usage batches and could drift stale, skewing daily-limit day rollover.
+        val offsetMinutes = TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 60000
+        val result = safeApiCall { apiService.syncDevice(deviceId, offsetMinutes) }
 
         result.onSuccess {
             preferencesManager.updateLastSyncTime()
-            Timber.d("Device synced successfully")
+            Timber.d("Device synced successfully (utcOffsetMinutes=$offsetMinutes)")
         }
 
         result

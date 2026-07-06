@@ -33,9 +33,16 @@ class TFLiteImageClassifier(private val context: Context) : Closeable {
         private const val PIXEL_SIZE = 3  // RGB
         private const val NUM_CLASSES = 5  // GantMan's model: drawings, hentai, neutral, porn, sexy
 
-        // Classification threshold - lowered because NSFW probability is often distributed
-        // across multiple categories (porn + sexy + hentai)
-        private const val NSFW_THRESHOLD = 0.4f
+        // Classification threshold on the SUMMED NSFW probability (porn + sexy + hentai).
+        // Raised from 0.4 to 0.6 to match the documented Constants.NSFW_CONFIDENCE_THRESHOLD
+        // and cut false positives on normal images (0.4 fired too eagerly). This trades a
+        // little recall for precision; tune against a labelled corpus before lowering again.
+        private const val NSFW_THRESHOLD = 0.6f
+
+        // Images smaller than this on either side are icons/thumbnails/sprites, never real
+        // photos to moderate. Tiny inputs upscale into noise the model misreads (an 8x8 was
+        // classified "hentai" in the 2026-06-23 E2E report), so skip them outright.
+        private const val MIN_IMAGE_DIMENSION = 64
 
         // Category labels (GantMan's MobileNet V2 NSFW model)
         // Index 0: drawings (safe - cartoons/drawings)
@@ -100,6 +107,13 @@ class TFLiteImageClassifier(private val context: Context) : Closeable {
      * @return ImageAnalysisResult with classification details
      */
     fun classify(bitmap: Bitmap): ImageAnalysisResult {
+        // Skip tiny images (icons, thumbnails, emoji, UI sprites) — not real photos, and a
+        // common false-positive source once upscaled to 224x224. See MIN_IMAGE_DIMENSION.
+        if (bitmap.width < MIN_IMAGE_DIMENSION || bitmap.height < MIN_IMAGE_DIMENSION) {
+            Timber.d("TFLite: skipping ${bitmap.width}x${bitmap.height} image (below ${MIN_IMAGE_DIMENSION}px)")
+            return ImageAnalysisResult.safe()
+        }
+
         // MEMORY OPTIMIZATION: Lazy initialize model on first use
         if (!initAttempted) {
             initAttempted = true
@@ -240,50 +254,14 @@ class TFLiteImageClassifier(private val context: Context) : Closeable {
      * Uses simple skin-tone detection as a rough indicator.
      */
     private fun classifyWithHeuristic(bitmap: Bitmap): ImageAnalysisResult {
-        val width = bitmap.width
-        val height = bitmap.height
-        var skinPixels = 0
-        var totalPixels = 0
-
-        // Sample every 8th pixel for speed
-        val step = 8
-
-        for (y in 0 until height step step) {
-            for (x in 0 until width step step) {
-                val pixel = bitmap.getPixel(x, y)
-                totalPixels++
-
-                if (isSkinTone(pixel)) {
-                    skinPixels++
-                }
-            }
-        }
-
-        val skinRatio = if (totalPixels > 0) skinPixels.toFloat() / totalPixels else 0f
-
-        // High skin ratio might indicate inappropriate content
-        return if (skinRatio > 0.5f) {
-            ImageAnalysisResult(
-                isFlagged = true,
-                confidence = skinRatio * 0.6f,  // Lower confidence for heuristic
-                categories = listOf("potentially_inappropriate"),
-                reason = "Heuristic: high skin-tone ratio (${(skinRatio * 100).toInt()}%)"
-            )
-        } else {
-            ImageAnalysisResult.safe()
-        }
-    }
-
-    private fun isSkinTone(pixel: Int): Boolean {
-        val r = (pixel shr 16) and 0xFF
-        val g = (pixel shr 8) and 0xFF
-        val b = pixel and 0xFF
-
-        // Skin tone detection heuristic
-        return r > 95 && g > 40 && b > 20 &&
-                r > g && r > b &&
-                (maxOf(r, g, b) - minOf(r, g, b)) > 15 &&
-                kotlin.math.abs(r - g) > 15
+        // Fail OPEN when the real model can't run. The previous skin-tone-ratio heuristic
+        // flagged any image >50% skin tone, so faces/selfies/beaches/wood/food all tripped
+        // it — a major false-positive source whenever the model fell back (e.g. low memory).
+        // A skin-ratio test can't distinguish nudity from a face, so it must not fabricate
+        // NSFW flags. Real detection is the TFLite model; if it's unavailable we skip rather
+        // than guess. (Visible in logs so model-load failures remain observable.)
+        Timber.w("TFLite image model unavailable - skipping NSFW classification (no heuristic flag)")
+        return ImageAnalysisResult.safe()
     }
 
     override fun close() {

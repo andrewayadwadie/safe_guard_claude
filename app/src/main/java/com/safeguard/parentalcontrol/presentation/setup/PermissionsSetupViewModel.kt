@@ -311,7 +311,7 @@ class PermissionsSetupViewModel @Inject constructor(
      * Get description for battery optimization permission.
      */
     fun getBatteryOptimizationDescription(): String {
-        return "Required to prevent Android from killing SafeGuard in the background. " +
+        return "Required to prevent Android from killing Haris in the background. " +
                 "Without this, text monitoring may stop working unexpectedly."
     }
 
@@ -320,7 +320,7 @@ class PermissionsSetupViewModel @Inject constructor(
      */
     fun getVpnDescription(): String {
         return "Required for content filtering to block inappropriate websites. " +
-                "SafeGuard uses a local VPN to filter web content - no data is sent to external servers."
+                "Haris uses a local VPN to filter web content - no data is sent to external servers."
     }
 
     /**
@@ -381,7 +381,7 @@ class PermissionsSetupViewModel @Inject constructor(
      * Get description for media permission.
      */
     fun getMediaDescription(): String {
-        return "Required for sexting prevention. SafeGuard needs full storage access to " +
+        return "Required for sexting prevention. Haris needs full storage access to " +
                 "detect and blur inappropriate images, protecting your child from harmful content."
     }
 }

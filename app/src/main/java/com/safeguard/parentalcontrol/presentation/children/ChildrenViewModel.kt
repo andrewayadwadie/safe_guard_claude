@@ -79,18 +79,19 @@ class ChildrenViewModel @Inject constructor(
     }
 
     /**
-     * Add a child by email
+     * Add a child by redeeming the pairing code shown on the child's device.
      */
-    fun addChild(email: String) {
-        if (email.isBlank()) {
-            _uiState.update { it.copy(addChildError = "Please enter an email address") }
+    fun addChild(pairingCode: String) {
+        val code = pairingCode.trim()
+        if (code.isBlank()) {
+            _uiState.update { it.copy(addChildError = "Enter the code shown on your child's device") }
             return
         }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isAddingChild = true, addChildError = null) }
 
-            when (val result = familyRepository.addChild(email.trim())) {
+            when (val result = familyRepository.addChild(code)) {
                 is NetworkResult.Success -> {
                     _uiState.update {
                         it.copy(

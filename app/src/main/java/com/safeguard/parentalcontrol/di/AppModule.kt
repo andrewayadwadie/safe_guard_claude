@@ -5,6 +5,7 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import com.safeguard.parentalcontrol.data.remote.ApiService
 import com.safeguard.parentalcontrol.data.repository.CustomWordRepository
 import com.safeguard.parentalcontrol.ml.ContentClassifier
+import com.safeguard.parentalcontrol.ml.download.ModelDownloader
 import com.safeguard.parentalcontrol.util.NetworkMonitor
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.TokenManager
@@ -66,8 +67,9 @@ object AppModule {
     @Singleton
     fun provideContentClassifier(
         @ApplicationContext context: Context,
-        customWordRepository: CustomWordRepository
+        customWordRepository: CustomWordRepository,
+        modelDownloader: ModelDownloader
     ): ContentClassifier {
-        return ContentClassifier(context, customWordRepository)
+        return ContentClassifier(context, customWordRepository, modelDownloader)
     }
 }

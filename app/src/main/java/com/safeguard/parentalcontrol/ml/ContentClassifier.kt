@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.safeguard.parentalcontrol.data.repository.CustomWordRepository
+import com.safeguard.parentalcontrol.ml.download.ModelDownloader
+import com.safeguard.parentalcontrol.ml.download.ModelId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,7 +34,8 @@ import javax.inject.Singleton
 @Singleton
 class ContentClassifier @Inject constructor(
     private val context: Context,
-    private val customWordRepository: CustomWordRepository
+    private val customWordRepository: CustomWordRepository,
+    private val modelDownloader: ModelDownloader
 ) {
     companion object {
         private const val MAX_IMAGE_DIMENSION = 224
@@ -56,9 +59,11 @@ class ContentClassifier @Inject constructor(
     // Stage 1: Fast regex matcher
     private val regexMatcher = TextPatternMatcher()
 
-    // Stage 2: TFLite AI model (lazy loaded to save memory)
+    // Stage 2: TFLite AI model (lazy loaded to save memory). When a needed model isn't
+    // downloaded yet, the classifier asks us to fetch it (EN on first English Stage-2, AR on
+    // first Arabic) — language-conditional download, scope §5.6.
     private val textClassifierModel: TFLiteTextClassifier by lazy {
-        TFLiteTextClassifier(context)
+        TFLiteTextClassifier(context) { backend -> requestModelDownload(backend) }
     }
 
     private val imageClassifierModel: TFLiteImageClassifier by lazy {
@@ -147,7 +152,7 @@ class ContentClassifier @Inject constructor(
      * 1. Fast regex check first (includes custom whitelist/blacklist)
      * 2. AI model only if regex finds nothing suspicious
      */
-    suspend fun analyzeText(text: String): TextAnalysisResult = withContext(Dispatchers.Default) {
+    suspend fun analyzeText(text: String, packageName: String = ""): TextAnalysisResult = withContext(Dispatchers.Default) {
         if (text.isBlank()) {
             return@withContext TextAnalysisResult.safe()
         }
@@ -179,11 +184,23 @@ class ContentClassifier @Inject constructor(
 
             val aiResult = textClassifierModel.classify(truncatedText)
 
-            if (aiResult.isFlagged) {
-                Timber.d("Text flagged by Stage 2 (AI): ${aiResult.categories}")
+            // Stage 2 gating: per-category thresholds adjusted by which app the text came
+            // from. Cuts benign gaming/casual false positives without relaxing the high-cost
+            // child-safety categories. Stage 1 regex above is deterministic and NOT gated.
+            val gate = FlagGating.decide(aiResult.categoryScores, packageName)
+            if (!gate.flagged) {
+                return@withContext TextAnalysisResult.safe()
             }
 
-            aiResult
+            Timber.d("Text flagged by Stage 2 (AI+gating): ${gate.category} [${gate.severity}] in $packageName")
+            TextAnalysisResult(
+                isFlagged = true,
+                confidence = gate.confidence,
+                categories = listOfNotNull(gate.category),
+                reason = "AI detected ${gate.category} (${gate.severity}, ${(gate.confidence * 100).toInt()}%)",
+                categoryScores = aiResult.categoryScores,
+                severity = gate.severity
+            )
 
         } catch (e: Exception) {
             Timber.e(e, "Text analysis failed")
@@ -307,6 +324,25 @@ class ContentClassifier @Inject constructor(
             }
         }
         return sampleSize
+    }
+
+    /**
+     * Fire-and-forget request to download the model a routed text needs. Idempotent: the
+     * downloader no-ops when already present and dedups in-flight requests, so calling this on
+     * every miss (e.g. a burst of Arabic messages) is safe. Wi-Fi-gated; on a metered network it
+     * defers and retries on a later call.
+     */
+    private fun requestModelDownload(backend: TFLiteTextClassifier.Backend) {
+        val modelId = when (backend) {
+            TFLiteTextClassifier.Backend.EN -> ModelId.EN
+            TFLiteTextClassifier.Backend.AR -> ModelId.AR
+        }
+        if (modelDownloader.isReady(modelId)) return
+        scope.launch {
+            modelDownloader.ensure(modelId, requireUnmetered = true)
+                .onSuccess { Timber.i("Model $modelId downloaded; Stage 2 will use it next time") }
+                .onFailure { Timber.d("Model $modelId download deferred/failed: ${it.message}") }
+        }
     }
 
     /**

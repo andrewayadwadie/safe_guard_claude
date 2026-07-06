@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.safeguard.parentalcontrol.presentation.theme.*
 
 // ============================================================================
-// BUTTONS - Custom button styles for SafeGuard
+// BUTTONS - Custom button styles for Haris
 // ============================================================================
 
 /**

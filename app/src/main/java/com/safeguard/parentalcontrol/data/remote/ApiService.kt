@@ -6,7 +6,7 @@ import retrofit2.Response
 import retrofit2.http.*
 
 /**
- * Retrofit API service interface for SafeGuard backend
+ * Retrofit API service interface for Haris backend
  * Matches all 28 endpoints from the backend API
  */
 interface ApiService {
@@ -40,7 +40,7 @@ interface ApiService {
 
     // ==================== OAuth Endpoints ====================
 
-    // NOTE: GET oauth/google/status removed in Edit 2 — the Google button is always shown
+    // NOTE: GET oauth/google/status removed in Edit 2 â€” the Google button is always shown
     // (FR-017/FR-018), so the status check is no longer called.
 
     /**
@@ -75,7 +75,10 @@ interface ApiService {
     suspend fun deleteDevice(@Path("deviceId") deviceId: Int): Response<MessageResponse>
 
     @POST("devices/{deviceId}/sync")
-    suspend fun syncDevice(@Path("deviceId") deviceId: Int): Response<MessageResponse>
+    suspend fun syncDevice(
+        @Path("deviceId") deviceId: Int,
+        @Query("utc_offset_minutes") utcOffsetMinutes: Int? = null
+    ): Response<MessageResponse>
 
     @POST("devices/{deviceId}/suspend")
     suspend fun suspendDevice(@Path("deviceId") deviceId: Int): Response<Device>
@@ -253,7 +256,14 @@ interface ApiService {
     // ==================== Family Link Endpoints ====================
 
     /**
-     * Link a child account to this parent (parent only)
+     * Generate a short-lived pairing code for THIS child account (child only).
+     * The child shows the code; a parent enters it to link.
+     */
+    @POST("family/pairing-code")
+    suspend fun createPairingCode(): Response<PairingCodeResponse>
+
+    /**
+     * Link a child to this parent by redeeming a pairing code (parent only)
      */
     @POST("family/link")
     suspend fun createFamilyLink(@Body request: FamilyLinkCreateRequest): Response<FamilyLink>
@@ -263,6 +273,10 @@ interface ApiService {
      */
     @GET("family/children")
     suspend fun getLinkedChildren(): Response<List<FamilyLink>>
+
+    /** Get all parents linked to this child (child only). Uses the user Bearer token. */
+    @GET("family/parents")
+    suspend fun getLinkedParents(): Response<List<LinkedParent>>
 
     /**
      * Get specific family link details

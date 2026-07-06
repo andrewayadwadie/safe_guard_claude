@@ -1,137 +1,98 @@
-# TensorFlow Lite Models for SafeGuard Content Moderation
+# On-Device ML Models — exact spec for the Flutter port
 
-This folder should contain the following TensorFlow Lite model files for the two-stage content moderation system.
+SafeGuard runs all content classification **on the child device**; nothing the child types or
+views is sent off-device for analysis. This file is the authoritative reference for the model
+I/O you must replicate when porting to `tflite_flutter` — input shapes, tokenization,
+normalization, class order, and thresholds. Get these byte-exact or results drift silently.
 
-## Required Files
+There are **three** models across two pipelines: two script-routed **text** classifiers and one
+**image** (NSFW) classifier.
 
-### 1. Text Classifier
-- **File**: `text_classifier.tflite`
-- **Vocabulary**: `vocab.txt`
-- **Purpose**: Classifies text content into categories (safe, profanity, bullying, violence, sexual, drugs)
-- **Input**: Tokenized text sequence (max 128 tokens)
-- **Output**: 6-class probability distribution
+---
 
-### 2. Image Classifier (NSFW Detection)
-- **File**: `nsfw_classifier.tflite`
-- **Purpose**: Detects inappropriate images (porn, sexy, hentai, violence)
-- **Input**: 224x224 RGB image (normalized to [-1, 1])
-- **Output**: 5-class probability distribution (safe, porn, sexy, hentai, violence)
+## Text classification (Stage 2) — two script-routed backends
 
-## How to Obtain Models
+Stage 1 is a regex matcher (`TextPatternMatcher`, English + Arabic + 3arabizi, evasion-resistant)
+that runs on every captured string. Stage 2 is the ML below, run when Stage 1 is uncertain. The
+two text models are **real BERT** with **identical I/O**:
 
-### Option A: Pre-trained Open Source Models
+| | EN — toxic-bert | AR — MARBERTv2 (Egyptian) |
+|---|---|---|
+| Model file | `toxicbert_en_int8.tflite` (~112 MB) | `marbert_ar_int8.tflite` (~166 MB) |
+| Vocab (bundled asset) | `toxicbert_en_vocab.txt` | `marbert_ar_vocab.txt` |
+| Inputs | `input_ids` + `attention_mask`, both `[1, 128]` **int64** | same |
+| Output | `[1, 6]` float **sigmoid** | `[1, 2]` float **softmax** |
+| Labels (in order) | `toxic, severe_toxic, obscene, threat, insult, identity_hate` | `Neutral, Hate` |
+| Special tokens | cls=101, sep=102, pad=0, unk=100 | cls=2, sep=3, pad=0, unk=1 |
 
-#### NSFW Image Classifier
-You can use the open-source NSFW model from:
-- **NudeNet**: https://github.com/notAI-tech/NudeNet
-- **NSFW Model**: https://github.com/GantMan/nsfw_model
+- **Tokenizer:** real BERT **WordPiece** (`WordPieceTokenizer`), parity-locked to HuggingFace — not
+  the old whitespace tokenizer. Max sequence length **128**, padded with the model's pad id; build
+  `attention_mask` as 1 for real tokens, 0 for padding. The sigmoid/softmax is **already applied in
+  the exported graph** — read the output probabilities directly, do not re-apply.
+- **Script routing** (`TFLiteTextClassifier.route`): Arabic-script-dominant text → **AR**; Latin
+  text detected as 3arabizi (`Arabizi.looksLikeArabizi`) → transliterate to Arabic script then
+  **AR**; everything else → **EN**. Digit-less arabizi is indistinguishable from English and falls
+  to EN (a known gap).
+- **Category mapping** (model labels → app categories, consumed by `FlagGating`):
+  - EN: `profanity = max(toxic, severe_toxic, obscene)`, `violence = threat`,
+    `bullying = max(insult, identity_hate)`.
+  - AR: `bullying = Hate` (HIGH severity). Arabic category granularity comes from the Stage-1 regex.
+- **Flag threshold:** a mapped category score **≥ 0.5**.
+- **`sexual` and `self_harm` are intentionally NOT model outputs** — the ML is blind to their polite
+  phrasing, so the Stage-1 regex owns them. Don't invent model labels for them.
+- **Single-resident:** only one text model is held in memory at a time; switching script evicts the
+  other (the two are large).
 
-To convert to TFLite:
-```python
-import tensorflow as tf
+## Image classification (NSFW)
 
-# Load your trained model
-model = tf.keras.models.load_model('nsfw_model.h5')
+| | Value |
+|---|---|
+| Model file | `nsfw_classifier.tflite` (bundled, GantMan MobileNetV2 NSFW) |
+| Input | `[1, 224, 224, 3]` float, RGB, **normalized ÷255 → [0, 1]** (NOT [-1, 1]) |
+| Output | `[1, 5]` float softmax |
+| Labels (in order) | `drawings, hentai, neutral, porn, sexy` |
+| Flag rule | `nsfwProb = hentai + porn + sexy`; flag when **≥ 0.6** (summed) |
 
-# Convert to TFLite with quantization
-converter = tf.lite.TFLiteConverter.from_keras_model(model)
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
-converter.target_spec.supported_types = [tf.int8]
-tflite_model = converter.convert()
+- Safe indices are `drawings` (0) and `neutral` (2). Very small images are skipped (a
+  `MIN_IMAGE_DIMENSION` guard — upscaling tiny thumbnails to 224² was a false-positive source).
+- NSFW runs only on **saved** images (Downloads/Screenshots via `MediaFileObserver`); there is no
+  live screen-frame scanning (deferred for app-store compliance).
 
-# Save
-with open('nsfw_classifier.tflite', 'wb') as f:
-    f.write(tflite_model)
+---
+
+## Model delivery (on-demand download)
+
+The two text `.tflite` blobs are **large and NOT bundled** in the APK. They are downloaded on demand
+(`ml/download/ModelDownloader.kt`) to `filesDir/models/` and **verified before use** against a pinned
+byte size **and** SHA-256; a mismatch is discarded. The small vocab `.txt` files and the NSFW model
+**are** bundled in `assets/`.
+
+| Artifact | Size (bytes) | SHA-256 |
+|---|---|---|
+| `toxicbert_en_int8.tflite` | 112,174,496 | `fdbb91b03f48fd24f6967573f2d413c2784c0cfc54d91e337bf1f81599ceba11` |
+| `marbert_ar_int8.tflite` | 166,364,192 | `ec64837e1b699d695f29dd1d42efe8bc2da7c308d3ce6f9a276f65804b8d6d89` |
+
+The blobs are served by the backend at `GET /api/v1/models/{filename}` (public, no auth; the SHA-256
+is returned as the `ETag`). For local testing before wiring the downloader, push them manually:
+
+```
+adb push toxicbert_en_int8.tflite /data/data/<pkg>/files/models/
+adb push marbert_ar_int8.tflite   /data/data/<pkg>/files/models/
 ```
 
-#### Text Classifier
-You can fine-tune a MobileBERT or DistilBERT model:
-- **TensorFlow Text Classification**: https://www.tensorflow.org/text/tutorials/classify_text_with_bert
-- **Hugging Face Toxic Comment Dataset**: https://huggingface.co/datasets/jigsaw_toxicity_pred
+## Fallback behavior (degrade, never crash)
 
-### Option B: Train Your Own Models
+The app keeps working when a model can't run:
 
-#### Text Classifier Training Script
-```python
-import tensorflow as tf
-from tensorflow.keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-
-# Prepare data
-MAX_WORDS = 10000
-MAX_LEN = 128
-NUM_CLASSES = 6  # safe, profanity, bullying, violence, sexual, drugs
-
-# Build model
-model = tf.keras.Sequential([
-    tf.keras.layers.Embedding(MAX_WORDS, 64, input_length=MAX_LEN),
-    tf.keras.layers.GlobalAveragePooling1D(),
-    tf.keras.layers.Dense(64, activation='relu'),
-    tf.keras.layers.Dropout(0.3),
-    tf.keras.layers.Dense(NUM_CLASSES, activation='softmax')
-])
-
-model.compile(optimizer='adam',
-              loss='categorical_crossentropy',
-              metrics=['accuracy'])
-
-# Train with your labeled dataset
-# model.fit(X_train, y_train, epochs=10, validation_data=(X_val, y_val))
-
-# Convert to TFLite
-converter = tf.lite.TFLiteConverter.from_keras_model(model)
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
-tflite_model = converter.convert()
-
-with open('text_classifier.tflite', 'wb') as f:
-    f.write(tflite_model)
-
-# Save vocabulary
-tokenizer = Tokenizer(num_words=MAX_WORDS)
-# tokenizer.fit_on_texts(texts)
-with open('vocab.txt', 'w') as f:
-    for word, index in sorted(tokenizer.word_index.items(), key=lambda x: x[1]):
-        if index < MAX_WORDS:
-            f.write(f"{word}\n")
-```
-
-### Option C: Use Cloud AutoML (then export to TFLite)
-- Google Cloud AutoML Vision/Text
-- Export trained model as TFLite
-
-## Fallback Behavior
-
-The app is designed to work WITHOUT these model files:
-
-1. **Text Analysis**: Falls back to comprehensive regex pattern matching (Stage 1 only)
-2. **Image Analysis**: Falls back to skin-tone heuristic detection
-
-This means the app will still provide protection, just with reduced accuracy for subtle/contextual content.
-
-## Model Requirements
-
-| Model | Input Size | Quantization | Max Size |
-|-------|-----------|--------------|----------|
-| Text Classifier | 128 tokens | INT8 | ~5 MB |
-| NSFW Classifier | 224x224x3 | INT8 | ~10 MB |
-
-## Testing Models
-
-After adding models, test them:
-```kotlin
-// In your test code
-val textClassifier = TFLiteTextClassifier(context)
-val result = textClassifier.classify("test message")
-assert(result.categories.isNotEmpty() || !result.isFlagged)
-
-val imageClassifier = TFLiteImageClassifier(context)
-val bitmap = BitmapFactory.decodeResource(resources, R.drawable.test_image)
-val imageResult = imageClassifier.classify(bitmap)
-```
+1. **Text:** if a backend's model file is absent, or free heap < 64 MB, or native load fails, Stage 2
+   returns "safe" for that string and detection rests on the **Stage-1 regex**. (Genuine absence also
+   signals the app to fetch the model.)
+2. **Image:** if `nsfw_classifier.tflite` can't load, the classifier **fails open** (returns safe).
+   There is deliberately **no** skin-tone heuristic — a skin-ratio test can't tell nudity from a face
+   and fabricated false positives, so it was removed.
 
 ## Notes
 
-- Models are loaded lazily to save memory
-- GPU acceleration is used when available for image classification
-- Thread count is limited to 2 for battery efficiency
-- Stage 1 (regex) catches ~80% of obvious inappropriate content without needing AI
+- Models are loaded lazily; thread count is capped at 2 for battery.
+- Stage 1 (regex) catches the bulk of obvious inappropriate content without any model present, so the
+  app is protective even before the text models finish downloading.

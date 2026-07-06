@@ -1,12 +1,18 @@
 package com.safeguard.parentalcontrol.presentation.settings
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
+
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -14,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -21,7 +28,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.safeguard.parentalcontrol.data.model.UserRole
+import com.safeguard.parentalcontrol.util.Constants
 import kotlinx.coroutines.flow.collectLatest
+import timber.log.Timber
 
 /**
  * Settings screen with account info and app settings
@@ -34,6 +43,7 @@ fun SettingsScreen(
     onNavigateToTextMonitoringSettings: () -> Unit = {},
     onNavigateToPermissionsSetup: () -> Unit = {},
     onNavigateToImageReview: () -> Unit = {},
+    onNavigateToTextReview: () -> Unit = {},
     onLogout: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -41,6 +51,15 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showLogoutDialog by remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
+
+    fun openUrl(url: String) {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to open URL: %s", url)
+        }
+    }
 
     // Refresh VPN state when returning to this screen
     DisposableEffect(lifecycleOwner) {
@@ -138,10 +157,12 @@ fun SettingsScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
+        val screenWidth = rememberScreenWidth()
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .responsiveContentWidth(screenWidth)
                 .verticalScroll(rememberScrollState())
         ) {
             // User profile section
@@ -211,13 +232,23 @@ fun SettingsScreen(
                     )
                 }
 
-                // Image Review section (for parent to review on child device)
+                // Parent Review section (parent, on the child's device, behind a PIN).
+                // Flagged photos and text never leave the device; the PIN keeps the child
+                // from opening these surfaces.
                 SettingsSection(title = "Parent Review") {
                     SettingsItem(
                         icon = Icons.Default.Image,
                         title = "Review Flagged Images",
                         subtitle = "Parent: Review and approve/reject blurred images",
                         onClick = onNavigateToImageReview
+                    )
+
+                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                    SettingsItem(
+                        icon = Icons.Default.Message,
+                        title = "Review Flagged Text",
+                        subtitle = "Parent: See phrases flagged on this device",
+                        onClick = onNavigateToTextReview
                     )
                 }
             }
@@ -278,14 +309,14 @@ fun SettingsScreen(
                     icon = Icons.Default.Policy,
                     title = "Privacy Policy",
                     subtitle = "View our privacy policy",
-                    onClick = { /* TODO: Open browser */ }
+                    onClick = { openUrl(Constants.PRIVACY_POLICY_URL) }
                 )
                 Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 SettingsItem(
                     icon = Icons.Default.Description,
                     title = "Terms of Service",
                     subtitle = "View our terms of service",
-                    onClick = { /* TODO: Open browser */ }
+                    onClick = { openUrl(Constants.TERMS_OF_SERVICE_URL) }
                 )
             }
 
@@ -498,3 +529,22 @@ private fun SettingsToggleItem(
         }
     }
 }
+
+@Composable
+private fun SettingsPreviewContent() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.padding(16.dp)) {
+            SettingsItem(Icons.Default.Person, "Account", "parent@haris.app", {})
+            SettingsItem(Icons.Default.Notifications, "Notifications", "Alerts and reminders", {})
+            SettingsItem(Icons.Default.Logout, "Log out", "Sign out of Haris", {}, iconTint = MaterialTheme.colorScheme.error, titleColor = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+@Preview(name = "Settings · Light", showBackground = true)
+@Composable
+private fun SettingsScreenLightPreview() { SafeGuardTheme(darkTheme = false) { SettingsPreviewContent() } }
+
+@Preview(name = "Settings · Dark", showBackground = true)
+@Composable
+private fun SettingsScreenDarkPreview() { SafeGuardTheme(darkTheme = true) { SettingsPreviewContent() } }

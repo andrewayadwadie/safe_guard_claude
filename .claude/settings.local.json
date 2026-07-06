@@ -38,7 +38,28 @@
       "Bash(find . -name \"google-services.json\")",
       "Bash(python -c 'import json,glob; *)",
       "PowerShell($ks = \"$env:USERPROFILE\\\\.android\\\\debug.keystore\"; if \\(Test-Path $ks\\) { $kt = Join-Path $env:JAVA_HOME \"bin\\\\keytool.exe\"; if \\(-not \\(Test-Path $kt\\)\\) { $kt = \"keytool\" }; & $kt -list -v -keystore $ks -alias androiddebugkey -storepass android -keypass android 2>&1 | Select-String \"SHA1:|SHA-1:|SHA256:|SHA-256:\" } else { \"debug.keystore not found at $ks\" })",
-      "Bash(./gradlew :app:signingReport -q)"
+      "Bash(./gradlew :app:signingReport -q)",
+      "PowerShell(.specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly)",
+      "PowerShell(.specify/scripts/powershell/setup-plan.ps1 -Json)",
+      "PowerShell(.specify/scripts/powershell/setup-tasks.ps1 -Json)",
+      "PowerShell(.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks)",
+      "PowerShell(& \"C:\\\\Users\\\\Dell\\\\Documents\\\\safeguard-android-NOOR\\\\specs\\\\002-app-rebrand-haris\\\\tooling\\\\generate-assets.ps1\")",
+      "PowerShell(.\\\\gradlew.bat :app:assembleDebug --console=plain 2>&1 | Select-Object -Last 60)",
+      "PowerShell(.\\\\gradlew.bat :app:compileDebugKotlin --console=plain 2>&1 | Select-Object -Last 50)",
+      "Bash(grep -oiE '.{0,4}SafeGuard.{0,18}')",
+      "Bash(curl -sSL \"https://raw.githubusercontent.com/android/user-interface-samples/main/DownloadableFonts/app/src/main/res/values/font_certs.xml\" -o /tmp/font_certs_real.xml)",
+      "Bash(echo \"exit=$?\")",
+      "Read(//tmp/**)",
+      "Bash(./gradlew assembleDebug -q)",
+      "Bash(grep *)",
+      "Bash(./gradlew lintDebug)",
+      "Bash(python *)",
+      "Bash(./gradlew :app:assembleDebug -q)",
+      "Bash(ffmpeg -version)",
+      "Bash(rm -f f_*.png)",
+      "Bash(ffmpeg -i anim.mp4 -vf fps=12 f_%03d.png -hide_banner -loglevel error)",
+      "PowerShell(ffmpeg *)",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }

@@ -46,6 +46,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.safeguard.parentalcontrol.data.model.*
 import com.safeguard.parentalcontrol.presentation.components.*
 import com.safeguard.parentalcontrol.presentation.theme.*
+import com.safeguard.parentalcontrol.presentation.designsystem.HarisGradientHeader
+import androidx.compose.ui.tooling.preview.Preview
 import com.safeguard.parentalcontrol.util.formatAsHoursMinutes
 import com.safeguard.parentalcontrol.util.formatAsRelative
 import kotlinx.coroutines.delay
@@ -62,6 +64,7 @@ fun DashboardScreen(
     onNavigateToChildren: () -> Unit = {},
     onNavigateToScreenTimeLimits: (deviceId: Int, deviceName: String) -> Unit = { _, _ -> },
     onNavigateToPermissionsSetup: () -> Unit = {},
+    onNavigateToLinkParent: () -> Unit = {},
     onLogout: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
@@ -144,6 +147,7 @@ fun DashboardScreen(
                 onNavigateToChildren = onNavigateToChildren,
                 onNavigateToDevices = onNavigateToDevices,
                 onNavigateToSettings = onNavigateToSettings,
+                onNavigateToLinkParent = onNavigateToLinkParent,
                 onLogoutClick = { showLogoutDialog = true }
             )
         },
@@ -200,6 +204,7 @@ private fun DashboardTopBar(
     onNavigateToChildren: () -> Unit,
     onNavigateToDevices: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToLinkParent: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
     TopAppBar(
@@ -214,7 +219,7 @@ private fun DashboardTopBar(
                         .clip(RoundedCornerShape(8.dp))
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(SafeGuardBlue, SafeGuardBlueLight)
+                                colors = SemanticColors.gradientPrimary
                             )
                         ),
                     contentAlignment = Alignment.Center
@@ -229,7 +234,7 @@ private fun DashboardTopBar(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "SafeGuard",
+                        text = "Haris",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -323,6 +328,19 @@ private fun DashboardTopBar(
                         )
                         Divider()
                     }
+                    if (!isParent) {
+                        DropdownMenuItem(
+                            text = { Text("Link a parent") },
+                            onClick = {
+                                onMenuToggle(false)
+                                onNavigateToLinkParent()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.Link, contentDescription = null)
+                            }
+                        )
+                        Divider()
+                    }
                     DropdownMenuItem(
                         text = { Text("Settings") },
                         onClick = {
@@ -404,15 +422,36 @@ private fun DashboardContent(
         showContent = true
     }
 
+    val screenWidth = rememberScreenWidth()
     LazyColumn(
         state = listState,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxHeight()
+            .responsiveContentWidth(screenWidth),
         contentPadding = PaddingValues(
-            horizontal = SafeGuardDimens.paddingScreen,
+            horizontal = responsiveScreenPadding(screenWidth),
             vertical = SafeGuardDimens.spacingMd
         ),
         verticalArrangement = Arrangement.spacedBy(SafeGuardDimens.spacingLg)
     ) {
+        // Brand gradient summary banner
+        item {
+            HarisGradientHeader(modifier = Modifier.fadeScaleIn { showContent }) {
+                Column {
+                    Text(
+                        text = "Welcome back",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Family Dashboard",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+
         // Monitoring offline warning (parents). A child device that was reporting has
         // gone silent — the only way to surface a force-stop / uninstall / OEM kill,
         // since a dead app can't report its own death. Server-side this is
@@ -1407,9 +1446,9 @@ private fun EnhancedAppUsageCard(
     }
 
     val rankColor = when (rank) {
-        1 -> Color(0xFFFFD700) // Gold
-        2 -> Color(0xFFC0C0C0) // Silver
-        3 -> Color(0xFFCD7F32) // Bronze
+        1 -> SemanticColors.rankGold
+        2 -> SemanticColors.rankSilver
+        3 -> SemanticColors.rankBronze
         else -> MaterialTheme.colorScheme.primary
     }
 
@@ -1671,3 +1710,32 @@ private fun LogoutConfirmationDialog(
         shape = RoundedCornerShape(20.dp)
     )
 }
+
+@Composable
+private fun DashboardPreviewContent() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(
+            modifier = Modifier.padding(SafeGuardDimens.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(SafeGuardDimens.stackMd)
+        ) {
+            HarisGradientHeader {
+                Column {
+                    Text("Welcome back", style = MaterialTheme.typography.labelMedium, color = Color.White)
+                    Text("Family Dashboard", style = MaterialTheme.typography.headlineMedium, color = Color.White)
+                }
+            }
+            EnhancedScreenTimeHeroCard(
+                usedSeconds = 7200, limitSeconds = 14400, unlockCount = 5,
+                isParent = true, onManageLimits = {}, isStale = false, lastSync = java.util.Date()
+            )
+        }
+    }
+}
+
+@Preview(name = "Dashboard · Light", showBackground = true)
+@Composable
+private fun DashboardLightPreview() { SafeGuardTheme(darkTheme = false) { DashboardPreviewContent() } }
+
+@Preview(name = "Dashboard · Dark", showBackground = true)
+@Composable
+private fun DashboardDarkPreview() { SafeGuardTheme(darkTheme = true) { DashboardPreviewContent() } }

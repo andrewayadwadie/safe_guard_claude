@@ -1,5 +1,13 @@
 package com.safeguard.parentalcontrol.presentation.wordlist
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
+import java.util.Date
+
+import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveScreenPadding
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -207,8 +215,8 @@ fun WordListScreen(
                 }
 
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
+                    modifier = Modifier.fillMaxHeight().responsiveContentWidth(rememberScreenWidth()),
+                    contentPadding = PaddingValues(responsiveScreenPadding(rememberScreenWidth())),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(filteredList, key = { it.id }) { word ->
@@ -590,3 +598,21 @@ private fun SearchAndFilterSection(
 private fun formatCategoryName(category: String): String {
     return category.replace("_", " ").replaceFirstChar { it.uppercase() }
 }
+
+private fun sampleWord() = CustomWordResponse(
+    id = 1, userId = 1, word = "example", listType = WordListType.BLACKLIST,
+    category = "profanity", caseSensitive = false, wholeWordOnly = true,
+    isActive = true, createdAt = Date(), updatedAt = null
+)
+@Composable
+private fun WordListPreviewContent() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            WordListItem(sampleWord(), {})
+        }
+    }
+}
+@Preview(name = "WordList · Light", showBackground = true)
+@Composable private fun WordListLightPreview() { SafeGuardTheme(darkTheme = false) { WordListPreviewContent() } }
+@Preview(name = "WordList · Dark", showBackground = true)
+@Composable private fun WordListDarkPreview() { SafeGuardTheme(darkTheme = true) { WordListPreviewContent() } }

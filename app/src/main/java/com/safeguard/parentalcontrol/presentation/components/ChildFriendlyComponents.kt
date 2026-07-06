@@ -405,9 +405,9 @@ fun ChildAppUsageCard(
     modifier: Modifier = Modifier
 ) {
     val rankColors = listOf(
-        SemanticColors.childAccent, // Gold for #1
-        Color(0xFFC0C0C0),          // Silver for #2
-        Color(0xFFCD7F32),          // Bronze for #3
+        SemanticColors.rankGold,    // Gold for #1
+        SemanticColors.rankSilver,  // Silver for #2
+        SemanticColors.rankBronze,  // Bronze for #3
         SemanticColors.childSecondary,
         SemanticColors.childPrimary
     )

@@ -1,5 +1,12 @@
 package com.safeguard.parentalcontrol.presentation.imagereview
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
+
+import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveScreenPadding
+
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.safeguard.parentalcontrol.presentation.theme.SemanticColors
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -27,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.safeguard.parentalcontrol.presentation.components.ParentPinGate
 import java.io.File
 
 /**
@@ -37,9 +46,19 @@ import java.io.File
  * - View the original (unblurred) image
  * - Approve (restore original) or Reject (delete permanently)
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageReviewScreen(
+    onNavigateBack: () -> Unit
+) {
+    // PIN gate enforced at the destination so a restored back stack can't bypass it.
+    ParentPinGate(onCancel = onNavigateBack) {
+        ImageReviewContent(onNavigateBack = onNavigateBack)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ImageReviewContent(
     onNavigateBack: () -> Unit,
     viewModel: ImageReviewViewModel = hiltViewModel()
 ) {
@@ -99,8 +118,8 @@ fun ImageReviewScreen(
                 }
                 else -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        modifier = Modifier.fillMaxHeight().responsiveContentWidth(rememberScreenWidth()),
+                        contentPadding = PaddingValues(responsiveScreenPadding(rememberScreenWidth())),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         item {
@@ -434,10 +453,26 @@ private fun ImageReviewDialog(
  */
 private fun getCategoryColor(category: String): Color {
     return when (category.lowercase()) {
-        "nsfw", "porn", "nudity" -> Color(0xFFE53935) // Red
-        "sexy" -> Color(0xFFFF9800) // Orange
-        "hentai" -> Color(0xFF9C27B0) // Purple
-        "violence" -> Color(0xFF795548) // Brown
-        else -> Color(0xFFF44336) // Default red
+        "nsfw", "porn", "nudity" -> SemanticColors.severityCritical
+        "sexy" -> SemanticColors.severityHigh
+        "hentai" -> SemanticColors.severityHigh
+        "violence" -> SemanticColors.severityMedium
+        else -> SemanticColors.severityCritical
     }
 }
+
+private fun samplePendingImage() = PendingImage(
+    backupId = "b1", originalPath = "/x.jpg", category = "nsfw", confidence = 0.9f,
+    timestamp = 0L, originalName = "img.jpg", formattedDate = "Today",
+    formattedCategory = "NSFW", confidencePercent = 90
+)
+@Composable
+private fun ImageReviewPreviewContent() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.padding(16.dp)) { PendingImageCard(samplePendingImage(), {}) }
+    }
+}
+@Preview(name = "ImageReview · Light", showBackground = true)
+@Composable private fun ImageReviewLightPreview() { SafeGuardTheme(darkTheme = false) { ImageReviewPreviewContent() } }
+@Preview(name = "ImageReview · Dark", showBackground = true)
+@Composable private fun ImageReviewDarkPreview() { SafeGuardTheme(darkTheme = true) { ImageReviewPreviewContent() } }

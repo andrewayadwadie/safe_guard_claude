@@ -10,7 +10,6 @@ import android.content.pm.ServiceInfo
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
@@ -33,8 +32,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.DatagramChannel
 import javax.inject.Inject
-
-private const val TAG = "SafeGuardVPN"
 
 /**
  * VPN service for content filtering using DNS interception
@@ -63,6 +60,12 @@ class ContentFilterVpnService : VpnService() {
     private var serviceJob: Job? = null
     private var _serviceScope: CoroutineScope? = null
     @Volatile private var isShuttingDown = false
+
+    // Set in onRevoke() when Android hands the single VPN slot to another VPN app
+    // (e.g. ProtonVPN). Lets onDestroy send the specific "foreign VPN" alert instead
+    // of the generic "vpn_disconnected" one, and suppresses the duplicate.
+    @Volatile private var revokedByForeignVpn = false
+
     private val serviceScope: CoroutineScope
         get() = _serviceScope ?: CoroutineScope(Dispatchers.IO + SupervisorJob().also {
             serviceJob = it
@@ -184,7 +187,7 @@ class ContentFilterVpnService : VpnService() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "========== VPN SERVICE CREATED ==========")
+        Timber.d("========== VPN SERVICE CREATED ==========")
         Timber.d("ContentFilterVpnService created")
         // Initialize service scope with a new SupervisorJob
         serviceJob = SupervisorJob()
@@ -201,7 +204,7 @@ class ContentFilterVpnService : VpnService() {
         refreshJob = serviceScope.launch {
             while (isActive) {
                 delay(90 * 1000L) // Refresh every 90s (ISSUE-023: cut filter propagation latency; no push yet)
-                Log.d(TAG, "Refreshing content filter settings...")
+                Timber.d("Refreshing content filter settings...")
                 syncBlacklistFromBackend()
             }
         }
@@ -214,7 +217,7 @@ class ContentFilterVpnService : VpnService() {
                 "Content Filter",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "SafeGuard content filtering is active"
+                description = "Haris content filtering is active"
                 setShowBadge(false)
             }
 
@@ -232,7 +235,7 @@ class ContentFilterVpnService : VpnService() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("SafeGuard VPN Active")
+            .setContentTitle("Haris VPN Active")
             .setContentText("Content filtering is protecting this device")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
@@ -246,19 +249,19 @@ class ContentFilterVpnService : VpnService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "========== VPN SERVICE onStartCommand ==========")
-        Log.d(TAG, "Intent action: ${intent?.action}")
+        Timber.d("========== VPN SERVICE onStartCommand ==========")
+        Timber.d("Intent action: ${intent?.action}")
         Timber.d("ContentFilterVpnService onStartCommand")
 
         if (intent?.action == ACTION_STOP) {
-            Log.d(TAG, "Stopping VPN service")
+            Timber.d("Stopping VPN service")
             stopVpn()
             return START_NOT_STICKY
         }
 
         // Start as foreground service
         try {
-            Log.d(TAG, "Starting as foreground service...")
+            Timber.d("Starting as foreground service...")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 startForeground(
                     NOTIFICATION_ID,
@@ -268,9 +271,18 @@ class ContentFilterVpnService : VpnService() {
             } else {
                 startForeground(NOTIFICATION_ID, buildNotification())
             }
-            Log.d(TAG, "Foreground service started successfully")
+            Timber.d("Foreground service started successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start foreground service", e)
+            Timber.e(e, "Failed to start foreground service")
+            return START_NOT_STICKY
+        }
+
+        // Consent gate: content filtering must not run until the parent has accepted
+        // the in-app monitoring disclosure (Play Prominent Disclosure & Consent).
+        // startForeground above satisfies the startForegroundService contract first.
+        if (!preferencesManager.shouldRunMonitoring) {
+            Timber.w("VPN service start blocked: monitoring consent not granted")
+            stopSelf()
             return START_NOT_STICKY
         }
 
@@ -303,7 +315,7 @@ class ContentFilterVpnService : VpnService() {
                         blockGambling = filter.blockGambling
                         blockDrugs = filter.blockDrugs
                         blockSocialMedia = filter.blockSocialMedia
-                        Log.d(TAG, "Content filter synced: blockAdult=$blockAdult, blockSocialMedia=$blockSocialMedia, " +
+                        Timber.d("Content filter synced: blockAdult=$blockAdult, blockSocialMedia=$blockSocialMedia, " +
                                 "blockGambling=$blockGambling, blockedDomains=${blockedDomains.size}")
                         Timber.d("Blacklist synced: ${blockedDomains.size} custom domains, blockSocialMedia=$blockSocialMedia")
                     }
@@ -319,19 +331,19 @@ class ContentFilterVpnService : VpnService() {
     }
 
     private fun startVpn() {
-        Log.d(TAG, "========== startVpn() called ==========")
+        Timber.d("========== startVpn() called ==========")
 
         // Reset shutdown flag
         isShuttingDown = false
 
         if (vpnInterface != null) {
-            Log.d(TAG, "VPN already running, skipping")
+            Timber.d("VPN already running, skipping")
             Timber.d("VPN already running")
             return
         }
 
         try {
-            Log.d(TAG, "Building VPN interface...")
+            Timber.d("Building VPN interface...")
 
             // Build VPN interface
             // DNS-only filtering VPN: We intercept DNS traffic to common DNS servers
@@ -402,28 +414,28 @@ class ContentFilterVpnService : VpnService() {
                 .addDnsServer("8.8.8.8")       // Primary: Google DNS (also routed above)
                 .addDnsServer("1.1.1.1")       // Secondary: Cloudflare DNS (also routed above)
 
-                .setSession("SafeGuard VPN")
+                .setSession("Haris VPN")
                 .setMtu(1400) // Reduced MTU for better compatibility with mobile networks
                 .setBlocking(true)
                 .setConfigureIntent(createConfigIntent())
 
-            Log.d(TAG, "VPN builder configured: IPv4=10.0.0.2, IPv6=fd00::2, DNS=8.8.8.8+1.1.1.1, routes for IPv4+IPv6 DNS servers, MTU=1400")
+            Timber.d("VPN builder configured: IPv4=10.0.0.2, IPv6=fd00::2, DNS=8.8.8.8+1.1.1.1, routes for IPv4+IPv6 DNS servers, MTU=1400")
 
             // Allow bypass for our own app to prevent loops
             try {
                 builder.addDisallowedApplication(packageName)
-                Log.d(TAG, "Excluded package: $packageName")
+                Timber.d("Excluded package: $packageName")
             } catch (e: Exception) {
-                Log.w(TAG, "Could not disallow own package: ${e.message}")
+                Timber.w("Could not disallow own package: ${e.message}")
                 Timber.w(e, "Could not disallow own package")
             }
 
-            Log.d(TAG, "Calling builder.establish()...")
+            Timber.d("Calling builder.establish()...")
             vpnInterface = builder.establish()
 
             if (vpnInterface == null) {
-                Log.e(TAG, "FAILED to establish VPN interface - establish() returned null!")
-                Log.e(TAG, "This usually means VPN permission was not granted")
+                Timber.e("FAILED to establish VPN interface - establish() returned null!")
+                Timber.e("This usually means VPN permission was not granted")
                 Timber.e("Failed to establish VPN interface")
 
                 // Notify UI that VPN failed to start
@@ -438,8 +450,9 @@ class ContentFilterVpnService : VpnService() {
                 return
             }
 
-            Log.d(TAG, "SUCCESS! VPN interface established, fd=${vpnInterface?.fd}")
+            Timber.d("SUCCESS! VPN interface established, fd=${vpnInterface?.fd}")
             Timber.d("VPN interface established successfully")
+            isActive = true
 
             // Notify UI that VPN started successfully
             broadcastVpnState(true)
@@ -451,13 +464,14 @@ class ContentFilterVpnService : VpnService() {
             startFiltering()
 
         } catch (e: Exception) {
-            Log.e(TAG, "Error starting VPN", e)
+            Timber.e(e, "Error starting VPN")
             Timber.e(e, "Error starting VPN")
         }
     }
 
     private fun stopVpn() {
-        Log.d(TAG, "stopVpn() called")
+        Timber.d("stopVpn() called")
+        isActive = false
 
         // Set shutdown flag to prevent new DNS forwarding coroutines
         isShuttingDown = true
@@ -496,15 +510,15 @@ class ContentFilterVpnService : VpnService() {
      * DNS forwarding is done asynchronously to avoid blocking the packet loop
      */
     private fun startFiltering() {
-        Log.d(TAG, "========== startFiltering() called ==========")
+        Timber.d("========== startFiltering() called ==========")
 
         val vpnFd = vpnInterface?.fileDescriptor
         if (vpnFd == null) {
-            Log.e(TAG, "Cannot start filtering - VPN file descriptor is null!")
+            Timber.e("Cannot start filtering - VPN file descriptor is null!")
             return
         }
 
-        Log.d(TAG, "Got VPN file descriptor, launching filtering coroutine...")
+        Timber.d("Got VPN file descriptor, launching filtering coroutine...")
 
         filteringJob = serviceScope.launch {
             var inputStream: FileInputStream? = null
@@ -520,7 +534,7 @@ class ContentFilterVpnService : VpnService() {
                 inputStream = FileInputStream(vpnFd)
                 outputStream = FileOutputStream(vpnFd)
 
-                Log.d(TAG, "Streams created, entering packet filtering loop")
+                Timber.d("Streams created, entering packet filtering loop")
                 Timber.d("Starting packet filtering loop")
 
                 while (isActive) {
@@ -528,7 +542,7 @@ class ContentFilterVpnService : VpnService() {
                     if (length > 0) {
                         packetCount++
                         if (packetCount <= 10 || packetCount % 100 == 0) {
-                            Log.d(TAG, "Received packet #$packetCount, length=$length bytes")
+                            Timber.d("Received packet #$packetCount, length=$length bytes")
                         }
                         try {
                             // IMPORTANT: Copy the packet data since buffer is reused
@@ -536,18 +550,18 @@ class ContentFilterVpnService : VpnService() {
                             // Handle packet without blocking the main loop
                             handlePacketAsync(packetCopy, length, outputStream)
                         } catch (e: Exception) {
-                            Log.w(TAG, "Error handling packet: ${e.message}")
+                            Timber.w("Error handling packet: ${e.message}")
                             Timber.w(e, "Error handling packet")
                         }
                     }
                 }
             } catch (e: Exception) {
                 if (isActive) {
-                    Log.e(TAG, "Filtering loop error", e)
+                    Timber.e(e, "Filtering loop error")
                     Timber.e(e, "Filtering loop error")
                 }
             } finally {
-                Log.d(TAG, "Filtering loop ending, total packets processed: $packetCount")
+                Timber.d("Filtering loop ending, total packets processed: $packetCount")
                 // Cancel all DNS forwarding coroutines BEFORE closing streams
                 dnsJob.cancel()
                 dnsForwardingScope = null
@@ -559,7 +573,7 @@ class ContentFilterVpnService : VpnService() {
             }
         }
 
-        Log.d(TAG, "Filtering coroutine launched")
+        Timber.d("Filtering coroutine launched")
         Timber.d("Filtering started")
     }
 
@@ -589,7 +603,7 @@ class ContentFilterVpnService : VpnService() {
 
                 outputStream.write(data, 0, length)
             } catch (e: Exception) {
-                Log.w(TAG, "Error writing to VPN: ${e.message}")
+                Timber.w("Error writing to VPN: ${e.message}")
             }
         }
     }
@@ -599,8 +613,8 @@ class ContentFilterVpnService : VpnService() {
      */
     private fun logDnsResponsePacket(packet: ByteArray, length: Int, ihl: Int) {
         try {
-            Log.d(TAG, "=== DNS RESPONSE PACKET DEBUG ===")
-            Log.d(TAG, "Total packet length: $length bytes")
+            Timber.d("=== DNS RESPONSE PACKET DEBUG ===")
+            Timber.d("Total packet length: $length bytes")
 
             // IP Header info
             val version = (packet[0].toInt() shr 4) and 0xF
@@ -610,14 +624,14 @@ class ContentFilterVpnService : VpnService() {
             val dstIp = "${packet[16].toInt() and 0xFF}.${packet[17].toInt() and 0xFF}.${packet[18].toInt() and 0xFF}.${packet[19].toInt() and 0xFF}"
             val ipChecksum = ((packet[10].toInt() and 0xFF) shl 8) or (packet[11].toInt() and 0xFF)
 
-            Log.d(TAG, "IP: ver=$version, ihl=$ihl, totalLen=$totalLength, ttl=$ttl")
-            Log.d(TAG, "IP: src=$srcIp -> dst=$dstIp")
-            Log.d(TAG, "IP: checksum=0x${ipChecksum.toString(16).padStart(4, '0')}")
+            Timber.d("IP: ver=$version, ihl=$ihl, totalLen=$totalLength, ttl=$ttl")
+            Timber.d("IP: src=$srcIp -> dst=$dstIp")
+            Timber.d("IP: checksum=0x${ipChecksum.toString(16).padStart(4, '0')}")
 
             // Verify IP checksum by summing all header bytes including checksum
             // If valid, result should be 0xFFFF (or one's complement = 0x0000)
             val verifyResult = verifyIpChecksum(packet, ihl)
-            Log.d(TAG, "IP: checksum valid=$verifyResult")
+            Timber.d("IP: checksum valid=$verifyResult")
 
             // UDP Header info
             val srcPort = ((packet[ihl].toInt() and 0xFF) shl 8) or (packet[ihl + 1].toInt() and 0xFF)
@@ -625,7 +639,7 @@ class ContentFilterVpnService : VpnService() {
             val udpLength = ((packet[ihl + 4].toInt() and 0xFF) shl 8) or (packet[ihl + 5].toInt() and 0xFF)
             val udpChecksum = ((packet[ihl + 6].toInt() and 0xFF) shl 8) or (packet[ihl + 7].toInt() and 0xFF)
 
-            Log.d(TAG, "UDP: srcPort=$srcPort, dstPort=$dstPort, len=$udpLength, checksum=0x${udpChecksum.toString(16).padStart(4, '0')}")
+            Timber.d("UDP: srcPort=$srcPort, dstPort=$dstPort, len=$udpLength, checksum=0x${udpChecksum.toString(16).padStart(4, '0')}")
 
             // DNS Header info (if present)
             if (length >= ihl + 8 + 12) {
@@ -645,14 +659,14 @@ class ContentFilterVpnService : VpnService() {
                 val ra = (flags shr 7) and 0x1
                 val rcode = flags and 0xF
 
-                Log.d(TAG, "DNS: txId=0x${transactionId.toString(16).padStart(4, '0')}")
-                Log.d(TAG, "DNS: flags=0x${flags.toString(16).padStart(4, '0')} (QR=$qr, Opcode=$opcode, AA=$aa, TC=$tc, RD=$rd, RA=$ra, RCODE=$rcode)")
-                Log.d(TAG, "DNS: qdCount=$qdCount, anCount=$anCount, nsCount=$nsCount, arCount=$arCount")
+                Timber.d("DNS: txId=0x${transactionId.toString(16).padStart(4, '0')}")
+                Timber.d("DNS: flags=0x${flags.toString(16).padStart(4, '0')} (QR=$qr, Opcode=$opcode, AA=$aa, TC=$tc, RD=$rd, RA=$ra, RCODE=$rcode)")
+                Timber.d("DNS: qdCount=$qdCount, anCount=$anCount, nsCount=$nsCount, arCount=$arCount")
 
                 // Extract domain from question section
                 if (qdCount > 0 && length > dnsOffset + 12) {
                     val domain = extractDomainFromDnsAtOffset(packet, dnsOffset + 12)
-                    Log.d(TAG, "DNS: domain=$domain")
+                    Timber.d("DNS: domain=$domain")
                 }
 
                 // Log first few bytes of DNS payload for debugging
@@ -660,12 +674,12 @@ class ContentFilterVpnService : VpnService() {
                 val dnsBytes = packet.slice(dnsOffset until dnsOffset + dnsPayloadLen).joinToString(" ") {
                     String.format("%02X", it.toInt() and 0xFF)
                 }
-                Log.d(TAG, "DNS: first bytes: $dnsBytes")
+                Timber.d("DNS: first bytes: $dnsBytes")
             }
 
-            Log.d(TAG, "=== END DNS RESPONSE DEBUG ===")
+            Timber.d("=== END DNS RESPONSE DEBUG ===")
         } catch (e: Exception) {
-            Log.w(TAG, "Error in DNS debug logging: ${e.message}")
+            Timber.w("Error in DNS debug logging: ${e.message}")
         }
     }
 
@@ -732,7 +746,7 @@ class ContentFilterVpnService : VpnService() {
             return
         } else if (version != 4) {
             // Unknown IP version - drop packet
-            Log.w(TAG, "Dropping packet with unknown IP version: $version")
+            Timber.w("Dropping packet with unknown IP version: $version")
             return
         }
 
@@ -758,13 +772,13 @@ class ContentFilterVpnService : VpnService() {
             // Block DNS-over-TLS (port 853) to prevent Private DNS bypass
             if (tcpDstPort == 853) {
                 val dstIpStr = "${buffer[16].toInt() and 0xFF}.${buffer[17].toInt() and 0xFF}.${buffer[18].toInt() and 0xFF}.${buffer[19].toInt() and 0xFF}"
-                Log.w(TAG, ">>> BLOCKING DNS-over-TLS connection to $dstIpStr:853 (Private DNS bypass prevention)")
+                Timber.w(">>> BLOCKING DNS-over-TLS connection to $dstIpStr:853 (Private DNS bypass prevention)")
                 // Drop the packet - don't respond, connection will timeout
                 return
             }
 
             // Any other TCP traffic to DNS servers is unexpected - drop it
-            Log.d(TAG, "Dropping unexpected TCP packet to DNS server (port $tcpDstPort)")
+            Timber.d("Dropping unexpected TCP packet to DNS server (port $tcpDstPort)")
             return
         }
 
@@ -797,21 +811,21 @@ class ContentFilterVpnService : VpnService() {
                             "9.9.9.9", "149.112.112.112" -> "QUAD9_DNS"
                             else -> "OTHER_DNS($dstIpStr)"
                         }
-                        Log.d(TAG, ">>> DNS QUERY [$dnsServerType]: $domain (txId=0x${txId.toString(16).padStart(4, '0')}, src=$srcIpStr:$srcPort -> dst=$dstIpStr:$dstPort)")
+                        Timber.d(">>> DNS QUERY [$dnsServerType]: $domain (txId=0x${txId.toString(16).padStart(4, '0')}, src=$srcIpStr:$srcPort -> dst=$dstIpStr:$dstPort)")
                         Timber.d("DNS query for: $domain")
 
                         if (shouldBlockDomain(domain)) {
-                            Log.w(TAG, ">>> BLOCKING: $domain (txId=0x${txId.toString(16).padStart(4, '0')})")
+                            Timber.w(">>> BLOCKING: $domain (txId=0x${txId.toString(16).padStart(4, '0')})")
                             Timber.d("BLOCKING DNS for: $domain")
 
                             // Send blocked DNS response (synchronous - fast operation)
                             val blockedResponse = createBlockedDnsResponse(buffer, length, ihl, dnsData)
                             if (blockedResponse != null) {
-                                Log.d(TAG, ">>> Writing BLOCKED response to VPN (${blockedResponse.size} bytes)")
+                                Timber.d(">>> Writing BLOCKED response to VPN (${blockedResponse.size} bytes)")
                                 writeToVpn(outputStream, blockedResponse)
-                                Log.d(TAG, ">>> BLOCKED response written successfully")
+                                Timber.d(">>> BLOCKED response written successfully")
                             } else {
-                                Log.e(TAG, ">>> FAILED to create blocked DNS response!")
+                                Timber.e(">>> FAILED to create blocked DNS response!")
                             }
 
                             // Send alert for content blocks (not for DoH server blocks)
@@ -827,7 +841,7 @@ class ContentFilterVpnService : VpnService() {
                 if (!isShuttingDown) {
                     dnsForwardingScope?.launch {
                         forwardDnsQueryAsync(buffer, length, ihl, outputStream)
-                    } ?: Log.w(TAG, "DNS forwarding scope not available, dropping query")
+                    } ?: Timber.w("DNS forwarding scope not available, dropping query")
                 }
                 return
             }
@@ -835,7 +849,7 @@ class ContentFilterVpnService : VpnService() {
 
         // Drop all other packets - they shouldn't reach here since we only route DNS server IPs
         // Non-DNS traffic to DNS servers is unexpected
-        Log.d(TAG, "Dropping unexpected packet: protocol=$protocol")
+        Timber.d("Dropping unexpected packet: protocol=$protocol")
     }
 
     /**
@@ -852,7 +866,7 @@ class ContentFilterVpnService : VpnService() {
      */
     private fun handleIpv6Packet(buffer: ByteArray, length: Int, outputStream: FileOutputStream) {
         if (length < 40) {
-            Log.w(TAG, "IPv6 packet too short: $length bytes")
+            Timber.w("IPv6 packet too short: $length bytes")
             return
         }
 
@@ -878,11 +892,11 @@ class ContentFilterVpnService : VpnService() {
             val tcpDstPort = byteBuffer.short.toInt() and 0xFFFF
 
             if (tcpDstPort == 853) {
-                Log.w(TAG, ">>> BLOCKING IPv6 DNS-over-TLS connection on port 853")
+                Timber.w(">>> BLOCKING IPv6 DNS-over-TLS connection on port 853")
                 return
             }
 
-            Log.d(TAG, "Dropping unexpected IPv6 TCP packet (port $tcpDstPort)")
+            Timber.d("Dropping unexpected IPv6 TCP packet (port $tcpDstPort)")
             return
         }
 
@@ -896,7 +910,7 @@ class ContentFilterVpnService : VpnService() {
             if (dstPort == 53 && length >= ipv6HeaderLength + 8 + 12) {
                 val dnsDataLength = udpLength - 8
                 if (dnsDataLength <= 0 || ipv6HeaderLength + 8 + dnsDataLength > length) {
-                    Log.w(TAG, "Invalid IPv6 DNS packet length")
+                    Timber.w("Invalid IPv6 DNS packet length")
                     return
                 }
 
@@ -907,10 +921,10 @@ class ContentFilterVpnService : VpnService() {
 
                     val domain = extractDomainFromDns(dnsData)
                     if (domain != null) {
-                        Log.d(TAG, ">>> IPv6 DNS QUERY: $domain")
+                        Timber.d(">>> IPv6 DNS QUERY: $domain")
 
                         if (shouldBlockDomain(domain)) {
-                            Log.w(TAG, ">>> BLOCKING IPv6 DNS: $domain")
+                            Timber.w(">>> BLOCKING IPv6 DNS: $domain")
                             val blockedResponse = createBlockedIpv6DnsResponse(buffer, length, dnsData)
                             if (blockedResponse != null) {
                                 writeToVpn(outputStream, blockedResponse)
@@ -925,7 +939,7 @@ class ContentFilterVpnService : VpnService() {
                         if (!isShuttingDown) {
                             dnsForwardingScope?.launch {
                                 forwardIpv6DnsQueryAsync(buffer, length, outputStream)
-                            } ?: Log.w(TAG, "DNS forwarding scope not available, dropping IPv6 query")
+                            } ?: Timber.w("DNS forwarding scope not available, dropping IPv6 query")
                         }
                         return
                     }
@@ -934,7 +948,7 @@ class ContentFilterVpnService : VpnService() {
         }
 
         // Drop other IPv6 packets
-        Log.d(TAG, "Dropping unexpected IPv6 packet: nextHeader=$nextHeader")
+        Timber.d("Dropping unexpected IPv6 packet: nextHeader=$nextHeader")
     }
 
     /**
@@ -1026,10 +1040,10 @@ class ContentFilterVpnService : VpnService() {
             // DNS response
             System.arraycopy(dnsResponse, 0, responsePacket, udpOffset + 8, dnsResponse.size)
 
-            Log.d(TAG, "IPv6 BLOCKED DNS response created: ${responsePacket.size} bytes")
+            Timber.d("IPv6 BLOCKED DNS response created: ${responsePacket.size} bytes")
             return responsePacket
         } catch (e: Exception) {
-            Log.e(TAG, "Error creating IPv6 blocked DNS response", e)
+            Timber.e(e, "Error creating IPv6 blocked DNS response")
             return null
         }
     }
@@ -1080,11 +1094,11 @@ class ContentFilterVpnService : VpnService() {
                         receiveBuffer.flip()
                         dnsResponse = ByteArray(bytesRead)
                         receiveBuffer.get(dnsResponse)
-                        Log.d(TAG, "IPv6 DNS forwarded via IPv4 to $dnsServer for $domain")
+                        Timber.d("IPv6 DNS forwarded via IPv4 to $dnsServer for $domain")
                         break
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "DNS server $dnsServer failed for IPv6 query: ${e.message}")
+                    Timber.w("DNS server $dnsServer failed for IPv6 query: ${e.message}")
                 } finally {
                     try { channel?.close() } catch (_: Exception) {}
                 }
@@ -1120,12 +1134,12 @@ class ContentFilterVpnService : VpnService() {
                 System.arraycopy(dnsResponse, 0, responsePacket, udpOffset + 8, dnsResponse.size)
 
                 writeToVpn(outputStream, responsePacket)
-                Log.d(TAG, ">>> IPv6 DNS FORWARDED response written")
+                Timber.d(">>> IPv6 DNS FORWARDED response written")
             } else {
-                Log.e(TAG, "All DNS servers failed for IPv6 query: $domain")
+                Timber.e("All DNS servers failed for IPv6 query: $domain")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error forwarding IPv6 DNS query", e)
+            Timber.e(e, "Error forwarding IPv6 DNS query")
         }
     }
 
@@ -1175,7 +1189,7 @@ class ContentFilterVpnService : VpnService() {
         if (essentialDomains.any { domainLower.endsWith(it) || domainLower == it }) {
             // Exception: still block DOH servers even if on essential list
             if (!dohServers.any { domainLower.contains(it) }) {
-                Log.d(TAG, "ALLOWING essential domain: $domain")
+                Timber.d("ALLOWING essential domain: $domain")
                 return false
             }
         }
@@ -1183,7 +1197,7 @@ class ContentFilterVpnService : VpnService() {
         // Block DNS-over-HTTPS servers to force browsers to use regular DNS
         // This ensures our DNS filtering works even with modern browsers
         if (dohServers.any { domainLower.contains(it) }) {
-            Log.d(TAG, "Blocking DoH server: $domain")
+            Timber.d("Blocking DoH server: $domain")
             return true
         }
 
@@ -1228,7 +1242,7 @@ class ContentFilterVpnService : VpnService() {
             // block all social media using the default list
             val matchedSocialMedia = socialMediaDomains.find { domainLower.endsWith(it) || domainLower == it }
             if (matchedSocialMedia != null) {
-                Log.d(TAG, "BLOCKING social media domain (all): $domain (matched: $matchedSocialMedia)")
+                Timber.d("BLOCKING social media domain (all): $domain (matched: $matchedSocialMedia)")
                 return true
             }
         }
@@ -1258,7 +1272,7 @@ class ContentFilterVpnService : VpnService() {
 
         // Don't send alerts for essential domains (in case they were blocked erroneously)
         if (essentialDomains.any { domainLower.endsWith(it) || domainLower == it }) {
-            Log.w(TAG, "Skipping alert for essential domain: $domain")
+            Timber.w("Skipping alert for essential domain: $domain")
             return
         }
 
@@ -1321,7 +1335,7 @@ class ContentFilterVpnService : VpnService() {
         packet[10] = ((checksum shr 8) and 0xFF).toByte()
         packet[11] = (checksum and 0xFF).toByte()
 
-        Log.d(TAG, "IP checksum set to 0x${checksum.toString(16).padStart(4, '0')}")
+        Timber.d("IP checksum set to 0x${checksum.toString(16).padStart(4, '0')}")
     }
 
     /**
@@ -1337,12 +1351,12 @@ class ContentFilterVpnService : VpnService() {
         try {
             // Log the incoming query for debugging
             val queryTxId = ((dnsQuery[0].toInt() and 0xFF) shl 8) or (dnsQuery[1].toInt() and 0xFF)
-            Log.d(TAG, "Creating BLOCKED DNS response for txId=0x${queryTxId.toString(16).padStart(4, '0')}")
+            Timber.d("Creating BLOCKED DNS response for txId=0x${queryTxId.toString(16).padStart(4, '0')}")
 
             // Find the end of the question section
             val questionEnd = findQuestionEnd(dnsQuery)
             if (questionEnd < 0) {
-                Log.e(TAG, "Failed to find question end in DNS query")
+                Timber.e("Failed to find question end in DNS query")
                 return null
             }
 
@@ -1355,7 +1369,7 @@ class ContentFilterVpnService : VpnService() {
             val isAAAA = (qtype == 28) // AAAA record type
             val rdataLength = if (isAAAA) 16 else 4 // IPv6 = 16 bytes, IPv4 = 4 bytes
 
-            Log.d(TAG, "Query type: ${if (isAAAA) "AAAA (IPv6)" else "A (IPv4)"}, QTYPE=$qtype")
+            Timber.d("Query type: ${if (isAAAA) "AAAA (IPv6)" else "A (IPv4)"}, QTYPE=$qtype")
 
             // DNS Response structure:
             // Header (12 bytes) + Question Section + Answer Section
@@ -1451,11 +1465,11 @@ class ContentFilterVpnService : VpnService() {
             // Copy DNS response data
             System.arraycopy(dnsResponse, 0, responsePacket, udpOffset + 8, dnsResponse.size)
 
-            Log.d(TAG, "BLOCKED DNS response created: ${responsePacket.size} bytes, DNS size=${dnsResponse.size}")
+            Timber.d("BLOCKED DNS response created: ${responsePacket.size} bytes, DNS size=${dnsResponse.size}")
 
             return responsePacket
         } catch (e: Exception) {
-            Log.e(TAG, "Error creating blocked DNS response", e)
+            Timber.e(e, "Error creating blocked DNS response")
             Timber.w(e, "Error creating blocked DNS response")
             return null
         }
@@ -1504,12 +1518,12 @@ class ContentFilterVpnService : VpnService() {
                     // CRITICAL: Protect the socket BEFORE binding or connecting
                     val protected = protect(socket)
                     if (!protected) {
-                        Log.w(TAG, "Failed to protect channel socket for DNS server $dnsServer")
+                        Timber.w("Failed to protect channel socket for DNS server $dnsServer")
                         channel.close()
                         continue
                     }
 
-                    Log.d(TAG, "Socket protected for $dnsServer, forwarding query for $domain")
+                    Timber.d("Socket protected for $dnsServer, forwarding query for $domain")
 
                     // Now bind and set timeout
                     socket.bind(null) // Bind to any available local port
@@ -1531,11 +1545,11 @@ class ContentFilterVpnService : VpnService() {
                         receiveBuffer.flip()
                         dnsResponse = ByteArray(bytesRead)
                         receiveBuffer.get(dnsResponse)
-                        Log.d(TAG, "DNS response received from $dnsServer for $domain, $bytesRead bytes")
+                        Timber.d("DNS response received from $dnsServer for $domain, $bytesRead bytes")
                         break
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "DNS server $dnsServer failed for $domain: ${e.message}")
+                    Timber.w("DNS server $dnsServer failed for $domain: ${e.message}")
                     Timber.w("DNS server $dnsServer failed: ${e.message}")
                 } finally {
                     try {
@@ -1549,7 +1563,7 @@ class ContentFilterVpnService : VpnService() {
             if (dnsResponse != null) {
                 // Log the real DNS response for debugging
                 val responseTxId = ((dnsResponse[0].toInt() and 0xFF) shl 8) or (dnsResponse[1].toInt() and 0xFF)
-                Log.d(TAG, "Building FORWARDED response packet, DNS txId=0x${responseTxId.toString(16).padStart(4, '0')}")
+                Timber.d("Building FORWARDED response packet, DNS txId=0x${responseTxId.toString(16).padStart(4, '0')}")
 
                 // Build response packet
                 val responseLength = ipHeaderLength + 8 + dnsResponse.size
@@ -1589,18 +1603,18 @@ class ContentFilterVpnService : VpnService() {
                 // DNS response data
                 System.arraycopy(dnsResponse, 0, responsePacket, udpOffset + 8, dnsResponse.size)
 
-                Log.d(TAG, ">>> Writing FORWARDED response to VPN (${responsePacket.size} bytes)")
+                Timber.d(">>> Writing FORWARDED response to VPN (${responsePacket.size} bytes)")
                 writeToVpn(outputStream, responsePacket)
-                Log.d(TAG, ">>> FORWARDED response written successfully")
+                Timber.d(">>> FORWARDED response written successfully")
             } else {
                 // All DNS servers failed - try system DNS resolution as fallback
-                Log.w(TAG, "All DNS servers failed for $domain, trying system resolver fallback")
+                Timber.w("All DNS servers failed for $domain, trying system resolver fallback")
                 val fallbackResponse = trySystemDnsResolver(domain, dnsQuery, originalPacket, originalLength, ipHeaderLength)
                 if (fallbackResponse != null) {
                     writeToVpn(outputStream, fallbackResponse)
                 } else {
                     // Return SERVFAIL response
-                    Log.e(TAG, "System DNS fallback also failed for $domain")
+                    Timber.e("System DNS fallback also failed for $domain")
                     val servFailResponse = createServFailDnsResponse(originalPacket, originalLength, ipHeaderLength, dnsQuery)
                     if (servFailResponse != null) {
                         writeToVpn(outputStream, servFailResponse)
@@ -1608,7 +1622,7 @@ class ContentFilterVpnService : VpnService() {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error forwarding DNS query", e)
+            Timber.e(e, "Error forwarding DNS query")
             Timber.w(e, "Error forwarding DNS query")
         }
     }
@@ -1635,7 +1649,7 @@ class ContentFilterVpnService : VpnService() {
             val ipv4Address = addresses.firstOrNull { it.address.size == 4 }
                 ?: return null
 
-            Log.d(TAG, "System DNS resolved $domain to ${ipv4Address.hostAddress}")
+            Timber.d("System DNS resolved $domain to ${ipv4Address.hostAddress}")
 
             // Build a synthetic DNS response with the resolved IP
             createSyntheticDnsResponse(
@@ -1646,7 +1660,7 @@ class ContentFilterVpnService : VpnService() {
                 ipv4Address.address
             )
         } catch (e: Exception) {
-            Log.w(TAG, "System DNS fallback failed for $domain: ${e.message}")
+            Timber.w("System DNS fallback failed for $domain: ${e.message}")
             null
         }
     }
@@ -1750,7 +1764,7 @@ class ContentFilterVpnService : VpnService() {
             // DNS response data
             System.arraycopy(dnsResponse, 0, responsePacket, udpOffset + 8, dnsResponse.size)
 
-            Log.d(TAG, "Synthetic DNS response created: ${responsePacket.size} bytes")
+            Timber.d("Synthetic DNS response created: ${responsePacket.size} bytes")
             return responsePacket
         } catch (e: Exception) {
             Timber.w(e, "Error creating synthetic DNS response")
@@ -1840,7 +1854,7 @@ class ContentFilterVpnService : VpnService() {
             // DNS response
             System.arraycopy(dnsResponse, 0, responsePacket, udpOffset + 8, dnsResponse.size)
 
-            Log.d(TAG, "SERVFAIL DNS response created: ${responsePacket.size} bytes")
+            Timber.d("SERVFAIL DNS response created: ${responsePacket.size} bytes")
             return responsePacket
         } catch (e: Exception) {
             Timber.w(e, "Error creating SERVFAIL DNS response")
@@ -1864,6 +1878,38 @@ class ContentFilterVpnService : VpnService() {
         }
     }
 
+    /**
+     * Android calls this when another VPN app is prepared and takes over the single
+     * system VPN slot (e.g. the child launches ProtonVPN). Our tunnel is torn down and
+     * content filtering silently stops. Flag it so onDestroy sends the specific
+     * "another VPN app" alert, then stop ourselves - we cannot reclaim the slot while
+     * the other VPN holds it.
+     */
+    override fun onRevoke() {
+        Timber.w("onRevoke(): VPN slot taken by another app - content filter displaced")
+        revokedByForeignVpn = true
+        isActive = false
+        broadcastVpnState(false)
+
+        val wasSupposedToBeRunning = try {
+            preferencesManager.isContentFilteringEnabled && !preferencesManager.isParent
+        } catch (e: Exception) {
+            false
+        }
+        if (wasSupposedToBeRunning) {
+            val prefs = getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
+            val now = System.currentTimeMillis()
+            val lastAlert = prefs.getLong(KEY_LAST_VPN_DISCONNECT_ALERT, 0L)
+            if (now - lastAlert > VPN_DISCONNECT_ALERT_COOLDOWN_MS) {
+                prefs.edit().putLong(KEY_LAST_VPN_DISCONNECT_ALERT, now).apply()
+                sendForeignVpnAlert()
+            }
+        }
+
+        super.onRevoke()
+        stopVpn()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
 
@@ -1880,10 +1926,22 @@ class ContentFilterVpnService : VpnService() {
         refreshJob = null
         stopVpn()
 
-        // Send alert if VPN was disconnected unexpectedly (likely by user)
-        if (wasSupposedToBeRunning) {
-            Timber.w("VPN disconnected while content filtering was enabled - sending tamper alert")
-            sendVpnDisconnectAlert()
+        // Send alert if VPN was disconnected unexpectedly (likely by user) - but throttled.
+        // onDestroy also fires on routine START_STICKY recycles (memory pressure, config
+        // change), so alerting on every destroy spammed the parent with "VPN Content Filter
+        // Disabled" (15 in 5 days here). Gate it behind a cooldown; a real user-disable still
+        // surfaces, while OS churn is collapsed to at most one alert per window.
+        if (wasSupposedToBeRunning && !revokedByForeignVpn) {
+            val prefs = getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
+            val now = System.currentTimeMillis()
+            val lastAlert = prefs.getLong(KEY_LAST_VPN_DISCONNECT_ALERT, 0L)
+            if (now - lastAlert > VPN_DISCONNECT_ALERT_COOLDOWN_MS) {
+                Timber.w("VPN disconnected while content filtering was enabled - sending tamper alert")
+                prefs.edit().putLong(KEY_LAST_VPN_DISCONNECT_ALERT, now).apply()
+                sendVpnDisconnectAlert()
+            } else {
+                Timber.w("VPN disconnect alert suppressed (within ${VPN_DISCONNECT_ALERT_COOLDOWN_MS / 60000}min cooldown - likely an OS service recycle)")
+            }
         }
 
         serviceJob?.cancel()
@@ -1921,6 +1979,35 @@ class ContentFilterVpnService : VpnService() {
     }
 
     /**
+     * Send alert to parent when another VPN app displaced our content filter (onRevoke).
+     * Distinct from sendVpnDisconnectAlert() so the parent knows a third-party VPN is the
+     * cause, not that they turned filtering off themselves.
+     */
+    private fun sendForeignVpnAlert() {
+        try {
+            val workData = androidx.work.workDataOf(
+                com.safeguard.parentalcontrol.receiver.TamperDetectionReceiver.KEY_TAMPER_TYPE to "foreign_vpn",
+                com.safeguard.parentalcontrol.receiver.TamperDetectionReceiver.KEY_TAMPER_DETAILS to "Another VPN app took over the VPN slot; content filter stopped"
+            )
+
+            val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.safeguard.parentalcontrol.worker.TamperAlertWorker>()
+                .setInputData(workData)
+                .setConstraints(
+                    androidx.work.Constraints.Builder()
+                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                        .build()
+                )
+                .addTag(Constants.WORK_TAG_TAMPER_ALERT)
+                .build()
+
+            androidx.work.WorkManager.getInstance(this).enqueue(workRequest)
+            Timber.i("Foreign-VPN alert work enqueued")
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to enqueue foreign-VPN alert")
+        }
+    }
+
+    /**
      * Broadcast VPN state change to UI
      */
     private fun broadcastVpnState(isRunning: Boolean) {
@@ -1929,7 +2016,7 @@ class ContentFilterVpnService : VpnService() {
             setPackage(packageName)
         }
         sendBroadcast(intent)
-        Log.d(TAG, "Broadcast VPN state: isRunning=$isRunning")
+        Timber.d("Broadcast VPN state: isRunning=$isRunning")
     }
 
     companion object {
@@ -1938,6 +2025,22 @@ class ContentFilterVpnService : VpnService() {
         const val EXTRA_VPN_RUNNING = "vpn_running"
         const val CHANNEL_ID = "safeguard_vpn_channel"
         const val NOTIFICATION_ID = 1002
+
+        // Throttle for the onDestroy "VPN disconnected" tamper alert (see onDestroy).
+        private const val VPN_DISCONNECT_ALERT_COOLDOWN_MS = 15 * 60 * 1000L
+        private const val KEY_LAST_VPN_DISCONNECT_ALERT = "vpn_last_disconnect_alert"
+
+        /**
+         * True only while OUR content-filter tunnel is actually established (set after
+         * builder.establish() succeeds, cleared on teardown). This is the real liveness
+         * signal that ProtectionStatusHelper.isVpnConnected() reads - unlike
+         * VpnService.prepare()==null, which only reports whether we still hold VPN consent
+         * (it stays "granted" even when the tunnel is down), so it both missed genuine drops
+         * and flipped false on benign consent re-evaluation, minting false "VPN stopped" alerts.
+         */
+        @Volatile
+        var isActive: Boolean = false
+            internal set
 
         /**
          * Check if VPN is currently running using ConnectivityManager
@@ -1951,7 +2054,7 @@ class ContentFilterVpnService : VpnService() {
                     capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) == true
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error checking VPN state", e)
+                Timber.e(e, "Error checking VPN state")
                 false
             }
         }

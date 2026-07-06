@@ -21,12 +21,17 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.safeguard.parentalcontrol.data.model.UserRole
 import com.safeguard.parentalcontrol.presentation.auth.components.GoogleSignInButton
 import com.safeguard.parentalcontrol.presentation.auth.components.RoleSelectionDialog
+import com.safeguard.parentalcontrol.presentation.designsystem.HarisPrimaryButton
+import com.safeguard.parentalcontrol.presentation.designsystem.HarisTextField
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardDimens
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +42,6 @@ fun RegisterScreen(
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val focusManager = LocalFocusManager.current
     val context = LocalContext.current
 
     var fullName by remember { mutableStateOf("") }
@@ -49,11 +53,7 @@ fun RegisterScreen(
 
     LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) {
-            if (selectedRole == UserRole.CHILD) {
-                onNeedDeviceSetup()
-            } else {
-                onRegisterSuccess()
-            }
+            if (selectedRole == UserRole.CHILD) onNeedDeviceSetup() else onRegisterSuccess()
         }
     }
 
@@ -78,205 +78,19 @@ fun RegisterScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "I am a",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .selectableGroup(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                RoleOption(
-                    title = "Parent",
-                    description = "Monitor and manage children's devices",
-                    icon = Icons.Default.SupervisorAccount,
-                    selected = selectedRole == UserRole.PARENT,
-                    onClick = { selectedRole = UserRole.PARENT },
-                    modifier = Modifier.weight(1f)
-                )
-
-                RoleOption(
-                    title = "Child",
-                    description = "Device to be monitored",
-                    icon = Icons.Default.ChildCare,
-                    selected = selectedRole == UserRole.CHILD,
-                    onClick = { selectedRole = UserRole.CHILD },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            OutlinedTextField(
-                value = fullName,
-                onValueChange = { fullName = it },
-                label = { Text("Full Name") },
-                placeholder = { Text("Enter your name") },
-                leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Name") },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                ),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email") },
-                placeholder = { Text("Enter your email") },
-                leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Email") },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                ),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password") },
-                placeholder = { Text("At least 8 characters") },
-                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password") },
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (passwordVisible) "Hide password" else "Show password"
-                        )
-                    }
-                },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                ),
-                singleLine = true,
-                isError = password.isNotEmpty() && password.length < 8,
-                supportingText = {
-                    if (password.isNotEmpty() && password.length < 8) {
-                        Text("Password must be at least 8 characters")
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                label = { Text("Confirm Password") },
-                placeholder = { Text("Re-enter your password") },
-                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Confirm Password") },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = { focusManager.clearFocus() }
-                ),
-                singleLine = true,
-                isError = confirmPassword.isNotEmpty() && password != confirmPassword,
-                supportingText = {
-                    if (confirmPassword.isNotEmpty() && password != confirmPassword) {
-                        Text("Passwords do not match")
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            val isValid = fullName.isNotBlank() &&
-                    email.isNotBlank() &&
-                    password.length >= 8 &&
-                    password == confirmPassword
-
-            Button(
-                onClick = { viewModel.register(email, password, fullName, selectedRole) },
-                enabled = !uiState.isLoading && isValid,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-            ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    Text("Create Account")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Google Sign-In is always shown (FR-017, Edit 2). No status-flag gating.
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Divider(modifier = Modifier.weight(1f))
-                Text(
-                    text = "  OR  ",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Divider(modifier = Modifier.weight(1f))
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            GoogleSignInButton(
-                onClick = { viewModel.signInWithGoogle(context) },
-                isLoading = uiState.isGoogleSignInLoading,
-                enabled = !uiState.isLoading && !uiState.isGoogleSignInLoading
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "By creating an account, you agree to our Terms of Service and Privacy Policy",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-        }
+        RegisterContent(
+            modifier = Modifier.padding(padding),
+            fullName = fullName, onFullNameChange = { fullName = it },
+            email = email, onEmailChange = { email = it },
+            password = password, onPasswordChange = { password = it },
+            confirmPassword = confirmPassword, onConfirmPasswordChange = { confirmPassword = it },
+            passwordVisible = passwordVisible, onTogglePassword = { passwordVisible = !passwordVisible },
+            selectedRole = selectedRole, onRoleChange = { selectedRole = it },
+            isLoading = uiState.isLoading,
+            isGoogleLoading = uiState.isGoogleSignInLoading,
+            onRegister = { viewModel.register(email, password, fullName, selectedRole) },
+            onGoogleSignIn = { viewModel.signInWithGoogle(context) }
+        )
     }
 
     if (uiState.needsRoleSelection) {
@@ -284,6 +98,148 @@ fun RegisterScreen(
             onRoleSelected = { viewModel.completeGoogleRegistration(it) },
             onDismiss = { viewModel.cancelGoogleRoleSelection() }
         )
+    }
+}
+
+@Composable
+private fun RegisterContent(
+    fullName: String, onFullNameChange: (String) -> Unit,
+    email: String, onEmailChange: (String) -> Unit,
+    password: String, onPasswordChange: (String) -> Unit,
+    confirmPassword: String, onConfirmPasswordChange: (String) -> Unit,
+    passwordVisible: Boolean, onTogglePassword: () -> Unit,
+    selectedRole: UserRole, onRoleChange: (UserRole) -> Unit,
+    isLoading: Boolean,
+    isGoogleLoading: Boolean,
+    onRegister: () -> Unit,
+    onGoogleSignIn: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focusManager = LocalFocusManager.current
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = SafeGuardDimens.screenPadding)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
+
+        Text(text = "I am a", style = MaterialTheme.typography.titleMedium, modifier = Modifier.fillMaxWidth())
+
+        Spacer(modifier = Modifier.height(SafeGuardDimens.stackSm))
+
+        Row(
+            modifier = Modifier.fillMaxWidth().selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(SafeGuardDimens.gutter)
+        ) {
+            RoleOption(
+                title = "Parent",
+                description = "Monitor and manage children's devices",
+                icon = Icons.Default.SupervisorAccount,
+                selected = selectedRole == UserRole.PARENT,
+                onClick = { onRoleChange(UserRole.PARENT) },
+                modifier = Modifier.weight(1f)
+            )
+            RoleOption(
+                title = "Child",
+                description = "Device to be monitored",
+                icon = Icons.Default.ChildCare,
+                selected = selectedRole == UserRole.CHILD,
+                onClick = { onRoleChange(UserRole.CHILD) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(SafeGuardDimens.stackLg))
+
+        HarisTextField(
+            value = fullName, onValueChange = onFullNameChange, label = "Full Name",
+            placeholder = "Enter your name",
+            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
+
+        HarisTextField(
+            value = email, onValueChange = onEmailChange, label = "Email",
+            placeholder = "Enter your email",
+            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
+
+        HarisTextField(
+            value = password, onValueChange = onPasswordChange, label = "Password",
+            placeholder = "At least 8 characters",
+            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+            errorText = if (password.isNotEmpty() && password.length < 8) "Password must be at least 8 characters" else null,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
+
+        HarisTextField(
+            value = confirmPassword, onValueChange = onConfirmPasswordChange, label = "Confirm Password",
+            placeholder = "Re-enter your password",
+            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+            errorText = if (confirmPassword.isNotEmpty() && password != confirmPassword) "Passwords do not match" else null,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(SafeGuardDimens.stackLg))
+
+        val isValid = fullName.isNotBlank() && email.isNotBlank() &&
+                password.length >= 8 && password == confirmPassword
+
+        HarisPrimaryButton(
+            text = "Create Account",
+            onClick = onRegister,
+            enabled = !isLoading && isValid,
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = if (isLoading) {
+                { CircularProgressIndicator(Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp) }
+            } else null
+        )
+
+        Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
+
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Divider(modifier = Modifier.weight(1f))
+            Text("  OR  ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Divider(modifier = Modifier.weight(1f))
+        }
+
+        Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
+
+        GoogleSignInButton(
+            onClick = onGoogleSignIn,
+            isLoading = isGoogleLoading,
+            enabled = !isLoading && !isGoogleLoading
+        )
+
+        Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
+
+        Text(
+            text = "By creating an account, you agree to our Terms of Service and Privacy Policy",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = SafeGuardDimens.gutter)
+        )
+
+        Spacer(modifier = Modifier.height(SafeGuardDimens.stackLg))
     }
 }
 
@@ -297,63 +253,60 @@ private fun RoleOption(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier
-            .selectable(
-                selected = selected,
-                onClick = onClick,
-                role = Role.RadioButton
-            ),
+        modifier = modifier.selectable(selected = selected, onClick = onClick, role = Role.RadioButton),
         colors = CardDefaults.cardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
+            else MaterialTheme.colorScheme.surface
         ),
-        border = if (selected) {
-            CardDefaults.outlinedCardBorder()
-        } else {
-            null
-        }
+        border = if (selected) CardDefaults.outlinedCardBorder() else null
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(SafeGuardDimens.gutter),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(40.dp),
-                tint = if (selected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
+                modifier = Modifier.size(SafeGuardDimens.iconSizeLg),
+                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
+            Spacer(modifier = Modifier.height(SafeGuardDimens.stackSm))
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = if (selected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                }
+                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
             )
-
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (selected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
+                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
+}
+
+@Composable
+private fun RegisterPreviewContent() {
+    RegisterContent(
+        fullName = "Sara Ali", onFullNameChange = {},
+        email = "sara@haris.app", onEmailChange = {},
+        password = "secret12", onPasswordChange = {},
+        confirmPassword = "secret12", onConfirmPasswordChange = {},
+        passwordVisible = false, onTogglePassword = {},
+        selectedRole = UserRole.PARENT, onRoleChange = {},
+        isLoading = false, isGoogleLoading = false,
+        onRegister = {}, onGoogleSignIn = {}
+    )
+}
+
+@Preview(name = "Register · Light", showBackground = true)
+@Composable
+private fun RegisterScreenLightPreview() {
+    SafeGuardTheme(darkTheme = false) { Surface { RegisterPreviewContent() } }
+}
+
+@Preview(name = "Register · Dark", showBackground = true)
+@Composable
+private fun RegisterScreenDarkPreview() {
+    SafeGuardTheme(darkTheme = true) { Surface { RegisterPreviewContent() } }
 }

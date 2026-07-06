@@ -114,7 +114,10 @@ class ScreenTimeRepository @Inject constructor(
             Timber.d("  - ${app.packageName}: ${app.usageTime}s, date=${app.date}, lastUsed=${app.lastUsed}")
         }
 
-        val request = AppUsageBatch(apps = apps)
+        // Report the device's current UTC offset so the backend rolls "today" over at
+        // this device's local midnight (not the server's timezone).
+        val offsetMinutes = TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 60000
+        val request = AppUsageBatch(apps = apps, utcOffsetMinutes = offsetMinutes)
         val result = safeApiCall { apiService.updateAppUsage(deviceId, request) }
 
         result.onSuccess {

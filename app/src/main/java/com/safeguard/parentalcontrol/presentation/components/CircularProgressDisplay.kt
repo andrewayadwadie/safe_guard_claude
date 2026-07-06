@@ -156,7 +156,7 @@ fun GradientCircularProgress(
     modifier: Modifier = Modifier,
     size: Dp = SafeGuardDimens.progressSizeLg,
     strokeWidth: Dp = 10.dp,
-    gradientColors: List<Color> = listOf(SafeGuardBlue, SafeGuardBlueLight),
+    gradientColors: List<Color> = listOf(HarisPetrol, HarisPetrolLight),
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     animate: Boolean = true,
     showGlow: Boolean = true,
@@ -325,7 +325,7 @@ fun SemiCircularProgress(
     modifier: Modifier = Modifier,
     size: Dp = SafeGuardDimens.progressSizeLg,
     strokeWidth: Dp = 12.dp,
-    progressColor: Color = SafeGuardBlue,
+    progressColor: Color = HarisPetrol,
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     animate: Boolean = true,
     label: String? = null,
@@ -485,7 +485,7 @@ fun MultiRingProgress(
 data class RingData(
     val progress: Float,
     val color: Color,
-    val backgroundColor: Color = Color.LightGray.copy(alpha = 0.3f),
+    val backgroundColor: Color = SemanticColors.progressBackground.copy(alpha = 0.3f),
     val label: String? = null
 )
 

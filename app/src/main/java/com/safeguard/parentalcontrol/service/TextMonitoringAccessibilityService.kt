@@ -2,11 +2,15 @@ package com.safeguard.parentalcontrol.service
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import com.safeguard.parentalcontrol.BuildConfig
 import com.safeguard.parentalcontrol.data.repository.AlertRepository
 import com.safeguard.parentalcontrol.ml.ContentClassifier
+import com.safeguard.parentalcontrol.util.FlaggedTextStore
+import com.safeguard.parentalcontrol.util.PreferencesManager
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.AndroidEntryPoint
@@ -43,14 +47,14 @@ import javax.inject.Inject
 interface TextMonitoringAccessibilityServiceEntryPoint {
     fun alertRepository(): AlertRepository
     fun contentClassifier(): ContentClassifier
+    fun preferencesManager(): PreferencesManager
+    fun flaggedTextStore(): FlaggedTextStore
 }
 
 @AndroidEntryPoint
 class TextMonitoringAccessibilityService : AccessibilityService() {
 
     companion object {
-        private const val TAG = "TextMonitorAccessSvc"
-
         // Static flag to track if service has ever been created (survives service restarts)
         @Volatile
         var serviceEverCreated = false
@@ -59,7 +63,7 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
         init {
             // This logs when the class is LOADED (before any instance is created)
             // Using Log.d instead of Timber in case Timber isn't initialized yet
-            Log.d(TAG, "CLASS LOADED - TextMonitoringAccessibilityService class initialized")
+            Timber.d("CLASS LOADED - TextMonitoringAccessibilityService class initialized")
         }
     }
 
@@ -68,6 +72,12 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
 
     @Inject
     lateinit var contentClassifier: ContentClassifier
+
+    @Inject
+    lateinit var preferencesManager: PreferencesManager
+
+    @Inject
+    lateinit var flaggedTextStore: FlaggedTextStore
 
     // Stable CoroutineScope - created once, cancelled on destroy
     private lateinit var serviceJob: Job
@@ -86,34 +96,49 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
     // Flag to track if service is properly initialized
     private var isInitialized = false
 
+    // Home/launcher packages, resolved from the HOME intent so ANY OEM launcher is
+    // skipped (not just the hardcoded ones). Lazy + cached — the default launcher
+    // rarely changes during a session.
+    private val launcherPackages: Set<String> by lazy {
+        try {
+            val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            packageManager.queryIntentActivities(homeIntent, 0)
+                .mapNotNull { it.activityInfo?.packageName }
+                .toSet()
+        } catch (e: Exception) {
+            Timber.w("Could not resolve launcher packages: ${e.message}")
+            emptySet()
+        }
+    }
+
     override fun onCreate() {
         // Use Log.d first in case Timber isn't initialized yet
-        Log.d(TAG, "onCreate() CALLED - Service instance being created")
+        Timber.d("onCreate() CALLED - Service instance being created")
         serviceEverCreated = true
 
         super.onCreate()
-        Log.d(TAG, "onCreate() - super.onCreate() completed")
+        Timber.d("onCreate() - super.onCreate() completed")
 
         try {
             // Initialize coroutine scope with SupervisorJob for proper lifecycle management
             serviceJob = SupervisorJob()
             serviceScope = CoroutineScope(Dispatchers.Default + serviceJob)
-            Log.d(TAG, "onCreate() - CoroutineScope initialized")
+            Timber.d("onCreate() - CoroutineScope initialized")
 
             // Check if Hilt injection was successful
             isInitialized = try {
                 val repoInit = ::alertRepository.isInitialized
                 val classifierInit = ::contentClassifier.isInitialized
-                Log.d(TAG, "onCreate() - Hilt check: alertRepository=$repoInit, contentClassifier=$classifierInit")
+                Timber.d("onCreate() - Hilt check: alertRepository=$repoInit, contentClassifier=$classifierInit")
                 repoInit && classifierInit
             } catch (e: Exception) {
-                Log.w(TAG, "onCreate() - Hilt isInitialized check failed: ${e.message}")
+                Timber.w("onCreate() - Hilt isInitialized check failed: ${e.message}")
                 false
             }
 
             // If automatic Hilt injection failed, try manual injection via EntryPoint
             if (!isInitialized) {
-                Log.w(TAG, "onCreate() - Automatic Hilt injection failed, attempting manual injection")
+                Timber.w("onCreate() - Automatic Hilt injection failed, attempting manual injection")
                 Timber.w("TextMonitoringAccessibilityService: Automatic Hilt injection failed, attempting manual injection")
                 try {
                     val entryPoint = EntryPointAccessors.fromApplication(
@@ -122,32 +147,34 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
                     )
                     alertRepository = entryPoint.alertRepository()
                     contentClassifier = entryPoint.contentClassifier()
+                    preferencesManager = entryPoint.preferencesManager()
+                    flaggedTextStore = entryPoint.flaggedTextStore()
                     isInitialized = true
-                    Log.d(TAG, "onCreate() - Manual EntryPoint injection successful")
+                    Timber.d("onCreate() - Manual EntryPoint injection successful")
                     Timber.d("TextMonitoringAccessibilityService: Manual injection successful")
                 } catch (e: Exception) {
-                    Log.e(TAG, "onCreate() - Manual injection FAILED: ${e.message}", e)
+                    Timber.e(e, "onCreate() - Manual injection FAILED: ${e.message}")
                     Timber.e(e, "TextMonitoringAccessibilityService: Manual injection also failed")
                     isInitialized = false
                 }
             }
 
             if (!isInitialized) {
-                Log.e(TAG, "onCreate() - ALL INJECTION FAILED - service will NOT function")
+                Timber.e("onCreate() - ALL INJECTION FAILED - service will NOT function")
                 Timber.e("TextMonitoringAccessibilityService: All injection attempts failed - service will not function")
             } else {
-                Log.i(TAG, "onCreate() - SUCCESS - Service created and initialized")
+                Timber.i("onCreate() - SUCCESS - Service created and initialized")
                 Timber.d("TextMonitoringAccessibilityService created and initialized successfully")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "onCreate() - EXCEPTION during initialization: ${e.message}", e)
+            Timber.e(e, "onCreate() - EXCEPTION during initialization: ${e.message}")
             Timber.e(e, "TextMonitoringAccessibilityService: Error during onCreate")
             isInitialized = false
         }
     }
 
     override fun onServiceConnected() {
-        Log.i(TAG, "onServiceConnected() CALLED - Android has connected to our service!")
+        Timber.i("onServiceConnected() CALLED - Android has connected to our service!")
         super.onServiceConnected()
         Timber.d("TextMonitoringAccessibilityService connected")
 
@@ -164,11 +191,11 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
                         AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
                 notificationTimeout = 200
             }
-            Log.d(TAG, "onServiceConnected() - serviceInfo configured: eventTypes=${serviceInfo?.eventTypes}")
+            Timber.d("onServiceConnected() - serviceInfo configured: eventTypes=${serviceInfo?.eventTypes}")
 
             // Re-check initialization in case dependencies weren't ready during onCreate
             if (!isInitialized) {
-                Log.w(TAG, "onServiceConnected() - Not initialized in onCreate, retrying...")
+                Timber.w("onServiceConnected() - Not initialized in onCreate, retrying...")
                 Timber.w("TextMonitoringAccessibilityService: Not initialized during onCreate, retrying in onServiceConnected")
                 try {
                     val entryPoint = EntryPointAccessors.fromApplication(
@@ -177,19 +204,21 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
                     )
                     alertRepository = entryPoint.alertRepository()
                     contentClassifier = entryPoint.contentClassifier()
+                    preferencesManager = entryPoint.preferencesManager()
+                    flaggedTextStore = entryPoint.flaggedTextStore()
                     isInitialized = true
-                    Log.d(TAG, "onServiceConnected() - Late initialization SUCCESS")
+                    Timber.d("onServiceConnected() - Late initialization SUCCESS")
                     Timber.d("TextMonitoringAccessibilityService: Late initialization successful in onServiceConnected")
                 } catch (e: Exception) {
-                    Log.e(TAG, "onServiceConnected() - Late initialization FAILED: ${e.message}", e)
+                    Timber.e(e, "onServiceConnected() - Late initialization FAILED: ${e.message}")
                     Timber.e(e, "TextMonitoringAccessibilityService: Late initialization failed")
                 }
             }
 
-            Log.i(TAG, "onServiceConnected() COMPLETE - isInitialized=$isInitialized, ready for events")
+            Timber.i("onServiceConnected() COMPLETE - isInitialized=$isInitialized, ready for events")
             Timber.d("TextMonitoringAccessibilityService: isInitialized=$isInitialized, ready for text monitoring")
         } catch (e: Exception) {
-            Log.e(TAG, "onServiceConnected() EXCEPTION: ${e.message}", e)
+            Timber.e(e, "onServiceConnected() EXCEPTION: ${e.message}")
             Timber.e(e, "TextMonitoringAccessibilityService: Error in onServiceConnected")
         }
     }
@@ -209,7 +238,7 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
 
         // Skip if service isn't properly initialized (Hilt injection failed)
         if (!isInitialized) {
-            Log.w(TAG, "onAccessibilityEvent() - Not initialized, attempting on-demand injection")
+            Timber.w("onAccessibilityEvent() - Not initialized, attempting on-demand injection")
             // Try to re-initialize via EntryPoint (last resort)
             try {
                 val entryPoint = EntryPointAccessors.fromApplication(
@@ -218,14 +247,24 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
                 )
                 alertRepository = entryPoint.alertRepository()
                 contentClassifier = entryPoint.contentClassifier()
+                preferencesManager = entryPoint.preferencesManager()
+                flaggedTextStore = entryPoint.flaggedTextStore()
                 isInitialized = true
-                Log.d(TAG, "onAccessibilityEvent() - On-demand initialization SUCCESS")
+                Timber.d("onAccessibilityEvent() - On-demand initialization SUCCESS")
                 Timber.d("TextMonitoringAccessibilityService: On-demand initialization successful")
             } catch (e: Exception) {
                 // Still not initialized - silently skip this event
-                Log.e(TAG, "onAccessibilityEvent() - On-demand initialization FAILED: ${e.message}")
+                Timber.e("onAccessibilityEvent() - On-demand initialization FAILED: ${e.message}")
                 return
             }
+        }
+
+        // Consent gate: never read or classify on-screen text until the parent has
+        // accepted the in-app monitoring disclosure (Play Prominent Disclosure &
+        // Consent). The setup flow collects consent before this service can be enabled;
+        // this is defense-in-depth. Guarded so a failed injection can't crash here.
+        if (::preferencesManager.isInitialized && !preferencesManager.monitoringConsentGranted) {
+            return
         }
 
         // Rate limiting - prevent excessive CPU usage
@@ -276,7 +315,12 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
                     source.recycle()
                 }
             } else {
-                event.text?.joinToString(" ") ?: ""
+                // SECURITY: Check event-level password flag before using fallback text
+                if (event.isPassword) {
+                    ""
+                } else {
+                    event.text?.joinToString(" ") ?: ""
+                }
             }
         } catch (e: Exception) {
             Timber.v("Error extracting text from event: ${e.message}")
@@ -287,9 +331,10 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
         // Minimum 3 characters to catch single words like "sex", "porn", etc.
         if (extractedText.isBlank() || extractedText.length < 3) return
 
-        // Log extracted text for debugging (only log first 100 chars to avoid spam)
-        val textPreview = if (extractedText.length > 100) extractedText.take(100) + "..." else extractedText
-        Log.d(TAG, "Extracted text from $packageName ($eventTypeName): '$textPreview'")
+        // Log metadata only — NEVER log captured text content to Logcat
+        if (BuildConfig.DEBUG) {
+            Timber.d("Extracted text from $packageName ($eventTypeName): length=${extractedText.length}")
+        }
 
         // Schedule debounced analysis with already-extracted text
         pendingAnalysis[packageName] = serviceScope.launch {
@@ -300,12 +345,14 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
 
     private suspend fun handleTextEvent(text: String, packageName: String) {
         try {
-            Log.d(TAG, "handleTextEvent: Analyzing text from $packageName (${text.length} chars)")
-            Timber.d("Analyzing text from $packageName: length=${text.length}, preview='${text.take(50)}...'")
+            if (BuildConfig.DEBUG) {
+                Timber.d("handleTextEvent: Analyzing text from $packageName (${text.length} chars)")
+            }
+            Timber.d("Analyzing text from %s: length=%d", packageName, text.length)
             analyzeText(packageName, text)
         } catch (e: Exception) {
             if (e !is CancellationException) {
-                Log.e(TAG, "handleTextEvent: Error - ${e.message}")
+                Timber.e("handleTextEvent: Error - ${e.message}")
                 Timber.e(e, "Error handling text event")
             }
         }
@@ -344,10 +391,11 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
         val viewId = node.viewIdResourceName?.lowercase() ?: ""
         if (viewId.contains("password") ||
             viewId.contains("passwd") ||
-            viewId.contains("pin") ||
             viewId.contains("secret") ||
-            viewId.contains("credit") ||
-            viewId.contains("card") ||
+            viewId.contains("credit_card") ||
+            viewId.contains("creditcard") ||
+            viewId.contains("card_number") ||
+            viewId.contains("cardnumber") ||
             viewId.contains("cvv") ||
             viewId.contains("cvc") ||
             viewId.contains("ssn") ||
@@ -355,15 +403,26 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
             return true
         }
 
+        // Word-boundary-aware check for "pin" to avoid matching spinner, opinion, etc.
+        if (Regex("(^|[^a-z])pin([^a-z]|$)").containsMatchIn(viewId)) {
+            return true
+        }
+
         // Check content description and hint
         val contentDesc = node.contentDescription?.toString()?.lowercase() ?: ""
         val hintText = node.hintText?.toString()?.lowercase() ?: ""
 
-        val sensitiveKeywords = listOf("password", "pin", "credit card", "cvv", "security code", "ssn")
+        val sensitiveKeywords = listOf("password", "credit card", "cvv", "security code", "ssn")
         for (keyword in sensitiveKeywords) {
             if (contentDesc.contains(keyword) || hintText.contains(keyword)) {
                 return true
             }
+        }
+
+        // Word-boundary check for "pin" in content description and hint text
+        val pinPattern = Regex("\\bpin\\b", RegexOption.IGNORE_CASE)
+        if (pinPattern.containsMatchIn(contentDesc) || pinPattern.containsMatchIn(hintText)) {
+            return true
         }
 
         return false
@@ -386,6 +445,8 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
             try {
                 val child = node.getChild(i) ?: continue
                 try {
+                    // SECURITY: Skip password/sensitive fields in child nodes
+                    if (isPasswordField(child)) continue
                     child.text?.let { text.append(it).append(" ") }
                     extractChildText(child, text, depth + 1, maxDepth, maxLength)
                 } finally {
@@ -402,14 +463,25 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
 
     private suspend fun analyzeText(packageName: String, text: String) {
         try {
-            Log.d(TAG, "analyzeText: Calling contentClassifier.analyzeText()")
-            val result = contentClassifier.analyzeText(text)
-            Log.d(TAG, "analyzeText: Result - isFlagged=${result.isFlagged}, categories=${result.categories}, confidence=${result.confidence}")
+            Timber.d("analyzeText: Calling contentClassifier.analyzeText()")
+            val result = contentClassifier.analyzeText(text, packageName)
+            Timber.d("analyzeText: Result - isFlagged=${result.isFlagged}, categories=${result.categories}, confidence=${result.confidence}")
 
             if (result.isFlagged) {
                 val appName = getAppName(packageName)
-                Log.w(TAG, "FLAGGED! Inappropriate text detected in $packageName")
+                Timber.w("FLAGGED! Inappropriate text detected in $packageName")
                 Timber.w("FLAGGED: Inappropriate text in $packageName: categories=${result.categories}, confidence=${result.confidence}, reason=${result.reason}")
+
+                // Persist the flagged phrase on-device ONLY (never transmitted) so a parent
+                // can review it behind the PIN. Done independently of the alert below so every
+                // flagged phrase is reviewable even when the alert is deduped/cooled-down.
+                if (::flaggedTextStore.isInitialized) {
+                    flaggedTextStore.add(
+                        phrase = text,
+                        appName = appName ?: packageName,
+                        category = result.categories.firstOrNull() ?: "unknown"
+                    )
+                }
 
                 // Send alert with full context (categories, confidence, text for deduplication)
                 // Note: The actual text is only used for hashing (deduplication), never stored or transmitted
@@ -419,7 +491,8 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
                     reason = result.reason ?: result.categories.joinToString(", "),
                     categories = result.categories,
                     confidence = result.confidence,
-                    textForDedup = text // Used for hash-based deduplication only
+                    textForDedup = text, // Used for hash-based deduplication only
+                    severityLabel = result.severity // gating-computed severity (Stage-2); null => derived from category
                 )
 
                 alertResult.onSuccess {
@@ -438,15 +511,59 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
 
     private fun shouldSkipPackage(packageName: String): Boolean {
         // System apps and our own app
+        // NOTE: Only list actual system UI/infrastructure packages here.
+        // Do NOT add user-facing apps like com.android.chrome, com.android.mms,
+        // com.android.messaging, com.android.email, com.android.browser, com.android.vending
+        // — those should be monitored for child safety.
         val skipPackages = setOf(
             "com.safeguard.parentalcontrol",
+            // Android system UI & infrastructure
             "com.android.systemui",
+            // Home launchers — the home screen only shows app labels, never user-typed
+            // content, so monitoring it just produces false positives (e.g. the app
+            // drawer text being flagged). OEM launchers below; any other is caught
+            // dynamically via launcherPackages (resolved from the HOME intent).
             "com.android.launcher",
             "com.android.launcher3",
+            "com.sec.android.app.launcher",          // Samsung One UI Home
+            "com.google.android.apps.nexuslauncher",  // Pixel
+            "com.miui.home",                          // Xiaomi
+            "com.huawei.android.launcher",            // Huawei / Honor
+            "com.oppo.launcher",                      // Oppo
+            "com.oneplus.launcher",                   // OnePlus
+            "com.microsoft.launcher",                 // Microsoft Launcher
+            "com.teslacoilsw.launcher",               // Nova
             "com.android.settings",
-            "com.google.android.inputmethod.latin", // Keyboard
-            "com.samsung.android.honeyboard", // Samsung keyboard
-            "com.swiftkey.languageprovider" // SwiftKey
+            "com.android.providers.settings",
+            "com.android.providers.media",
+            "com.android.providers.contacts",
+            "com.android.providers.telephony",
+            "com.android.providers.calendar",
+            "com.android.providers.downloads",
+            "com.android.providers.userdictionary",
+            "com.android.providers.blockednumber",
+            "com.android.server.telecom",
+            "com.android.phone",
+            "com.android.incallui",
+            "com.android.stk",
+            "com.android.packageinstaller",
+            "com.android.permissioncontroller",
+            "com.android.shell",
+            "com.android.se",
+            "com.android.nfc",
+            "com.android.bluetooth",
+            "com.android.printspooler",
+            "com.android.wallpaper",
+            "com.android.wallpapercropper",
+            "com.android.documentsui",
+            "com.android.externalstorage",
+            "com.android.vpndialogs",
+            "com.android.certinstaller",
+            "com.android.carrierconfig",
+            // Keyboards
+            "com.google.android.inputmethod.latin",
+            "com.samsung.android.honeyboard",
+            "com.swiftkey.languageprovider"
         )
 
         // SECURITY: Sensitive apps we must NEVER monitor
@@ -473,6 +590,41 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
             "com.venmo",
             "com.squareup.cash",
             "com.zellepay.zelle",
+            // Additional banking & financial apps
+            "com.tdbank",
+            "com.pnc.ecommerce.mobile",
+            "com.huntington.m",
+            "com.key.android",
+            "com.regions.mobbanking",
+            "com.mtb.mbanking.sc.retail.prod",
+            "com.bbt.myfi",
+            "com.suntrust.mobilebanking",
+            "com.citizensbank.androidapp",
+            "com.discover.mobile",
+            "com.americanexpress.android.acctsvcs.us",
+            "com.navyfederal.android",
+            "com.usaa.mobile.android.usaa",
+            // Brokerage & investment
+            "com.robinhood.android",
+            "com.fidelity.android",
+            "com.etrade.mobilepro.activity",
+            "com.thinkorswim.tablet",
+            "com.interactivebrokers.ibkr",
+            "com.webull.broker",
+            // International banking
+            "com.rbs.mobile.android.natwest",
+            "com.barclays.android.barclaysmobilebanking",
+            "uk.co.hsbc.hsbcukmobilebanking",
+            "com.revolut.revolut",
+            "com.starlingbank.android",
+            "com.monzo.android",
+            "com.n26.android",
+            // Payment services
+            "com.google.android.apps.walletnfcrel",
+            "com.samsung.android.spay",
+            "com.stripe.android.dashboard",
+            "com.affirm.central",
+            "com.klarna.mobile",
             // Authenticators
             "com.google.android.apps.authenticator2",
             "com.microsoft.msa.authenticator",
@@ -486,18 +638,29 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
             "com.wallet.crypto.trustapp"
         )
 
-        if (packageName in skipPackages || packageName in sensitiveApps) {
+        if (packageName in skipPackages ||
+            packageName in sensitiveApps ||
+            packageName in launcherPackages
+        ) {
             return true
         }
 
-        // Skip by prefix patterns
-        if (packageName.startsWith("com.android.") ||
-            packageName.startsWith("com.google.android.inputmethod") ||
-            packageName.contains(".banking.") ||
-            packageName.contains(".bank.") ||
-            packageName.contains("password") ||
-            packageName.contains("authenticator") ||
-            packageName.contains("wallet")) {
+        // Skip by content patterns (banking, passwords, auth, wallets, finance, payments)
+        val lowerPkg = packageName.lowercase()
+        if (lowerPkg.contains("banking") ||
+            lowerPkg.contains(".bank.") ||
+            lowerPkg.contains("password") ||
+            lowerPkg.contains("authenticator") ||
+            lowerPkg.contains("wallet") ||
+            lowerPkg.contains("finance") ||
+            lowerPkg.contains("fintech") ||
+            lowerPkg.contains("payment") ||
+            lowerPkg.contains("invest") ||
+            lowerPkg.contains("brokerage") ||
+            lowerPkg.contains("insurance") ||
+            lowerPkg.contains("mortgage") ||
+            lowerPkg.contains("creditcard") ||
+            lowerPkg.contains("mobilebank")) {
             return true
         }
 
@@ -514,7 +677,7 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
-        Log.w(TAG, "onInterrupt() - Service interrupted by Android")
+        Timber.w("onInterrupt() - Service interrupted by Android")
         Timber.d("TextMonitoringAccessibilityService interrupted")
     }
 

@@ -168,7 +168,12 @@ data class AppUsageUpdate(
 )
 
 data class AppUsageBatch(
-    val apps: List<AppUsageUpdate>
+    val apps: List<AppUsageUpdate>,
+    // Device's current UTC offset in minutes (e.g. 180 for UTC+3). Lets the backend
+    // evaluate "today" in this device's local timezone so daily usage / top-apps roll
+    // over at the child's local midnight, not the server's.
+    @SerializedName("utc_offset_minutes")
+    val utcOffsetMinutes: Int? = null
 )
 
 data class AlertCreate(
@@ -515,11 +520,22 @@ data class CustomWordSyncResponse(
 // ========== Family Link Models ==========
 
 /**
- * Request to create a family link with a child
+ * Request to create a family link by redeeming a pairing code shown on the
+ * child's device. Linking by email was removed: knowing an email must not be
+ * enough to monitor a child.
  */
 data class FamilyLinkCreateRequest(
-    @SerializedName("child_email")
-    val childEmail: String
+    @SerializedName("pairing_code")
+    val pairingCode: String
+)
+
+/**
+ * Pairing code a child device generates for a parent to enter.
+ */
+data class PairingCodeResponse(
+    val code: String,
+    @SerializedName("expires_at")
+    val expiresAt: Date
 )
 
 /**
@@ -539,6 +555,24 @@ data class FamilyLink(
     @SerializedName("created_at")
     val createdAt: Date
 ) : Parcelable
+
+/**
+ * A parent account linked to this child (child-side view of the family link).
+ * All fields are nullable by design: the pairing gate only checks list emptiness,
+ * so a schema mismatch must degrade to nulls, never a parse crash.
+ */
+// TODO(backend): confirm exact field names for GET /family/parents.
+data class LinkedParent(
+    val id: Int?,
+    @SerializedName("parent_id")
+    val parentId: Int?,
+    @SerializedName("parent_email")
+    val parentEmail: String?,
+    @SerializedName("parent_name")
+    val parentName: String?,
+    @SerializedName("created_at")
+    val createdAt: Date?
+)
 
 /**
  * Response containing list of linked children with their devices

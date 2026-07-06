@@ -21,9 +21,11 @@ import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.SafeGuardApplication
 import com.safeguard.parentalcontrol.data.repository.AlertRepository
 import com.safeguard.parentalcontrol.data.repository.DeviceRepository
+import com.safeguard.parentalcontrol.data.repository.FamilyRepository
 import com.safeguard.parentalcontrol.data.repository.ScreenTimeRepository
 import com.safeguard.parentalcontrol.data.repository.ScreenTimeRulesRepository
 import com.safeguard.parentalcontrol.presentation.MainActivity
+import com.safeguard.parentalcontrol.presentation.lockscreen.LockOverlayController
 import com.safeguard.parentalcontrol.presentation.lockscreen.LockScreenActivity
 import com.safeguard.parentalcontrol.util.Constants
 import com.safeguard.parentalcontrol.util.PreferencesManager
@@ -64,6 +66,12 @@ class MonitoringService : Service() {
     @Inject
     lateinit var mediaFileObserver: MediaFileObserver
 
+    @Inject
+    lateinit var lockOverlayController: LockOverlayController
+
+    @Inject
+    lateinit var familyRepository: FamilyRepository
+
     // Proper CoroutineScope with lifecycle management
     private var serviceJob: Job? = null
     private val serviceScope: CoroutineScope
@@ -71,6 +79,15 @@ class MonitoringService : Service() {
 
     // Enforcement loop job
     private var enforcementJob: Job? = null
+
+    // Doze-proof heartbeat. last_sync was updated ONLY by SyncWorker (WorkManager periodic),
+    // which Doze defers to maintenance windows that can exceed the backend's 30-min offline
+    // threshold - so an idle-but-healthy child device went silent overnight and the parent got
+    // a false "Device offline" at 2am. A foreground service is exempt from Doze CPU limits, so
+    // we heartbeat from here; the device now reads offline only when it is genuinely off, has no
+    // network, or the service was actually killed.
+    private var heartbeatJob: Job? = null
+    private val HEARTBEAT_INTERVAL_MS = 10 * 60 * 1000L // 10 min (3 beats inside the 30-min window)
     // Adaptive intervals - fast when restrictions active, slow when idle
     private val ENFORCEMENT_CHECK_INTERVAL_FAST_MS = 3000L  // 3 seconds when restrictions active
     private val ENFORCEMENT_CHECK_INTERVAL_SLOW_MS = 15000L // 15 seconds when no restrictions
@@ -106,6 +123,21 @@ class MonitoringService : Service() {
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var lastNetworkSyncTime = 0L
     private val NETWORK_RESYNC_DEBOUNCE_MS = 10000L // avoid duplicate syncs on rapid network flaps
+
+    // --- onTaskRemoved restart circuit-breaker + alert throttle ---
+    // The task can be removed repeatedly in a tight cycle (lock-screen task re-parenting, OS
+    // task cleanup), not just by a deliberate "swipe away". Restarting on a 1s exact alarm each
+    // time and alerting the parent on every removal produced runaway CPU churn (load avg ~15)
+    // and dozens of false "Monitoring Service Stopped" alerts/day (bursts of 13 in 2 min).
+    // State is persisted because the cycle spans process deaths - an in-memory counter would
+    // reset every iteration and never trip the breaker.
+    private val RESTART_WINDOW_MS = 5 * 60 * 1000L                  // rolling window for restart accounting
+    private val MAX_RESTARTS_PER_WINDOW = 3                         // beyond this, breaker opens
+    private val RESTART_DELAY_MS = 5000L                            // restart backoff (was 1s)
+    private val SERVICE_STOPPED_ALERT_COOLDOWN_MS = 15 * 60 * 1000L // mirror ProtectionMonitorWorker's gate
+    private val KEY_RESTART_WINDOW_START = "monitoring_restart_window_start"
+    private val KEY_RESTART_COUNT = "monitoring_restart_count"
+    private val KEY_LAST_SERVICE_STOPPED_ALERT = "monitoring_last_service_stopped_alert"
 
     // Whitelisted phone/dialer apps - these should ALWAYS be allowed for emergency calls
     private val PHONE_DIALER_PACKAGES = setOf(
@@ -187,6 +219,18 @@ class MonitoringService : Service() {
         // Start as foreground service
         startForeground(Constants.NOTIFICATION_ID_MONITORING_SERVICE, createNotification())
 
+        // Consent gate. A parental-control monitoring service must not run until the
+        // parent has acknowledged the in-app monitoring disclosure (Google Play
+        // Prominent Disclosure & Consent). Every start path (boot, restart, sync, app
+        // open, manual) funnels through here, so this single check is the enforcement
+        // point. startForeground is already called above to honour the
+        // startForegroundService contract before we stop.
+        if (!preferencesManager.shouldRunMonitoring) {
+            Timber.w("MonitoringService start blocked: monitoring consent not granted")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         // Schedule periodic sync with WorkManager (battery efficient)
         // Only enqueue if not recently enqueued to prevent excessive job scheduling
         val now = System.currentTimeMillis()
@@ -200,25 +244,55 @@ class MonitoringService : Service() {
         // Perform initial sync
         performInitialSync()
 
+        // Keep the device heartbeat alive from the foreground service itself (Doze-proof),
+        // independent of the WorkManager SyncWorker that Doze defers.
+        startHeartbeatLoop()
+
         // Start enforcement loop (only for child devices)
         // Only start if not already running to prevent multiple loops
         val isParent = preferencesManager.isParent
         val userRole = preferencesManager.userRole
         Timber.d("MonitoringService: userRole=$userRole, isParent=$isParent, enforcementRunning=$isEnforcementLoopRunning")
 
-        if (!isParent && !isEnforcementLoopRunning) {
-            Timber.d("Starting enforcement loop for CHILD device")
-            startEnforcementLoop()
+        if (!isParent) {
+            // Pairing gate: a child device only starts monitoring once the backend has
+            // confirmed at least one linked parent (family link). Reads the CACHED flag
+            // so the decision is deterministic at startup and works offline.
+            if (preferencesManager.hasLinkedParent) {
+                if (!isEnforcementLoopRunning) {
+                    Timber.d("Child is paired -> starting enforcement + image monitoring")
+                    startEnforcementLoop()
 
-            // Start image monitoring for sexting prevention (child devices only)
-            startImageMonitoring()
-        } else if (!isParent && isEnforcementLoopRunning) {
-            Timber.d("Enforcement loop already running - skipping duplicate start")
+                    // Start image monitoring for sexting prevention (child devices only)
+                    startImageMonitoring()
+                } else {
+                    Timber.d("Enforcement loop already running - skipping duplicate start")
+                }
+            } else {
+                Timber.d("Child NOT yet paired -> monitoring gated; refreshing parent link")
+                refreshParentLinkAndMaybeStartMonitoring()
+            }
         } else {
-            Timber.d("Skipping enforcement loop for PARENT device")
+            Timber.d("Parent device -> skipping enforcement loop")
         }
 
         return START_STICKY
+    }
+
+    /**
+     * One-shot background check: if the backend confirms a linked parent, flip the
+     * cached flag and start monitoring. Network failures leave everything unchanged
+     * (a never-paired device simply stays gated until it can confirm a parent).
+     */
+    private fun refreshParentLinkAndMaybeStartMonitoring() {
+        serviceScope.launch {
+            val paired = familyRepository.refreshLinkedParentStatus()
+            if (paired && !isEnforcementLoopRunning) {
+                Timber.d("Parent link confirmed at runtime -> starting monitoring now")
+                startEnforcementLoop()
+                startImageMonitoring()
+            }
+        }
     }
 
     /**
@@ -248,6 +322,9 @@ class MonitoringService : Service() {
         enforcementJob?.cancel()
         enforcementJob = null
         isEnforcementLoopRunning = false
+        // Cancel heartbeat loop
+        heartbeatJob?.cancel()
+        heartbeatJob = null
         // Stop image monitoring
         try {
             mediaFileObserver.stopWatching()
@@ -263,6 +340,13 @@ class MonitoringService : Service() {
         }
         networkCallback = null
         connectivityManager = null
+        // Remove the lock overlay if up, so a dead service can't leak an orphaned window.
+        // START_STICKY restarts the service, which re-evaluates and re-shows if still locked.
+        try {
+            lockOverlayController.hide()
+        } catch (e: Exception) {
+            Timber.w(e, "Error hiding lock overlay on destroy")
+        }
         // Cancel all coroutines
         serviceJob?.cancel()
         serviceJob = null
@@ -275,7 +359,7 @@ class MonitoringService : Service() {
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        Timber.w("MonitoringService: onTaskRemoved called - potential tamper attempt")
+        Timber.w("MonitoringService: onTaskRemoved called")
 
         // Check if this is a child device that should be monitored
         val isChild = try {
@@ -283,12 +367,43 @@ class MonitoringService : Service() {
         } catch (e: Exception) {
             false
         }
+        if (!isChild) return
 
-        if (isChild) {
-            // Send tamper alert
+        val prefs = getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+
+        // Rolling-window restart accounting (persisted: the cycle spans process deaths).
+        var windowStart = prefs.getLong(KEY_RESTART_WINDOW_START, 0L)
+        var count = prefs.getInt(KEY_RESTART_COUNT, 0)
+        if (windowStart == 0L || now - windowStart > RESTART_WINDOW_MS) {
+            windowStart = now
+            count = 0
+        }
+        count++
+        prefs.edit()
+            .putLong(KEY_RESTART_WINDOW_START, windowStart)
+            .putInt(KEY_RESTART_COUNT, count)
+            .apply()
+
+        val breakerOpen = count > MAX_RESTARTS_PER_WINDOW
+
+        // Alert the parent only for a genuine, isolated stop - throttled to once per cooldown,
+        // and suppressed entirely while the breaker is open (a restart loop is not a tamper
+        // attempt, and 13 alerts in 2 minutes only trains parents to ignore them).
+        val lastAlert = prefs.getLong(KEY_LAST_SERVICE_STOPPED_ALERT, 0L)
+        if (!breakerOpen && now - lastAlert > SERVICE_STOPPED_ALERT_COOLDOWN_MS) {
             sendServiceStoppedAlert()
+            prefs.edit().putLong(KEY_LAST_SERVICE_STOPPED_ALERT, now).apply()
+        } else {
+            Timber.w("onTaskRemoved: service-stopped alert suppressed (breakerOpen=$breakerOpen, count=$count/$MAX_RESTARTS_PER_WINDOW)")
+        }
 
-            // Schedule service restart using AlarmManager (more reliable than WorkManager for immediate restart)
+        // Restart, but stop hammering once the breaker opens. START_STICKY plus the periodic
+        // ProtectionMonitorWorker still recover the service without the 1s alarm storm that
+        // was pinning the CPU.
+        if (breakerOpen) {
+            Timber.e("onTaskRemoved: restart circuit-breaker OPEN ($count restarts in ${RESTART_WINDOW_MS / 1000}s) - not rescheduling immediate restart")
+        } else {
             scheduleServiceRestart()
         }
     }
@@ -335,25 +450,49 @@ class MonitoringService : Service() {
 
             val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
 
-            // Schedule restart in 1 second
-            alarmManager.setExactAndAllowWhileIdle(
+            // Inexact, Doze-friendly restart. setExactAndAllowWhileIdle needs SCHEDULE_EXACT_ALARM
+            // on Android 12+ and throws SecurityException without it - that failure (then the 1s
+            // WorkManager fallback retrying) was part of what fed the restart loop. An inexact
+            // alarm a few seconds out is sufficient for recovery and needs no special permission.
+            alarmManager.setAndAllowWhileIdle(
                 android.app.AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis() + 1000,
+                System.currentTimeMillis() + RESTART_DELAY_MS,
                 pendingIntent
             )
 
-            Timber.i("Monitoring service restart scheduled via AlarmManager")
+            Timber.i("Monitoring service restart scheduled via AlarmManager (+${RESTART_DELAY_MS / 1000}s)")
         } catch (e: Exception) {
             Timber.e(e, "Failed to schedule service restart")
             // Fallback: use WorkManager
             try {
                 val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.safeguard.parentalcontrol.receiver.BootServiceStartWorker>()
-                    .setInitialDelay(1, java.util.concurrent.TimeUnit.SECONDS)
+                    .setInitialDelay(RESTART_DELAY_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
                     .build()
                 androidx.work.WorkManager.getInstance(this).enqueue(workRequest)
                 Timber.i("Service restart scheduled via WorkManager fallback")
             } catch (e2: Exception) {
                 Timber.e(e2, "WorkManager fallback also failed")
+            }
+        }
+    }
+
+    /**
+     * Periodically refresh the device heartbeat while the foreground service is alive.
+     * Runs for both parent and child devices (both report a heartbeat). Foreground services
+     * are exempt from Doze CPU restrictions, so this keeps last_sync fresh even when the
+     * device is idle overnight - which the Doze-deferred SyncWorker could not guarantee.
+     */
+    private fun startHeartbeatLoop() {
+        if (heartbeatJob?.isActive == true) return
+        heartbeatJob = serviceScope.launch {
+            while (isActive) {
+                try {
+                    deviceRepository.syncDevice()
+                    Timber.d("MonitoringService: heartbeat sent")
+                } catch (e: Exception) {
+                    Timber.w(e, "MonitoringService: heartbeat failed")
+                }
+                delay(HEARTBEAT_INTERVAL_MS)
             }
         }
     }
@@ -917,45 +1056,51 @@ class MonitoringService : Service() {
             return
         }
 
-        // If lock screen is already showing for this exact reason, don't re-show
-        // This prevents the screen from turning back on repeatedly
-        if (LockScreenActivity.isShowingForType(lockType)) {
-            Timber.d("showLockScreen: Lock screen already showing for $lockType - skipping to save battery")
+        // We prefer a TYPE_APPLICATION_OVERLAY window over an Activity: an Activity is a
+        // fullscreen *task* and Android renders PiP / freeform / pop-up windows above the
+        // fullscreen task stack, so a child can float YouTube on top of an Activity lock.
+        // The overlay sits in the overlay layer band, above those, and actually covers them.
+        val canDrawOverlays = Settings.canDrawOverlays(this)
+        val apiLevel = Build.VERSION.SDK_INT
+
+        // If the lock is already showing for this exact reason, don't re-show.
+        val alreadyShowing = if (canDrawOverlays) {
+            lockOverlayController.isShowingForType(lockType)
+        } else {
+            LockScreenActivity.isShowingForType(lockType)
+        }
+        if (alreadyShowing) {
+            Timber.d("showLockScreen: already showing for $lockType - skipping")
             return
         }
 
         val now = System.currentTimeMillis()
         val timeSinceLastShow = now - lastLockScreenShowTime
 
-        // Allow re-showing lock screen every LOCK_SCREEN_RESHOW_INTERVAL_MS
-        // This ensures the lock screen keeps coming back if child tries to bypass it
+        // Re-show throttle - keeps the lock coming back if the child tries to bypass it,
+        // without thrashing.
         if (timeSinceLastShow < LOCK_SCREEN_RESHOW_INTERVAL_MS) {
             Timber.d("showLockScreen: throttled (timeSinceLastShow=${timeSinceLastShow}ms < ${LOCK_SCREEN_RESHOW_INTERVAL_MS}ms)")
             return // Too soon to re-show
         }
 
         lastLockScreenShowTime = now
-        LockScreenActivity.resetDismiss()
-
-        val intent = LockScreenActivity.createIntent(this, lockType, message, appName)
-
-        // Check if we have overlay permission (required for Android 10+)
-        val canDrawOverlays = Settings.canDrawOverlays(this)
-        val apiLevel = Build.VERSION.SDK_INT
         Timber.d("showLockScreen: API level=$apiLevel, canDrawOverlays=$canDrawOverlays")
 
         if (canDrawOverlays) {
-            // We have overlay permission - start activity directly
-            // This works because SYSTEM_ALERT_WINDOW allows starting activities from background
-            Timber.d("showLockScreen: Using direct activity start with overlay permission")
-            startActivity(intent)
+            // Overlay path - covers PiP / freeform / pop-up windows an Activity cannot.
+            Timber.d("showLockScreen: Using system-overlay lock")
+            lockOverlayController.show(lockType, message, appName)
         } else if (apiLevel >= Build.VERSION_CODES.Q) {
-            // No overlay permission, try full-screen notification as fallback
+            // No overlay permission: fall back to the Activity via a full-screen-intent notification.
             Timber.w("showLockScreen: No overlay permission! Using notification fallback. Grant 'Display over other apps' permission.")
+            LockScreenActivity.resetDismiss()
+            val intent = LockScreenActivity.createIntent(this, lockType, message, appName)
             showLockScreenViaNotification(intent, lockType, message)
         } else {
-            // On older versions, direct activity start works
-            startActivity(intent)
+            // Pre-Q without overlay permission: direct activity start works.
+            LockScreenActivity.resetDismiss()
+            startActivity(LockScreenActivity.createIntent(this, lockType, message, appName))
         }
 
         Timber.d("Lock screen shown: $lockType (timeSinceLastShow=${timeSinceLastShow}ms)")
@@ -1016,6 +1161,8 @@ class MonitoringService : Service() {
     private fun dismissLockScreenIfShowing() {
         if (lastLockScreenShowTime > 0) {
             lastLockScreenShowTime = 0
+            // Remove whichever surface is up. Each is a no-op if it isn't the active one.
+            lockOverlayController.hide()
             LockScreenActivity.allowDismiss()
 
             // Cancel the lock screen notification on Android 10+
@@ -1102,7 +1249,7 @@ class MonitoringService : Service() {
         )
 
         return NotificationCompat.Builder(this, SafeGuardApplication.CHANNEL_MONITORING_SERVICE)
-            .setContentTitle("SafeGuard Active")
+            .setContentTitle("Haris Active")
             .setContentText("Monitoring device activity")
             .setSmallIcon(R.drawable.ic_shield)
             .setOngoing(true)

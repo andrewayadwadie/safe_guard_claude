@@ -108,6 +108,68 @@ object AccessibilityServiceHelper {
         return TextMonitoringAccessibilityService.serviceEverCreated
     }
 
+    // --- Bypass / automation tool detection ----------------------------------
+    //
+    // Accessibility access lets an app read every screen and inject taps/keys. A
+    // child can weaponise that to defeat enforcement: auto-tap the lock dialog
+    // buttons, or remap the hardware keys. We flag known automation / auto-clicker
+    // / macro tools so the parent is told when one is granted accessibility on the
+    // child's device. Matching is by exact package OR a keyword in the package name
+    // (the keyword catches the many auto-clicker clones on the store).
+
+    private val AUTOMATION_TOOL_PACKAGES = setOf(
+        "io.github.sds100.keymapper",                         // Key Mapper
+        "com.truedevelopersstudio.automatictap.autoclicker",  // Auto Clicker (True Developers)
+        "com.arlosoft.macrodroid",                            // MacroDroid
+        "net.dinglisch.android.taskerm",                      // Tasker
+        "com.llamalab.automate"                               // Automate
+    )
+
+    private val AUTOMATION_TOOL_KEYWORDS = listOf(
+        "autoclick", "auto.click", "auto_click", "clicker",
+        "keymapper", "key.mapper", "macrodroid", "macro",
+        "tasker", "automate", "autoinput", "autotap", "auto.tap", "autotouch"
+    )
+
+    /**
+     * Pure predicate: does this package look like an automation / input-injection
+     * tool that could bypass enforcement? Exposed for unit testing.
+     */
+    fun isAutomationToolPackage(packageName: String): Boolean {
+        val pkg = packageName.lowercase()
+        return pkg in AUTOMATION_TOOL_PACKAGES ||
+                AUTOMATION_TOOL_KEYWORDS.any { pkg.contains(it) }
+    }
+
+    /**
+     * Enumerate enabled accessibility services that are NOT ours and look like
+     * automation / input-injection tools (lock-screen bypass risk). Returns their
+     * raw service ids ("package/class"). Empty when none are detected.
+     */
+    fun getEnabledAutomationToolServices(context: Context): List<String> {
+        val ourPackage = context.packageName
+        val enabled = try {
+            Settings.Secure.getString(
+                context.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )
+        } catch (e: Exception) {
+            Timber.w(e, "$TAG: Error reading enabled accessibility services for bypass-tool scan")
+            null
+        } ?: return emptyList()
+
+        if (enabled.isBlank()) return emptyList()
+
+        return enabled.split(":")
+            .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
+            .filter { serviceId ->
+                val pkg = ComponentName.unflattenFromString(serviceId)?.packageName
+                    ?: serviceId.substringBefore("/")
+                pkg != ourPackage && isAutomationToolPackage(pkg)
+            }
+            .distinct()
+    }
+
     /**
      * Get detailed diagnostic information about the accessibility service state.
      * Useful for debugging when the service appears enabled but isn't working.
@@ -217,8 +279,8 @@ object AccessibilityServiceHelper {
     fun getEnableInstructions(): List<String> {
         return listOf(
             "1. Tap 'Open Settings' to go to Accessibility settings",
-            "2. Find 'SafeGuard' or 'Installed services'",
-            "3. Tap on 'SafeGuard Text Monitoring'",
+            "2. Find 'Haris' or 'Installed services'",
+            "3. Tap on 'Haris Text Monitoring'",
             "4. Toggle the switch to enable the service",
             "5. Confirm when prompted by the system"
         )
@@ -273,15 +335,15 @@ object AccessibilityServiceHelper {
         return when {
             manufacturer in listOf("xiaomi", "redmi", "poco") -> listOf(
                 "1. Go to Settings > Apps > Manage apps",
-                "2. Find 'SafeGuard' and tap it",
+                "2. Find 'Haris' and tap it",
                 "3. Tap 'Battery saver' or 'Power saver'",
                 "4. Select 'No restrictions'",
                 "5. Also enable 'Autostart' permission",
-                "6. In MIUI Security app, add SafeGuard to 'Autostart' list"
+                "6. In MIUI Security app, add Haris to 'Autostart' list"
             )
             manufacturer in listOf("huawei", "honor") -> listOf(
                 "1. Go to Settings > Apps > Apps",
-                "2. Find 'SafeGuard' and tap it",
+                "2. Find 'Haris' and tap it",
                 "3. Tap 'Battery' > 'App launch'",
                 "4. Disable 'Manage automatically'",
                 "5. Enable all three options: Auto-launch, Secondary launch, Run in background",
@@ -290,37 +352,37 @@ object AccessibilityServiceHelper {
             manufacturer in listOf("oppo", "realme", "oneplus") -> listOf(
                 "1. Go to Settings > Battery",
                 "2. Tap 'Battery optimization'",
-                "3. Find 'SafeGuard' and select 'Don't optimize'",
-                "4. Also go to Settings > Apps > SafeGuard",
+                "3. Find 'Haris' and select 'Don't optimize'",
+                "4. Also go to Settings > Apps > Haris",
                 "5. Enable 'Allow auto-launch' and 'Allow background activity'"
             )
             manufacturer in listOf("vivo", "iqoo") -> listOf(
                 "1. Go to Settings > Battery",
                 "2. Tap 'Background power consumption management'",
-                "3. Find 'SafeGuard' and allow background running",
+                "3. Find 'Haris' and allow background running",
                 "4. Also check 'High background power consumption' settings"
             )
             manufacturer == "samsung" -> listOf(
-                "1. Go to Settings > Apps > SafeGuard",
+                "1. Go to Settings > Apps > Haris",
                 "2. Tap 'Battery' and select 'Unrestricted'",
                 "3. Go to Settings > Device care > Battery",
                 "4. Tap menu (3 dots) > Settings",
                 "5. Disable 'Put unused apps to sleep'",
-                "6. Add SafeGuard to 'Apps that won't be put to sleep'"
+                "6. Add Haris to 'Apps that won't be put to sleep'"
             )
             manufacturer == "asus" -> listOf(
                 "1. Go to Settings > Battery",
                 "2. Tap 'PowerMaster' or 'Auto-start Manager'",
-                "3. Enable auto-start for 'SafeGuard'",
-                "4. In Battery optimization, select 'Not optimized' for SafeGuard"
+                "3. Enable auto-start for 'Haris'",
+                "4. In Battery optimization, select 'Not optimized' for Haris"
             )
             manufacturer == "nokia" -> listOf(
-                "1. Go to Settings > Apps > SafeGuard",
+                "1. Go to Settings > Apps > Haris",
                 "2. Tap 'Battery' and select 'Don't optimize'",
                 "3. Enable 'Allow background activity'"
             )
             else -> listOf(
-                "1. Go to Settings > Apps > SafeGuard",
+                "1. Go to Settings > Apps > Haris",
                 "2. Tap 'Battery' and select 'Unrestricted' or 'Don't optimize'",
                 "3. Look for 'Autostart' or 'Background activity' options and enable them",
                 "4. Check your phone's battery settings for app-specific optimizations"

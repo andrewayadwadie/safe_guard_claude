@@ -1,5 +1,12 @@
 package com.safeguard.parentalcontrol.presentation.screentimelimits
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
+
+import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveScreenPadding
+
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
@@ -132,8 +139,8 @@ fun ScreenTimeLimitsScreen(
                 }
                 else -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        modifier = Modifier.fillMaxHeight().responsiveContentWidth(rememberScreenWidth()),
+                        contentPadding = PaddingValues(responsiveScreenPadding(rememberScreenWidth())),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // Active toggle
@@ -1810,3 +1817,17 @@ private fun TimePickerDialogWrapper(
         }
     )
 }
+
+@Composable
+private fun ScreenTimeLimitsPreviewContent() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            DailyLimitCard(true, 2, 30, {}, {})
+        }
+    }
+}
+
+@Preview(name = "ScreenTime · Light", showBackground = true)
+@Composable private fun ScreenTimeLimitsLightPreview() { SafeGuardTheme(darkTheme = false) { ScreenTimeLimitsPreviewContent() } }
+@Preview(name = "ScreenTime · Dark", showBackground = true)
+@Composable private fun ScreenTimeLimitsDarkPreview() { SafeGuardTheme(darkTheme = true) { ScreenTimeLimitsPreviewContent() } }

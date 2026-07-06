@@ -1,5 +1,8 @@
 package com.safeguard.parentalcontrol.presentation.settings
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -400,3 +403,15 @@ private fun InfoCard() {
         }
     }
 }
+
+@Composable
+private fun TextMonitoringPreviewContent() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.padding(16.dp)) { InfoCard() }
+    }
+}
+
+@Preview(name = "TextMonitoring · Light", showBackground = true)
+@Composable private fun TextMonitoringLightPreview() { SafeGuardTheme(darkTheme = false) { TextMonitoringPreviewContent() } }
+@Preview(name = "TextMonitoring · Dark", showBackground = true)
+@Composable private fun TextMonitoringDarkPreview() { SafeGuardTheme(darkTheme = true) { TextMonitoringPreviewContent() } }

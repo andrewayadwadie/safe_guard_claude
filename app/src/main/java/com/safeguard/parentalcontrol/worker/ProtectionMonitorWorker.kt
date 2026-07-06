@@ -6,6 +6,8 @@ import androidx.work.*
 import com.safeguard.parentalcontrol.data.model.AlertSeverity
 import com.safeguard.parentalcontrol.data.model.AlertType
 import com.safeguard.parentalcontrol.data.repository.AlertRepository
+import com.safeguard.parentalcontrol.service.ContentFilterVpnService
+import com.safeguard.parentalcontrol.util.AccessibilityServiceHelper
 import com.safeguard.parentalcontrol.util.Constants
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.ProtectionStatus
@@ -13,6 +15,8 @@ import com.safeguard.parentalcontrol.util.ProtectionStatusHelper
 import com.safeguard.parentalcontrol.util.ProtectionType
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
@@ -59,6 +63,24 @@ class ProtectionMonitorWorker @AssistedInject constructor(
         // Cooldowns to prevent alert spam
         private const val CRITICAL_ALERT_COOLDOWN_MS = 15 * 60 * 1000L  // 15 min for critical
         private const val NORMAL_ALERT_COOLDOWN_MS = 60 * 60 * 1000L   // 1 hour for non-critical
+
+        // State-based tamper signals (bypass tool present, monitoring persistently
+        // off) re-alert on this longer cooldown so the parent keeps being reminded
+        // while the device stays compromised, without nagging every 15 minutes.
+        private const val TAMPER_REALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000L  // 6 hours
+        private const val TAMPER_KEY_BYPASS_TOOL = "tamper_bypass_tool"
+        private const val TAMPER_KEY_MONITORING_OFF = "tamper_monitoring_off"
+        private const val TAMPER_KEY_FOREIGN_VPN = "tamper_foreign_vpn"
+
+        // Serializes the per-protection check-then-record alert gate across
+        // concurrent worker runs. The periodic run and a checkNow() one-time run
+        // share the same tag and can overlap; without this lock both could pass
+        // shouldSendAlert() for the same protection before either calls
+        // saveLastAlertTime(), double-firing a protection-disabled alert to the
+        // parent (a TOCTOU race). Sibling of ISSUE-002, which fixed the same race
+        // class in AlertRepository via an atomic DataStore edit; WorkManager runs
+        // workers in-process so a single process-wide Mutex closes it here.
+        private val alertSlotMutex = Mutex()
 
         /**
          * Enqueue periodic protection monitoring work.
@@ -154,15 +176,29 @@ class ProtectionMonitorWorker @AssistedInject constructor(
             return Result.success()
         }
 
-        // Alert only for NEWLY disabled protections (changed from enabled to disabled)
+        // Alert only for NEWLY disabled protections (changed from enabled to disabled).
+        // The check (shouldSendAlert) and record (saveLastAlertTime, inside
+        // alertParentProtectionDisabled's success path) are serialized per iteration
+        // by alertSlotMutex so a concurrent worker run can't pass the same gate
+        // before this one records it. See alertSlotMutex above.
         for (protectionType in newlyDisabled) {
-            if (shouldSendAlert(protectionType)) {
-                alertParentProtectionDisabled(protectionType)
+            alertSlotMutex.withLock {
+                if (shouldSendAlert(protectionType)) {
+                    alertParentProtectionDisabled(protectionType)
+                }
             }
         }
 
         // Save current status for next comparison
         saveCurrentStatus(currentStatus)
+
+        // State-based tamper detection (runs after the transition checks above).
+        // These adversarial signals must fire even when the bad state already
+        // existed at the baseline - a bypass tool installed before SafeGuard, or
+        // accessibility switched off before the first worker run - which the
+        // enabled->disabled transition model above cannot see. They re-alert on a
+        // long cooldown while the device stays compromised.
+        checkTamperSignals(currentStatus, newlyDisabled)
 
         // Log summary
         val currentlyDisabledList = currentStatus.getDisabledProtections()
@@ -210,39 +246,217 @@ class ProtectionMonitorWorker @AssistedInject constructor(
     }
 
     /**
+     * State-based tamper detection. Unlike the transition-based permission checks,
+     * these fire whenever the device is currently in a tampered state and re-alert
+     * on a long cooldown (TAMPER_REALERT_COOLDOWN_MS).
+     */
+    private suspend fun checkTamperSignals(
+        currentStatus: ProtectionStatus,
+        newlyDisabled: List<ProtectionType>
+    ) {
+        // 1. A foreign automation / auto-clicker tool holds accessibility access.
+        //    Those can auto-tap the lock dialog or remap hardware keys to bypass it.
+        val automationTools = AccessibilityServiceHelper.getEnabledAutomationToolServices(applicationContext)
+        if (automationTools.isNotEmpty()) {
+            alertSlotMutex.withLock {
+                if (passesCooldown(TAMPER_KEY_BYPASS_TOOL, TAMPER_REALERT_COOLDOWN_MS)) {
+                    alertBypassToolDetected(automationTools)
+                }
+            }
+        } else {
+            clearAlert(TAMPER_KEY_BYPASS_TOOL)
+        }
+
+        // 2. SafeGuard's own text monitoring is currently OFF and staying off. The
+        //    transition path already covers the moment it is switched off; this is
+        //    the persistent reminder for "off before baseline / still off hours
+        //    later". Skip if the transition path already alerted ACCESSIBILITY this
+        //    run so we don't double-fire.
+        val monitoringOff = !currentStatus.accessibilityEnabled &&
+                !newlyDisabled.contains(ProtectionType.ACCESSIBILITY)
+        if (monitoringOff) {
+            alertSlotMutex.withLock {
+                if (passesCooldown(TAMPER_KEY_MONITORING_OFF, TAMPER_REALERT_COOLDOWN_MS)) {
+                    alertMonitoringPersistentlyOff()
+                }
+            }
+        } else if (currentStatus.accessibilityEnabled) {
+            clearAlert(TAMPER_KEY_MONITORING_OFF)
+        }
+
+        // 3. A foreign VPN app (e.g. ProtonVPN) holds the single VPN slot while content
+        //    filtering is supposed to be on and OUR tunnel is NOT established. Android
+        //    allows one VPN at a time, so the child's web traffic bypasses our DNS
+        //    filter. onRevoke() catches the moment of takeover; this catches the case it
+        //    missed (foreign VPN already up before our service started, or a restart).
+        val foreignVpnActive = preferencesManager.isContentFilteringEnabled &&
+                ContentFilterVpnService.isVpnRunning(applicationContext) &&
+                !ContentFilterVpnService.isActive
+        if (foreignVpnActive) {
+            alertSlotMutex.withLock {
+                if (passesCooldown(TAMPER_KEY_FOREIGN_VPN, TAMPER_REALERT_COOLDOWN_MS)) {
+                    alertForeignVpnDetected()
+                }
+            }
+        } else {
+            clearAlert(TAMPER_KEY_FOREIGN_VPN)
+        }
+    }
+
+    /**
+     * Alert the parent that a third-party VPN app is holding the VPN slot, so SafeGuard's
+     * content filter cannot run and web filtering is bypassed.
+     */
+    private suspend fun alertForeignVpnDetected() {
+        try {
+            val deviceName = preferencesManager.deviceName ?: android.os.Build.MODEL
+
+            val result = alertRepository.createAlert(
+                alertType = AlertType.DEVICE_ADMIN_DISABLED,
+                severity = AlertSeverity.HIGH,
+                title = "Another VPN App Detected",
+                message = "A third-party VPN app is active on $deviceName. Android allows only one " +
+                        "VPN at a time, so SafeGuard's content filter cannot run while it is on and " +
+                        "web filtering is bypassed. Check the device for a VPN app (e.g. ProtonVPN) " +
+                        "and remove it or turn it off.",
+                metadata = mapOf(
+                    "protection_type" to "FOREIGN_VPN",
+                    "tamper_type" to "foreign_vpn",
+                    "device_name" to deviceName,
+                    "manufacturer" to android.os.Build.MANUFACTURER,
+                    "model" to android.os.Build.MODEL
+                )
+            )
+
+            result.onSuccess {
+                Timber.w("ProtectionMonitorWorker: TAMPER ALERT SENT - foreign VPN active")
+                recordAlert(TAMPER_KEY_FOREIGN_VPN)
+            }.onError { message, _ ->
+                Timber.e("ProtectionMonitorWorker: Failed to send foreign-VPN alert: $message")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "ProtectionMonitorWorker: Error sending foreign-VPN alert")
+        }
+    }
+
+    /**
+     * Alert the parent that an automation / auto-clicker tool with accessibility
+     * access (lock-screen bypass risk) was detected on the child's device.
+     */
+    private suspend fun alertBypassToolDetected(toolServiceIds: List<String>) {
+        try {
+            val deviceName = preferencesManager.deviceName ?: android.os.Build.MODEL
+            val toolNames = toolServiceIds
+                .map { it.substringBefore("/") }
+                .distinct()
+                .joinToString(", ")
+
+            val result = alertRepository.createAlert(
+                alertType = AlertType.DEVICE_ADMIN_DISABLED,
+                severity = AlertSeverity.HIGH,
+                title = "Automation Tool Detected",
+                message = "An automation or auto-clicker app with accessibility access was found on " +
+                        "$deviceName. These tools can be used to bypass the lock screen and screen-time " +
+                        "limits.\n\nDetected: $toolNames",
+                metadata = mapOf(
+                    "protection_type" to "BYPASS_TOOL",
+                    "tamper_type" to "bypass_tool",
+                    "services" to toolServiceIds.joinToString(","),
+                    "device_name" to deviceName,
+                    "manufacturer" to android.os.Build.MANUFACTURER,
+                    "model" to android.os.Build.MODEL
+                )
+            )
+
+            result.onSuccess {
+                Timber.w("ProtectionMonitorWorker: TAMPER ALERT SENT - bypass tools: $toolServiceIds")
+                recordAlert(TAMPER_KEY_BYPASS_TOOL)
+            }.onError { message, _ ->
+                Timber.e("ProtectionMonitorWorker: Failed to send bypass-tool alert: $message")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "ProtectionMonitorWorker: Error sending bypass-tool alert")
+        }
+    }
+
+    /**
+     * Alert the parent that SafeGuard's text-monitoring accessibility service is
+     * currently disabled (and has stayed disabled past the transition window).
+     */
+    private suspend fun alertMonitoringPersistentlyOff() {
+        try {
+            val deviceName = preferencesManager.deviceName ?: android.os.Build.MODEL
+
+            val result = alertRepository.createAlert(
+                alertType = AlertType.DEVICE_ADMIN_DISABLED,
+                severity = AlertSeverity.HIGH,
+                title = "Monitoring Is Turned Off",
+                message = "SafeGuard's text-monitoring service is turned off on $deviceName, so your " +
+                        "child's messages are not being checked for inappropriate content. Re-enable " +
+                        "SafeGuard in the device's Accessibility settings.",
+                metadata = mapOf(
+                    "protection_type" to "MONITORING_OFF",
+                    "tamper_type" to "monitoring_off",
+                    "device_name" to deviceName,
+                    "manufacturer" to android.os.Build.MANUFACTURER,
+                    "model" to android.os.Build.MODEL
+                )
+            )
+
+            result.onSuccess {
+                Timber.w("ProtectionMonitorWorker: TAMPER ALERT SENT - monitoring persistently off")
+                recordAlert(TAMPER_KEY_MONITORING_OFF)
+            }.onError { message, _ ->
+                Timber.e("ProtectionMonitorWorker: Failed to send monitoring-off alert: $message")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "ProtectionMonitorWorker: Error sending monitoring-off alert")
+        }
+    }
+
+    /**
      * Check if enough time has passed since the last alert for this protection type.
      */
     private fun shouldSendAlert(protectionType: ProtectionType): Boolean {
-        val prefs = applicationContext.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
-        val lastAlertTime = prefs.getLong(PREFS_PREFIX_LAST_ALERT + protectionType.name, 0)
-        val now = System.currentTimeMillis()
-
         val cooldown = if (protectionType.isCritical) {
             CRITICAL_ALERT_COOLDOWN_MS
         } else {
             NORMAL_ALERT_COOLDOWN_MS
         }
-
-        return (now - lastAlertTime) > cooldown
+        return passesCooldown(protectionType.name, cooldown)
     }
 
     /**
      * Save the current time as the last alert time for this protection type.
      */
-    private fun saveLastAlertTime(protectionType: ProtectionType) {
-        val prefs = applicationContext.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit()
-            .putLong(PREFS_PREFIX_LAST_ALERT + protectionType.name, System.currentTimeMillis())
-            .apply()
-    }
+    private fun saveLastAlertTime(protectionType: ProtectionType) = recordAlert(protectionType.name)
 
     /**
      * Clear the last alert time for a protection type (when it's re-enabled).
      */
-    private fun clearLastAlertTime(protectionType: ProtectionType) {
+    private fun clearLastAlertTime(protectionType: ProtectionType) = clearAlert(protectionType.name)
+
+    /**
+     * Generic cooldown gate keyed by an arbitrary alert key. Shared by the
+     * per-protection alerts and the state-based tamper alerts.
+     */
+    private fun passesCooldown(key: String, cooldownMs: Long): Boolean {
         val prefs = applicationContext.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit()
-            .remove(PREFS_PREFIX_LAST_ALERT + protectionType.name)
+        val lastAlertTime = prefs.getLong(PREFS_PREFIX_LAST_ALERT + key, 0)
+        return (System.currentTimeMillis() - lastAlertTime) > cooldownMs
+    }
+
+    private fun recordAlert(key: String) {
+        applicationContext.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(PREFS_PREFIX_LAST_ALERT + key, System.currentTimeMillis())
+            .apply()
+    }
+
+    private fun clearAlert(key: String) {
+        applicationContext.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(PREFS_PREFIX_LAST_ALERT + key)
             .apply()
     }
 

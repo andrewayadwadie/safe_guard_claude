@@ -16,10 +16,14 @@ import com.safeguard.parentalcontrol.presentation.dashboard.DashboardScreen
 import com.safeguard.parentalcontrol.presentation.devices.DevicesScreen
 import com.safeguard.parentalcontrol.presentation.devicesetup.DeviceSetupScreen
 import com.safeguard.parentalcontrol.presentation.imagereview.ImageReviewScreen
+import com.safeguard.parentalcontrol.presentation.textreview.TextReviewScreen
+import com.safeguard.parentalcontrol.presentation.linkparent.LinkParentScreen
 import com.safeguard.parentalcontrol.presentation.screentimelimits.ScreenTimeLimitsScreen
 import com.safeguard.parentalcontrol.presentation.settings.SettingsScreen
 import com.safeguard.parentalcontrol.presentation.settings.TextMonitoringSettingsScreen
+import com.safeguard.parentalcontrol.presentation.setup.ConsentScreen
 import com.safeguard.parentalcontrol.presentation.setup.PermissionsSetupScreen
+import com.safeguard.parentalcontrol.presentation.splash.SplashScreen
 import com.safeguard.parentalcontrol.presentation.wordlist.WordListScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -29,10 +33,12 @@ import java.nio.charset.StandardCharsets
  * Navigation routes
  */
 sealed class Screen(val route: String) {
+    data object Splash : Screen("splash")
     data object Login : Screen("login")
     data object Register : Screen("register")
     data object Dashboard : Screen("dashboard")
     data object DeviceSetup : Screen("device_setup")
+    data object Consent : Screen("consent")
     data object PermissionsSetup : Screen("permissions_setup/{isFromSetupFlow}") {
         fun createRoute(isFromSetupFlow: Boolean = false): String = "permissions_setup/$isFromSetupFlow"
     }
@@ -85,6 +91,12 @@ sealed class Screen(val route: String) {
      * Image review screen for parents to review blurred images on child device
      */
     data object ImageReview : Screen("image_review")
+    data object TextReview : Screen("text_review")
+
+    /**
+     * Child-side screen that shows a pairing code for a parent to link with.
+     */
+    data object LinkParent : Screen("link_parent")
 
     /**
      * Screen time limits management screen with device parameters (parent only)
@@ -103,12 +115,25 @@ sealed class Screen(val route: String) {
 @Composable
 fun SafeGuardNavGraph(
     navController: NavHostController = rememberNavController(),
-    startDestination: String = Screen.Login.route
+    isLoggedIn: Boolean = false,
+    startDestination: String = Screen.Splash.route
 ) {
     NavHost(
         navController = navController,
         startDestination = startDestination
     ) {
+        // Splash Screen (animated logo, shown on cold launch)
+        composable(Screen.Splash.route) {
+            SplashScreen(
+                onFinished = {
+                    val next = if (isLoggedIn) Screen.Dashboard.route else Screen.Login.route
+                    navController.navigate(next) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // Login Screen
         composable(Screen.Login.route) {
             LoginScreen(
@@ -151,11 +176,25 @@ fun SafeGuardNavGraph(
         composable(Screen.DeviceSetup.route) {
             DeviceSetupScreen(
                 onSetupComplete = {
-                    // After device setup, go to permissions setup for child devices
-                    navController.navigate(Screen.PermissionsSetup.createRoute(isFromSetupFlow = true)) {
+                    // After device setup, the parent must accept the monitoring disclosure
+                    // before any permission is requested or any service can run.
+                    navController.navigate(Screen.Consent.route) {
                         popUpTo(Screen.DeviceSetup.route) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        // Monitoring disclosure + consent (child setup flow). Gates the consent flag
+        // that every monitoring service checks before it may run.
+        composable(Screen.Consent.route) {
+            ConsentScreen(
+                onConsentGranted = {
+                    navController.navigate(Screen.PermissionsSetup.createRoute(isFromSetupFlow = true)) {
+                        popUpTo(Screen.Consent.route) { inclusive = true }
+                    }
+                },
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -203,11 +242,21 @@ fun SafeGuardNavGraph(
                 onNavigateToPermissionsSetup = {
                     navController.navigate(Screen.PermissionsSetup.createRoute(isFromSetupFlow = false))
                 },
+                onNavigateToLinkParent = {
+                    navController.navigate(Screen.LinkParent.route)
+                },
                 onLogout = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        // Link Parent Screen (child only) — shows a pairing code for a parent to enter
+        composable(Screen.LinkParent.route) {
+            LinkParentScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -219,6 +268,7 @@ fun SafeGuardNavGraph(
                 onNavigateToTextMonitoringSettings = { navController.navigate(Screen.TextMonitoringSettings.route) },
                 onNavigateToPermissionsSetup = { navController.navigate(Screen.PermissionsSetup.createRoute(isFromSetupFlow = false)) },
                 onNavigateToImageReview = { navController.navigate(Screen.ImageReview.route) },
+                onNavigateToTextReview = { navController.navigate(Screen.TextReview.route) },
                 onLogout = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
@@ -363,6 +413,13 @@ fun SafeGuardNavGraph(
         // Image Review Screen (for parents reviewing blurred images on child device)
         composable(Screen.ImageReview.route) {
             ImageReviewScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Text Review Screen (for parents reviewing flagged text on child device)
+        composable(Screen.TextReview.route) {
+            TextReviewScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

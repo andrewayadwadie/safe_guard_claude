@@ -50,8 +50,9 @@ class BootReceiver : BroadcastReceiver() {
         try {
             // Check if we should start the monitoring service
             val shouldStart = try {
-                // Try using injected PreferencesManager first
-                preferencesManager.isLoggedIn && preferencesManager.isDeviceRegistered
+                // Try using injected PreferencesManager first. Monitoring may only start
+                // once the parent has consented (Play Prominent Disclosure & Consent).
+                preferencesManager.shouldRunMonitoring
             } catch (e: UninitializedPropertyAccessException) {
                 // Hilt injection not ready - fall back to direct SharedPreferences access
                 Timber.w("Hilt injection not ready, falling back to direct SharedPreferences")
@@ -93,7 +94,8 @@ class BootReceiver : BroadcastReceiver() {
             val prefs = context.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
             val isLoggedIn = prefs.getBoolean(Constants.KEY_IS_LOGGED_IN, false)
             val isDeviceRegistered = prefs.getBoolean(Constants.KEY_IS_DEVICE_REGISTERED, false)
-            isLoggedIn && isDeviceRegistered
+            val consentGranted = prefs.getBoolean(Constants.KEY_MONITORING_CONSENT_GRANTED, false)
+            isLoggedIn && isDeviceRegistered && consentGranted
         } catch (e: Exception) {
             Timber.e(e, "Error reading SharedPreferences directly")
             false

@@ -291,7 +291,7 @@ fun StatusCard(
                     .size(12.dp)
                     .clip(CircleShape)
                     .background(
-                        if (isActive) SemanticColors.success else SafeGuardGray400
+                        if (isActive) SemanticColors.success else SemanticColors.statusOffline
                     )
             )
 

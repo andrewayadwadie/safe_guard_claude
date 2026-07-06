@@ -1,28 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Brand Colors -->
-    <color name="primary">#1976D2</color>
-    <color name="primary_dark">#1565C0</color>
-    <color name="primary_light">#42A5F5</color>
-    <color name="accent">#4CAF50</color>
+    <!-- Haris Brand Colors -->
+    <color name="primary">#168BB6</color>
+    <!-- Sampled dominant color of the Haris logo (adaptive icon + splash background) -->
+    <color name="brand_icon_background">#084868</color>
+    <!-- Splash screen background (day/night aware): off-white in light mode -->
+    <color name="splash_background">#FAFCFC</color>
+    <color name="primary_dark">#0E6A86</color>
+    <color name="primary_light">#A4DFF4</color>
+    <color name="accent">#C8941E</color>
 
     <!-- Status Colors -->
-    <color name="success">#4CAF50</color>
-    <color name="warning">#FF9800</color>
-    <color name="error">#F44336</color>
-    <color name="info">#2196F3</color>
+    <color name="success">#2E9E8F</color>
+    <color name="warning">#C8941E</color>
+    <color name="error">#BA1A1A</color>
+    <color name="info">#168BB6</color>
 
     <!-- Neutral Colors -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
-    <color name="background">#FAFAFA</color>
+    <color name="background">#FAFCFC</color>
     <color name="surface">#FFFFFF</color>
-    <color name="on_surface">#1C1B1F</color>
-    <color name="on_surface_variant">#49454F</color>
+    <color name="on_surface">#1C2022</color>
+    <color name="on_surface_variant">#3C4E53</color>
 
     <!-- Alert Severity Colors -->
-    <color name="severity_critical">#F44336</color>
-    <color name="severity_high">#FF9800</color>
-    <color name="severity_medium">#2196F3</color>
-    <color name="severity_low">#4CAF50</color>
+    <color name="severity_critical">#D2483F</color>
+    <color name="severity_high">#E8833A</color>
+    <color name="severity_medium">#C8941E</color>
+    <color name="severity_low">#2E9E8F</color>
 </resources>

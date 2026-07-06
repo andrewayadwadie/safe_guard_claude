@@ -8,7 +8,9 @@ a project to continue developing — treat it as documentation you can compile a
 ## What this is / isn't
 
 - **Is:** the production (`prod-snapshot`) Android source, resources, Gradle config, and the
-  on-device ML models.
+  bundled ML assets (the NSFW image model + the WordPiece vocabularies). The two large text
+  toxicity models are **not** in the repo — they are downloaded on demand at runtime (see the ML
+  notes below).
 - **Isn't:** no git history, no backend, no internal planning docs, and **no secrets** —
   the Firebase config (`google-services.json`), signing keystore, and `local.properties`
   were deliberately removed.
@@ -35,12 +37,18 @@ port-worthy logic is in the **child enforcement modules**:
 | Text monitoring | `AccessibilityService` + `TextPatternMatcher` | Reads on-screen text, matches word lists + ML. Android-only API. |
 | Screen-time + lock | `MonitoringService`, `LockScreenActivity`, receivers | Enforcement + remote lock (driven by `screen-time-rules`, not FCM). |
 | Image (NSFW) monitoring | `MediaFileObserver` + `ImageBlurManager` | Watches Downloads/Screenshots, scores saved images, blurs in place. |
-| On-device ML | `ml/TFLiteImageClassifier.kt`, `ml/…text…` | Ports to `tflite_flutter`. **Read `app/src/main/assets/ML_MODELS_README.md` first** — it has the exact input shapes, normalization, and class order you must replicate. |
+| On-device ML | `ml/TFLiteImageClassifier.kt` (NSFW), `ml/TFLiteTextClassifier.kt` + `WordPieceTokenizer.kt` + `Arabizi.kt` + `download/ModelDownloader.kt` (text) | Ports to `tflite_flutter`. Text is **two script-routed BERT models** (toxic-bert EN / MARBERTv2 AR) **downloaded on demand**, not bundled. **Read `app/src/main/assets/ML_MODELS_README.md` first** — it has the exact I/O shapes, tokenization, normalization, class order, thresholds, and the download + SHA-256 verify contract you must replicate. |
 
-The platform-channel / bridge contracts you'll rebuild against, the full 56-endpoint API
-reference, auth/refresh choreography, and offline-sync rules are in the **handover document**
-(sent separately). Use the **Postman collection** (also sent) to hit the live test server while
-you build — it auto-captures tokens; just run Login → Register device → everything else.
+The platform-channel / bridge contracts you'll rebuild against, the full REST API reference,
+auth/refresh choreography, and offline-sync rules are in the **handover document** (sent
+separately). Use the **Postman collection** (also sent) to hit the live test server while you
+build — it auto-captures tokens; run Login → Register device → Generate pairing code → Link child
+→ everything else.
+
+**Note on linking:** a parent links a child by redeeming a short-lived **pairing code** the child's
+device generates (`POST /family/pairing-code` → `POST /family/link`), not by entering an email.
+Likewise, `device_id` is derived from a stable per-device value so a re-install reuses the same
+device record instead of creating duplicates — replicate both in the port.
 
 ## Heads-up on scope
 

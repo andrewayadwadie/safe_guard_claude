@@ -1,26 +1,35 @@
 {
   "project_info": {
-    "project_number": "216776621097",
-    "project_id": "haris-2a948",
-    "storage_bucket": "haris-2a948.firebasestorage.app"
+    "project_number": "123456789012",
+    "firebase_url": "https://dummy-project.firebaseio.com",
+    "project_id": "dummy-project-id",
+    "storage_bucket": "dummy-project-id.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:216776621097:android:430278a2092535f0bdf038",
+        "mobilesdk_app_id": "1:123456789012:android:dummyappid",
         "android_client_info": {
           "package_name": "com.safeguard.parentalcontrol"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "dummy-client-id.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyDWwcDUx4gm4e4I7n1vt855aUHJM8QDMN0"
+          "current_key": "dummy-api-key"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 1
         }
       }
     }

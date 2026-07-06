@@ -1,5 +1,12 @@
 package com.safeguard.parentalcontrol.presentation.children
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
+
+import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
+import com.safeguard.parentalcontrol.presentation.theme.responsiveScreenPadding
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -59,7 +66,7 @@ fun ChildrenScreen(
     if (uiState.showAddDialog) {
         AddChildDialog(
             onDismiss = { viewModel.hideAddChildDialog() },
-            onConfirm = { email -> viewModel.addChild(email) },
+            onConfirm = { pairingCode -> viewModel.addChild(pairingCode) },
             isLoading = uiState.isAddingChild,
             error = uiState.addChildError
         )
@@ -109,8 +116,8 @@ fun ChildrenScreen(
                 }
                 else -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        modifier = Modifier.fillMaxHeight().responsiveContentWidth(rememberScreenWidth()),
+                        contentPadding = PaddingValues(responsiveScreenPadding(rememberScreenWidth())),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         item {
@@ -300,7 +307,7 @@ private fun AddChildDialog(
     isLoading: Boolean,
     error: String?
 ) {
-    var email by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
@@ -309,25 +316,25 @@ private fun AddChildDialog(
         text = {
             Column {
                 Text(
-                    text = "Enter the email address your child used to create their SafeGuard account.",
+                    text = "On your child's device, open SafeGuard and tap \"Link a parent\" to get a pairing code. Enter that code here.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Child's Email") },
-                    placeholder = { Text("child@example.com") },
+                    value = code,
+                    onValueChange = { code = it.uppercase() },
+                    label = { Text("Pairing Code") },
+                    placeholder = { Text("ABCD2345") },
                     singleLine = true,
                     enabled = !isLoading,
                     isError = error != null,
                     supportingText = error?.let { { Text(it) } },
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
+                        keyboardType = KeyboardType.Ascii,
                         imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(
-                        onDone = { if (email.isNotBlank()) onConfirm(email) }
+                        onDone = { if (code.isNotBlank()) onConfirm(code) }
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -335,8 +342,8 @@ private fun AddChildDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(email) },
-                enabled = email.isNotBlank() && !isLoading
+                onClick = { onConfirm(code) },
+                enabled = code.isNotBlank() && !isLoading
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -358,3 +365,14 @@ private fun AddChildDialog(
         }
     )
 }
+
+@Composable
+private fun ChildrenPreviewContent() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.padding(16.dp)) { EmptyState(onAddChild = {}) }
+    }
+}
+@Preview(name = "Children · Light", showBackground = true)
+@Composable private fun ChildrenLightPreview() { SafeGuardTheme(darkTheme = false) { ChildrenPreviewContent() } }
+@Preview(name = "Children · Dark", showBackground = true)
+@Composable private fun ChildrenDarkPreview() { SafeGuardTheme(darkTheme = true) { ChildrenPreviewContent() } }

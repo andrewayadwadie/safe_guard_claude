@@ -72,7 +72,7 @@ class SafeGuardFirebaseMessagingService : FirebaseMessagingService() {
         // Handle notification payload
         message.notification?.let {
             showNotification(
-                title = it.title ?: "SafeGuard",
+                title = it.title ?: "Haris",
                 body = it.body ?: ""
             )
         }

@@ -16,8 +16,8 @@ android {
         applicationId "com.safeguard.parentalcontrol"
         minSdk 26
         targetSdk 34
-        versionCode 4
-        versionName "1.1.2"
+        versionCode 6
+        versionName "1.1.4"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -26,7 +26,8 @@ android {
 
         // Backend configuration
         //buildConfigField "String", "API_BASE_URL", "\"https://api.safeguard.app/api/v1/\""
-        buildConfigField "String", "API_BASE_URL", "\"http://192.168.1.5:8090/api/v1/\""
+        //buildConfigField "String", "API_BASE_URL", "\"http://192.168.1.5:8090/api/v1/\""
+        buildConfigField "String", "API_BASE_URL", "\"https://bw.noor.net:8090/api/v1/\""
         buildConfigField "String", "API_VERSION", "\"1.0\""
 
         // Google OAuth - Web Client ID from Google Cloud Console
@@ -41,14 +42,16 @@ android {
             
             // Production backend
             //buildConfigField "String", "API_BASE_URL", "\"https://api.safeguard.app/api/v1/\""
-            buildConfigField "String", "API_BASE_URL", "\"http://192.168.1.5:8090/api/v1/\""
+            //buildConfigField "String", "API_BASE_URL", "\"http://192.168.1.5:8090/api/v1/\""
+            buildConfigField "String", "API_BASE_URL", "\"https://bw.noor.net:8090/api/v1/\""
         }
         debug {
             minifyEnabled false
             
             // Development backend
-           // buildConfigField "String", "API_BASE_URL", "\"http://10.0.2.2:8000/api/v1/\""
-            buildConfigField "String", "API_BASE_URL", "\"http://192.168.1.5:8090/api/v1/\""
+            // buildConfigField "String", "API_BASE_URL", "\"http://10.0.2.2:8000/api/v1/\""
+            //buildConfigField "String", "API_BASE_URL", "\"http://192.168.1.5:8090/api/v1/\""
+            buildConfigField "String", "API_BASE_URL", "\"https://bw.noor.net:8090/api/v1/\""
         }
     }
 
@@ -83,9 +86,14 @@ android {
     }
 }
 
+hilt {
+    enableAggregatingTask = true
+}
+
 dependencies {
     // AndroidX Core
     implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.core:core-splashscreen:1.0.1'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0'
     implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.7.0'
@@ -96,7 +104,9 @@ dependencies {
     implementation 'androidx.compose.ui:ui-graphics'
     implementation 'androidx.compose.ui:ui-tooling-preview'
     implementation 'androidx.compose.material3:material3:1.1.2'
+    implementation 'androidx.compose.material3:material3-window-size-class:1.1.2'
     implementation 'androidx.compose.material:material-icons-extended:1.5.4'
+    implementation 'androidx.compose.ui:ui-text-google-fonts'
     implementation 'androidx.activity:activity-compose:1.8.2'
     implementation 'androidx.navigation:navigation-compose:2.7.6'
     

@@ -6,13 +6,20 @@
         <item name="android:colorPrimaryDark">@color/primary_dark</item>
         <item name="android:colorAccent">@color/accent</item>
 
-        <!-- Status bar -->
-        <item name="android:statusBarColor">@color/primary</item>
-        <item name="android:navigationBarColor">@color/white</item>
+        <!-- Status bar matches the surface for a clean look -->
+        <item name="android:statusBarColor">@color/surface</item>
+        <item name="android:navigationBarColor">@color/surface</item>
 
-        <!-- Window -->
+        <!-- Window (light theme: dark status-bar icons over the light surface) -->
         <item name="android:windowBackground">@color/background</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
+    </style>
+
+    <!-- Splash screen (androidx.core:core-splashscreen) shown at launch, then swaps to Theme.SafeGuard -->
+    <style name="Theme.Haris.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.SafeGuard</item>
     </style>
 </resources>
