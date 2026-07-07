@@ -21,11 +21,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.presentation.designsystem.HarisLogo
 
 /**
  * Device Setup Screen
@@ -116,19 +119,14 @@ private fun DeviceRegistrationContent(
 ) {
     val focusManager = LocalFocusManager.current
 
-    // Shield Icon
-    Icon(
-        imageVector = Icons.Default.Shield,
-        contentDescription = null,
-        modifier = Modifier.size(80.dp),
-        tint = MaterialTheme.colorScheme.primary
-    )
+    // Haris logo
+    HarisLogo(size = 80.dp)
 
     Spacer(modifier = Modifier.height(24.dp))
 
     // Title
     Text(
-        text = "Set Up This Device",
+        text = stringResource(R.string.devicesetup_title),
         style = MaterialTheme.typography.headlineMedium,
         textAlign = TextAlign.Center
     )
@@ -137,7 +135,7 @@ private fun DeviceRegistrationContent(
 
     // Subtitle
     Text(
-        text = "Register this device to enable Haris protection and allow your parent to monitor your online activity.",
+        text = stringResource(R.string.devicesetup_subtitle),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center
@@ -149,8 +147,8 @@ private fun DeviceRegistrationContent(
     OutlinedTextField(
         value = deviceName,
         onValueChange = onDeviceNameChange,
-        label = { Text("Device Name") },
-        placeholder = { Text("e.g., John's Phone") },
+        label = { Text(stringResource(R.string.devicesetup_device_name)) },
+        placeholder = { Text(stringResource(R.string.devicesetup_device_name_hint)) },
         leadingIcon = {
             Icon(Icons.Default.PhoneAndroid, contentDescription = null)
         },
@@ -172,7 +170,7 @@ private fun DeviceRegistrationContent(
 
     // Helper text
     Text(
-        text = "This name will help your parent identify this device",
+        text = stringResource(R.string.devicesetup_name_helper),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
@@ -194,7 +192,7 @@ private fun DeviceRegistrationContent(
                 strokeWidth = 2.dp
             )
         } else {
-            Text("Register Device")
+            Text(stringResource(R.string.devicesetup_register))
         }
     }
 
@@ -211,15 +209,13 @@ private fun DeviceRegistrationContent(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "What happens next?",
+                text = stringResource(R.string.devicesetup_what_next),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "â€¢ Your parent will be able to see your screen time\n" +
-                        "â€¢ Content filtering will block inappropriate websites\n" +
-                        "â€¢ You'll need to grant usage access permission",
+                text = stringResource(R.string.devicesetup_next_steps),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )
@@ -232,19 +228,14 @@ private fun PermissionSetupContent(
     onOpenUsageSettings: () -> Unit,
     onContinue: () -> Unit
 ) {
-    // Success Icon
-    Icon(
-        imageVector = Icons.Default.Shield,
-        contentDescription = null,
-        modifier = Modifier.size(80.dp),
-        tint = MaterialTheme.colorScheme.primary
-    )
+    // Haris logo
+    HarisLogo(size = 80.dp)
 
     Spacer(modifier = Modifier.height(24.dp))
 
     // Title
     Text(
-        text = "Device Registered!",
+        text = stringResource(R.string.devicesetup_registered),
         style = MaterialTheme.typography.headlineMedium,
         textAlign = TextAlign.Center
     )
@@ -253,7 +244,7 @@ private fun PermissionSetupContent(
 
     // Subtitle
     Text(
-        text = "Now let's enable screen time tracking by granting usage access permission.",
+        text = stringResource(R.string.devicesetup_enable_tracking),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center
@@ -282,7 +273,7 @@ private fun PermissionSetupContent(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    "Usage Access Required",
+                    stringResource(R.string.devicesetup_usage_required),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
@@ -291,8 +282,7 @@ private fun PermissionSetupContent(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                "To track your screen time, Haris needs permission to access usage data. " +
-                        "Tap the button below, find 'Haris' in the list, and enable access.",
+                stringResource(R.string.devicesetup_usage_explain),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
@@ -317,7 +307,7 @@ private fun PermissionSetupContent(
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Text("Open Usage Access Settings")
+        Text(stringResource(R.string.devicesetup_open_usage_settings))
     }
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -329,13 +319,13 @@ private fun PermissionSetupContent(
             .fillMaxWidth()
             .height(50.dp)
     ) {
-        Text("Continue to Dashboard")
+        Text(stringResource(R.string.devicesetup_continue_dashboard))
     }
 
     Spacer(modifier = Modifier.height(8.dp))
 
     Text(
-        text = "You can enable this permission later from the dashboard",
+        text = stringResource(R.string.devicesetup_enable_later),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center

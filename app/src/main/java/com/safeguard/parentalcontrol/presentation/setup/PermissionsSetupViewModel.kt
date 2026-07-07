@@ -14,8 +14,10 @@ import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.service.ContentFilterVpnService
 import com.safeguard.parentalcontrol.util.AccessibilityServiceHelper
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -279,49 +281,38 @@ class PermissionsSetupViewModel @Inject constructor(
     /**
      * Get description for accessibility permission.
      */
-    fun getAccessibilityDescription(): String {
-        return "Required for monitoring text content across apps to detect inappropriate " +
-                "messages, cyberbullying, and potential predatory behavior."
-    }
+    fun getAccessibilityDescription(): String =
+        LocaleHelper.localizedContext(context).getString(R.string.permissions_accessibility_desc)
 
     /**
      * Get description for usage stats permission.
      */
-    fun getUsageStatsDescription(): String {
-        return "Required for tracking screen time and app usage to enforce daily limits " +
-                "and bedtime restrictions."
-    }
+    fun getUsageStatsDescription(): String =
+        LocaleHelper.localizedContext(context).getString(R.string.permissions_usage_stats_desc)
 
     /**
      * Get description for overlay permission.
      */
-    fun getOverlayDescription(): String {
-        return "Required for displaying the lock screen when screen time limits are exceeded " +
-                "or during bedtime hours."
-    }
+    fun getOverlayDescription(): String =
+        LocaleHelper.localizedContext(context).getString(R.string.permissions_overlay_desc)
 
     /**
      * Get description for notification permission.
      */
-    fun getNotificationDescription(): String {
-        return "Required for showing alerts and notifications about your child's device activity."
-    }
+    fun getNotificationDescription(): String =
+        LocaleHelper.localizedContext(context).getString(R.string.permissions_notifications_desc)
 
     /**
      * Get description for battery optimization permission.
      */
-    fun getBatteryOptimizationDescription(): String {
-        return "Required to prevent Android from killing Haris in the background. " +
-                "Without this, text monitoring may stop working unexpectedly."
-    }
+    fun getBatteryOptimizationDescription(): String =
+        LocaleHelper.localizedContext(context).getString(R.string.permissions_battery_desc)
 
     /**
      * Get description for VPN permission.
      */
-    fun getVpnDescription(): String {
-        return "Required for content filtering to block inappropriate websites. " +
-                "Haris uses a local VPN to filter web content - no data is sent to external servers."
-    }
+    fun getVpnDescription(): String =
+        LocaleHelper.localizedContext(context).getString(R.string.permissions_vpn_desc)
 
     /**
      * Check if READ_PHONE_STATE permission is granted.
@@ -346,10 +337,8 @@ class PermissionsSetupViewModel @Inject constructor(
     /**
      * Get description for phone state permission.
      */
-    fun getPhoneStateDescription(): String {
-        return "Required to allow phone calls during bedtime and screen time limits. " +
-                "Your child will always be able to make and receive emergency calls."
-    }
+    fun getPhoneStateDescription(): String =
+        LocaleHelper.localizedContext(context).getString(R.string.permissions_phone_desc)
 
     /**
      * Check if media (photos) permission is granted.
@@ -380,8 +369,6 @@ class PermissionsSetupViewModel @Inject constructor(
     /**
      * Get description for media permission.
      */
-    fun getMediaDescription(): String {
-        return "Required for sexting prevention. Haris needs full storage access to " +
-                "detect and blur inappropriate images, protecting your child from harmful content."
-    }
+    fun getMediaDescription(): String =
+        LocaleHelper.localizedContext(context).getString(R.string.permissions_media_desc)
 }

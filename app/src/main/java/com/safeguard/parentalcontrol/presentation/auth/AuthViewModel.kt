@@ -4,6 +4,7 @@ import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.content.Context
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.User
 import com.safeguard.parentalcontrol.data.model.UserRole
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
@@ -12,7 +13,9 @@ import com.safeguard.parentalcontrol.data.repository.DeviceRepository
 import com.safeguard.parentalcontrol.util.AnalyticsHelper
 import com.safeguard.parentalcontrol.util.GoogleSignInManager
 import com.safeguard.parentalcontrol.util.GoogleSignInResult
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,11 +62,16 @@ class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val deviceRepository: DeviceRepository,
     private val googleSignInManager: GoogleSignInManager,
-    private val analyticsHelper: AnalyticsHelper
+    private val analyticsHelper: AnalyticsHelper,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+
+    /** Resolves a string in the user's chosen app language, independent of the device system locale. */
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(context).getString(resId, *args)
 
     init {
         // Check if already logged in
@@ -194,12 +202,12 @@ class AuthViewModel @Inject constructor(
     fun registerDevice(deviceName: String, fcmToken: String? = null) {
         // Validate device name
         if (deviceName.isBlank()) {
-            _uiState.update { it.copy(error = "Device name is required") }
+            _uiState.update { it.copy(error = getString(R.string.auth_error_device_name_required)) }
             return
         }
 
         if (deviceName.length < 2) {
-            _uiState.update { it.copy(error = "Device name is too short") }
+            _uiState.update { it.copy(error = getString(R.string.auth_error_device_name_too_short)) }
             return
         }
 
@@ -272,7 +280,7 @@ class AuthViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isGoogleSignInLoading = false,
-                            error = "No Google accounts found on this device"
+                            error = getString(R.string.auth_error_google_no_accounts)
                         )
                     }
                 }
@@ -282,7 +290,7 @@ class AuthViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isGoogleSignInLoading = false,
-                            error = "Sign-in failed. Please try again."
+                            error = getString(R.string.auth_error_google_signin_failed)
                         )
                     }
                 }
@@ -332,7 +340,7 @@ class AuthViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isGoogleSignInLoading = false,
-                                error = "Sign-in failed. Please try again."
+                                error = getString(R.string.auth_error_google_signin_failed)
                             )
                         }
                     }
@@ -355,7 +363,7 @@ class AuthViewModel @Inject constructor(
         val idToken = _uiState.value.pendingGoogleIdToken
         if (idToken == null) {
             _uiState.update {
-                it.copy(error = "Google sign-in session expired. Please try again.")
+                it.copy(error = getString(R.string.auth_error_google_session_expired))
             }
             return
         }
@@ -413,16 +421,16 @@ class AuthViewModel @Inject constructor(
 
         // Email validation
         if (email.isBlank()) {
-            emailError = "Email is required"
+            emailError = getString(R.string.auth_error_email_required)
         } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            emailError = "Invalid email format"
+            emailError = getString(R.string.auth_error_email_invalid)
         }
 
         // Password validation
         if (password.isBlank()) {
-            passwordError = "Password is required"
+            passwordError = getString(R.string.auth_error_password_required)
         } else if (password.length < MIN_PASSWORD_LENGTH) {
-            passwordError = "Password must be at least $MIN_PASSWORD_LENGTH characters"
+            passwordError = getString(R.string.auth_error_password_min_length, MIN_PASSWORD_LENGTH)
         }
 
         return ValidationErrors(emailError = emailError, passwordError = passwordError)
@@ -446,28 +454,28 @@ class AuthViewModel @Inject constructor(
         // Additional password validation for registration
         if (passwordError == null) {
             if (!password.containsUpperCase()) {
-                passwordError = "Password must contain at least one uppercase letter"
+                passwordError = getString(R.string.auth_error_password_uppercase)
             } else if (!password.containsLowerCase()) {
-                passwordError = "Password must contain at least one lowercase letter"
+                passwordError = getString(R.string.auth_error_password_lowercase)
             } else if (!password.containsDigit()) {
-                passwordError = "Password must contain at least one number"
+                passwordError = getString(R.string.auth_error_password_digit)
             }
         }
 
         // Confirm password validation
         if (confirmPassword.isBlank()) {
-            confirmPasswordError = "Please confirm your password"
+            confirmPasswordError = getString(R.string.auth_error_confirm_password_required)
         } else if (password != confirmPassword) {
-            confirmPasswordError = "Passwords do not match"
+            confirmPasswordError = getString(R.string.auth_passwords_mismatch)
         }
 
         // Full name validation
         if (fullName.isBlank()) {
-            fullNameError = "Full name is required"
+            fullNameError = getString(R.string.auth_error_fullname_required)
         } else if (fullName.trim().length < MIN_NAME_LENGTH) {
-            fullNameError = "Full name must be at least $MIN_NAME_LENGTH characters"
+            fullNameError = getString(R.string.auth_error_fullname_min_length, MIN_NAME_LENGTH)
         } else if (fullName.trim().length > MAX_NAME_LENGTH) {
-            fullNameError = "Full name is too long (max $MAX_NAME_LENGTH characters)"
+            fullNameError = getString(R.string.auth_error_fullname_max_length, MAX_NAME_LENGTH)
         }
 
         return ValidationErrors(

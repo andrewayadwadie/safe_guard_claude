@@ -16,9 +16,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.safeguard.parentalcontrol.R
 
 private const val MIN_PIN_LENGTH = 4
 private const val MAX_PIN_LENGTH = 8
@@ -49,21 +51,21 @@ fun ParentPinDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(if (hasPin) "Enter parent PIN" else "Create a parent PIN")
+            Text(if (hasPin) stringResource(R.string.components_pin_enter_title) else stringResource(R.string.components_pin_create_title))
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = if (hasPin) {
-                        "Enter your PIN to review what was flagged on this device."
+                        stringResource(R.string.components_pin_enter_desc)
                     } else {
-                        "Set a $MIN_PIN_LENGTH–$MAX_PIN_LENGTH digit PIN. You'll enter it to review flagged photos and text on this device. Keep it private from your child."
+                        stringResource(R.string.components_pin_create_desc, MIN_PIN_LENGTH, MAX_PIN_LENGTH)
                     }
                 )
                 OutlinedTextField(
                     value = pin,
                     onValueChange = { pin = digitsOnly(it); error = null },
-                    label = { Text("PIN") },
+                    label = { Text(stringResource(R.string.components_pin_label)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -74,7 +76,7 @@ fun ParentPinDialog(
                     OutlinedTextField(
                         value = confirm,
                         onValueChange = { confirm = digitsOnly(it); error = null },
-                        label = { Text("Confirm PIN") },
+                        label = { Text(stringResource(R.string.components_pin_confirm_label)) },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -86,13 +88,16 @@ fun ParentPinDialog(
             }
         },
         confirmButton = {
+            val incorrectPinError = stringResource(R.string.components_pin_error_incorrect)
+            val minLengthError = stringResource(R.string.components_pin_error_min_length, MIN_PIN_LENGTH)
+            val mismatchError = stringResource(R.string.components_pin_error_mismatch)
             TextButton(onClick = {
                 if (hasPin) {
-                    if (onVerify(pin)) onSuccess() else error = "Incorrect PIN"
+                    if (onVerify(pin)) onSuccess() else error = incorrectPinError
                 } else {
                     when {
-                        pin.length < MIN_PIN_LENGTH -> error = "PIN must be at least $MIN_PIN_LENGTH digits"
-                        pin != confirm -> error = "PINs don't match"
+                        pin.length < MIN_PIN_LENGTH -> error = minLengthError
+                        pin != confirm -> error = mismatchError
                         else -> {
                             onCreate(pin)
                             onSuccess()
@@ -100,11 +105,11 @@ fun ParentPinDialog(
                     }
                 }
             }) {
-                Text(if (hasPin) "Unlock" else "Set PIN")
+                Text(if (hasPin) stringResource(R.string.components_pin_unlock) else stringResource(R.string.components_pin_set))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }

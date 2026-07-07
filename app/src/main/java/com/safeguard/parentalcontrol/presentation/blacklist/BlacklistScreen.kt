@@ -16,10 +16,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 
 /**
  * Screen for managing blocked websites (blacklist)
@@ -68,7 +71,7 @@ fun BlacklistScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Blocked Websites")
+                        Text(stringResource(R.string.blacklist_title))
                         Text(
                             text = deviceName,
                             style = MaterialTheme.typography.bodySmall,
@@ -78,13 +81,13 @@ fun BlacklistScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, "Back")
+                        Icon(Icons.Filled.ArrowBack, stringResource(R.string.common_back), modifier = Modifier.mirrorInRtl())
                     }
                 },
                 actions = {
                     if (uiState.domains.isNotEmpty()) {
                         IconButton(onClick = { showClearDialog = true }) {
-                            Icon(Icons.Default.DeleteSweep, "Clear all")
+                            Icon(Icons.Default.DeleteSweep, stringResource(R.string.blacklist_cd_clear_all))
                         }
                     }
                 }
@@ -94,7 +97,7 @@ fun BlacklistScreen(
             FloatingActionButton(
                 onClick = { showAddDialog = true }
             ) {
-                Icon(Icons.Default.Add, "Add website")
+                Icon(Icons.Default.Add, stringResource(R.string.blacklist_cd_add_website))
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -123,7 +126,10 @@ fun BlacklistScreen(
                     ) {
                         item {
                             Text(
-                                text = "${uiState.domains.size} blocked website${if (uiState.domains.size != 1) "s" else ""}",
+                                text = if (uiState.domains.size == 1)
+                                    stringResource(R.string.blacklist_count_one)
+                                else
+                                    stringResource(R.string.blacklist_count_other, uiState.domains.size),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(bottom = 8.dp)
@@ -169,11 +175,11 @@ fun BlacklistScreen(
             icon = {
                 Icon(Icons.Default.Block, contentDescription = null)
             },
-            title = { Text("Block Website") },
+            title = { Text(stringResource(R.string.blacklist_dialog_title)) },
             text = {
                 Column {
                     Text(
-                        text = "Enter the domain to block. Do not include 'http://' or 'https://'.",
+                        text = stringResource(R.string.blacklist_dialog_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -181,8 +187,8 @@ fun BlacklistScreen(
                     OutlinedTextField(
                         value = newDomain,
                         onValueChange = { newDomain = it },
-                        label = { Text("Domain") },
-                        placeholder = { Text("example.com") },
+                        label = { Text(stringResource(R.string.blacklist_domain_label)) },
+                        placeholder = { Text(stringResource(R.string.blacklist_domain_placeholder)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -197,7 +203,7 @@ fun BlacklistScreen(
                     },
                     enabled = newDomain.isNotBlank()
                 ) {
-                    Text("Block")
+                    Text(stringResource(R.string.blacklist_block_button))
                 }
             },
             dismissButton = {
@@ -205,7 +211,7 @@ fun BlacklistScreen(
                     showAddDialog = false
                     newDomain = ""
                 }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -222,9 +228,9 @@ fun BlacklistScreen(
                     tint = MaterialTheme.colorScheme.error
                 )
             },
-            title = { Text("Clear Blacklist?") },
+            title = { Text(stringResource(R.string.blacklist_clear_title)) },
             text = {
-                Text("This will remove all ${uiState.domains.size} blocked websites. This action cannot be undone.")
+                Text(stringResource(R.string.blacklist_clear_message, uiState.domains.size))
             },
             confirmButton = {
                 TextButton(
@@ -234,14 +240,14 @@ fun BlacklistScreen(
                     }
                 ) {
                     Text(
-                        "Clear All",
+                        stringResource(R.string.blacklist_clear_all_button),
                         color = MaterialTheme.colorScheme.error
                     )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -288,7 +294,7 @@ private fun BlacklistItem(
             ) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Remove",
+                    contentDescription = stringResource(R.string.screentime_cd_remove),
                     tint = MaterialTheme.colorScheme.error
                 )
             }
@@ -310,13 +316,13 @@ private fun EmptyBlacklistView(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No blocked websites",
+            text = stringResource(R.string.blacklist_empty_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Tap + to add websites to block",
+            text = stringResource(R.string.blacklist_empty_message),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
         )

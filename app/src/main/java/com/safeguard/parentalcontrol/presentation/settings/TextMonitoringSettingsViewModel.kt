@@ -1,11 +1,15 @@
 package com.safeguard.parentalcontrol.presentation.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.repository.AlertRepository
 import com.safeguard.parentalcontrol.data.repository.CategoryAlertStats
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,8 +54,12 @@ data class TextMonitoringSettingsUiState(
 @HiltViewModel
 class TextMonitoringSettingsViewModel @Inject constructor(
     private val preferencesManager: PreferencesManager,
-    private val alertRepository: AlertRepository
+    private val alertRepository: AlertRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(context).getString(resId, *args)
 
     companion object {
         private const val TAG = "TextMonitoringSettingsVM"
@@ -67,66 +75,65 @@ class TextMonitoringSettingsViewModel @Inject constructor(
     val uiState: StateFlow<TextMonitoringSettingsUiState> = _uiState.asStateFlow()
 
     // All monitoring categories with their default enabled state
-    private val allCategories = listOf(
-        MonitoringCategory(
-            id = "self_harm",
-            displayName = "Self-Harm & Suicide",
-            description = "Detects content related to self-harm, suicide, or harmful ideation. " +
-                    "This is always enabled for child safety.",
-            isEnabled = true,
-            isCritical = true
-        ),
-        MonitoringCategory(
-            id = "predator_grooming",
-            displayName = "Predatory Behavior",
-            description = "Detects potential grooming patterns and suspicious contact attempts. " +
-                    "This is always enabled for child safety.",
-            isEnabled = true,
-            isCritical = true
-        ),
-        MonitoringCategory(
-            id = "sexual",
-            displayName = "Sexual Content",
-            description = "Detects sexually explicit or inappropriate content including sexting.",
-            isEnabled = true,
-            isCritical = false
-        ),
-        MonitoringCategory(
-            id = "violence",
-            displayName = "Violence & Threats",
-            description = "Detects violent content, threats, and aggressive language.",
-            isEnabled = true,
-            isCritical = false
-        ),
-        MonitoringCategory(
-            id = "bullying",
-            displayName = "Cyberbullying",
-            description = "Detects bullying, harassment, and mean-spirited content.",
-            isEnabled = true,
-            isCritical = false
-        ),
-        MonitoringCategory(
-            id = "drugs",
-            displayName = "Drugs & Substances",
-            description = "Detects references to drugs, alcohol, and substance abuse.",
-            isEnabled = true,
-            isCritical = false
-        ),
-        MonitoringCategory(
-            id = "profanity",
-            displayName = "Profanity & Bad Language",
-            description = "Detects profanity, swear words, and inappropriate language.",
-            isEnabled = true,
-            isCritical = false
-        ),
-        MonitoringCategory(
-            id = "custom",
-            displayName = "Custom Blacklist",
-            description = "Detects words from your custom blacklist.",
-            isEnabled = true,
-            isCritical = false
+    private val allCategories: List<MonitoringCategory>
+        get() = listOf(
+            MonitoringCategory(
+                id = "self_harm",
+                displayName = getString(R.string.textmon_cat_selfharm_name),
+                description = getString(R.string.textmon_cat_selfharm_desc),
+                isEnabled = true,
+                isCritical = true
+            ),
+            MonitoringCategory(
+                id = "predator_grooming",
+                displayName = getString(R.string.textmon_cat_predator_name),
+                description = getString(R.string.textmon_cat_predator_desc),
+                isEnabled = true,
+                isCritical = true
+            ),
+            MonitoringCategory(
+                id = "sexual",
+                displayName = getString(R.string.textmon_cat_sexual_name),
+                description = getString(R.string.textmon_cat_sexual_desc),
+                isEnabled = true,
+                isCritical = false
+            ),
+            MonitoringCategory(
+                id = "violence",
+                displayName = getString(R.string.textmon_cat_violence_name),
+                description = getString(R.string.textmon_cat_violence_desc),
+                isEnabled = true,
+                isCritical = false
+            ),
+            MonitoringCategory(
+                id = "bullying",
+                displayName = getString(R.string.textmon_cat_bullying_name),
+                description = getString(R.string.textmon_cat_bullying_desc),
+                isEnabled = true,
+                isCritical = false
+            ),
+            MonitoringCategory(
+                id = "drugs",
+                displayName = getString(R.string.textmon_cat_drugs_name),
+                description = getString(R.string.textmon_cat_drugs_desc),
+                isEnabled = true,
+                isCritical = false
+            ),
+            MonitoringCategory(
+                id = "profanity",
+                displayName = getString(R.string.textmon_cat_profanity_name),
+                description = getString(R.string.textmon_cat_profanity_desc),
+                isEnabled = true,
+                isCritical = false
+            ),
+            MonitoringCategory(
+                id = "custom",
+                displayName = getString(R.string.textmon_cat_custom_name),
+                description = getString(R.string.textmon_cat_custom_desc),
+                isEnabled = true,
+                isCritical = false
+            )
         )
-    )
 
     init {
         loadSettings()
@@ -180,7 +187,7 @@ class TextMonitoringSettingsViewModel @Inject constructor(
 
             } catch (e: Exception) {
                 Timber.e(e, "$TAG: Error loading settings")
-                _uiState.update { it.copy(isLoading = false, error = "Failed to load settings") }
+                _uiState.update { it.copy(isLoading = false, error = getString(R.string.textmon_error_load)) }
             }
         }
     }
@@ -227,7 +234,7 @@ class TextMonitoringSettingsViewModel @Inject constructor(
             // Don't allow disabling critical categories
             if (category.isCritical && !enabled) {
                 Timber.w("$TAG: Cannot disable critical category: $categoryId")
-                _uiState.update { it.copy(error = "This category cannot be disabled for safety reasons") }
+                _uiState.update { it.copy(error = getString(R.string.textmon_error_critical_disable)) }
                 return@launch
             }
 

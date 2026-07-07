@@ -12,8 +12,10 @@ import com.safeguard.parentalcontrol.data.repository.CustomWordRepository
 import com.safeguard.parentalcontrol.data.repository.DeviceRepository
 import com.safeguard.parentalcontrol.data.repository.ScreenTimeRepository
 import com.safeguard.parentalcontrol.data.repository.ScreenTimeRulesRepository
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.service.ContentFilterVpnService
 import com.safeguard.parentalcontrol.util.Constants
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -40,6 +42,9 @@ class SyncWorker @AssistedInject constructor(
     private val contentFilterRepository: ContentFilterRepository,
     private val preferencesManager: PreferencesManager
 ) : CoroutineWorker(appContext, workerParams) {
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(applicationContext).getString(resId, *args)
 
     override suspend fun doWork(): Result {
         Timber.d("SyncWorker starting (attempt ${runAttemptCount + 1})")
@@ -302,8 +307,8 @@ class SyncWorker @AssistedInject constructor(
                 // Only send notification once per day to prevent spam
                 if (!preferencesManager.hasNotifiedLimitExceededToday()) {
                     sendLimitExceededNotification(
-                        title = "Screen Time Limit Reached",
-                        message = "Daily screen time limit has been reached."
+                        title = getString(R.string.notif_sync_limit_reached_title),
+                        message = getString(R.string.notif_sync_limit_reached_msg)
                     )
                     preferencesManager.setNotifiedLimitExceededToday()
                 }
@@ -318,8 +323,8 @@ class SyncWorker @AssistedInject constructor(
                         // Only send warning notification once per day
                         if (!preferencesManager.hasNotifiedLimitWarningToday()) {
                             sendLimitWarningNotification(
-                                title = "Screen Time Warning",
-                                message = "Only $remainingMinutes minutes of screen time remaining today."
+                                title = getString(R.string.notif_sync_limit_warning_title),
+                                message = getString(R.string.notif_sync_limit_warning_msg, remainingMinutes)
                             )
                             preferencesManager.setNotifiedLimitWarningToday()
                         }
@@ -333,8 +338,8 @@ class SyncWorker @AssistedInject constructor(
                 // Only send bedtime notification once per day
                 if (!preferencesManager.hasNotifiedBedtimeToday()) {
                     sendLimitExceededNotification(
-                        title = "Bedtime Mode Active",
-                        message = "Device usage is restricted during bedtime hours."
+                        title = getString(R.string.notif_sync_bedtime_title),
+                        message = getString(R.string.notif_sync_bedtime_msg)
                     )
                     preferencesManager.setNotifiedBedtimeToday()
                 }

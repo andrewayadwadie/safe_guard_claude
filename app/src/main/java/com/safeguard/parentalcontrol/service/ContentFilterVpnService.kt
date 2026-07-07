@@ -17,6 +17,7 @@ import com.safeguard.parentalcontrol.data.repository.AlertRepository
 import com.safeguard.parentalcontrol.data.repository.ContentFilterRepository
 import com.safeguard.parentalcontrol.presentation.MainActivity
 import com.safeguard.parentalcontrol.util.Constants
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -45,6 +46,9 @@ import javax.inject.Inject
  */
 @AndroidEntryPoint
 class ContentFilterVpnService : VpnService() {
+
+    private fun getLocalizedString(resId: Int): String =
+        LocaleHelper.localizedContext(this).getString(resId)
 
     @Inject
     lateinit var alertRepository: AlertRepository
@@ -214,10 +218,10 @@ class ContentFilterVpnService : VpnService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Content Filter",
+                getLocalizedString(R.string.notif_vpn_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Haris content filtering is active"
+                description = getLocalizedString(R.string.notif_vpn_channel_desc)
                 setShowBadge(false)
             }
 
@@ -235,8 +239,8 @@ class ContentFilterVpnService : VpnService() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Haris VPN Active")
-            .setContentText("Content filtering is protecting this device")
+            .setContentTitle(getLocalizedString(R.string.notif_vpn_title))
+            .setContentText(getLocalizedString(R.string.notif_vpn_text))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
@@ -244,7 +248,7 @@ class ContentFilterVpnService : VpnService() {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setGroup("safeguard_vpn")
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
-            .setStyle(NotificationCompat.BigTextStyle().bigText("Content filtering is actively protecting this device from harmful content"))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(getLocalizedString(R.string.notif_vpn_bigtext)))
             .build()
     }
 

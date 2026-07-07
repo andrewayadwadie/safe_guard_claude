@@ -1,6 +1,6 @@
 <!-- SPECKIT START -->
-Active feature: Child Pairing Gate for Monitoring.
-Plan: specs/004-child-pairing-gate/plan.md
-Spec: specs/004-child-pairing-gate/spec.md
+Active feature: Arabic & English Localization with RTL Support.
+Plan: specs/008-arabic-english-localization/plan.md
+Spec: specs/008-arabic-english-localization/spec.md
 For technologies, project structure, shell commands, and other context, read the current plan.
 <!-- SPECKIT END -->

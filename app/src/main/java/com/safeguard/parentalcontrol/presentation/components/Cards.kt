@@ -20,8 +20,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.theme.*
 
 // ============================================================================
@@ -72,7 +74,7 @@ fun ScreenTimeHeroCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Today's Screen Time",
+                text = stringResource(R.string.components_screentime_hero_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -97,7 +99,7 @@ fun ScreenTimeHeroCard(
                 StatItem(
                     icon = Icons.Default.LockOpen,
                     value = unlockCount.toString(),
-                    label = "Unlocks",
+                    label = stringResource(R.string.components_stat_unlocks),
                     color = MaterialTheme.colorScheme.primary
                 )
 
@@ -105,7 +107,7 @@ fun ScreenTimeHeroCard(
                     StatItem(
                         icon = Icons.Default.Timer,
                         value = formatMinutesToTime(limitMinutes - usedMinutes.coerceAtMost(limitMinutes)),
-                        label = "Remaining",
+                        label = stringResource(R.string.components_stat_remaining),
                         color = statusColor
                     )
                 }
@@ -126,7 +128,7 @@ fun ScreenTimeHeroCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(SafeGuardDimens.spacingSm))
-                    Text("Manage Limits")
+                    Text(stringResource(R.string.components_manage_limits))
                 }
             }
         }
@@ -457,7 +459,7 @@ fun AlertCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Dismiss",
+                        contentDescription = stringResource(R.string.components_cd_dismiss),
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -586,9 +588,9 @@ fun DeviceCard(
     }
 
     val statusText = when (status) {
-        DeviceStatusType.ACTIVE -> "Online"
-        DeviceStatusType.SUSPENDED -> "Suspended"
-        DeviceStatusType.INACTIVE -> "Offline"
+        DeviceStatusType.ACTIVE -> stringResource(R.string.components_device_status_online)
+        DeviceStatusType.SUSPENDED -> stringResource(R.string.components_device_status_suspended)
+        DeviceStatusType.INACTIVE -> stringResource(R.string.components_device_status_offline)
     }
 
     Card(
@@ -654,7 +656,7 @@ fun DeviceCard(
                     IconButton(onClick = onMoreClick) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More options"
+                            contentDescription = stringResource(R.string.components_cd_more_options)
                         )
                     }
                 }
@@ -663,7 +665,7 @@ fun DeviceCard(
             Spacer(modifier = Modifier.height(SafeGuardDimens.spacingSm))
 
             Text(
-                text = "Last seen: $lastSeen",
+                text = stringResource(R.string.components_last_seen, lastSeen),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -759,7 +761,7 @@ fun InfoBanner(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Dismiss",
+                        contentDescription = stringResource(R.string.components_cd_dismiss),
                         modifier = Modifier.size(18.dp),
                         tint = contentColor
                     )

@@ -4,8 +4,8 @@
     <color name="primary">#168BB6</color>
     <!-- Sampled dominant color of the Haris logo (adaptive icon + splash background) -->
     <color name="brand_icon_background">#084868</color>
-    <!-- Splash screen background (day/night aware): off-white in light mode -->
-    <color name="splash_background">#FAFCFC</color>
+    <!-- Splash screen background: white so the logo shows on a white background -->
+    <color name="splash_background">#FFFFFF</color>
     <color name="primary_dark">#0E6A86</color>
     <color name="primary_light">#A4DFF4</color>
     <color name="accent">#C8941E</color>

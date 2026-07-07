@@ -6,10 +6,12 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.*
 import com.safeguard.parentalcontrol.data.remote.ApiService
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.remote.safeApiCall
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.TextHasher
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -76,6 +78,10 @@ class AlertRepository @Inject constructor(
         private const val DEFAULT_COOLDOWN_MS = 180_000L // 3 minutes
         private const val DEFAULT_DAILY_LIMIT = 15
     }
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(context).getString(resId, *args)
+
     /**
      * Create a new alert (from device)
      */
@@ -197,8 +203,8 @@ class AlertRepository @Inject constructor(
         return createAlert(
             alertType = AlertType.CONTENT_BLOCK,
             severity = AlertSeverity.MEDIUM,
-            title = "Content Blocked",
-            message = "Blocked access to $domain",
+            title = getString(R.string.alert_content_blocked_title),
+            message = getString(R.string.alert_content_blocked_msg, domain),
             metadata = mapOf(
                 "domain" to domain,
                 "reason" to reason,
@@ -217,8 +223,8 @@ class AlertRepository @Inject constructor(
         return createAlert(
             alertType = AlertType.SCREEN_TIME_LIMIT,
             severity = AlertSeverity.MEDIUM,
-            title = "Screen Time Limit Reached",
-            message = "Daily screen time limit of ${limitSeconds / 3600} hours has been reached",
+            title = getString(R.string.alert_screentime_limit_title),
+            message = getString(R.string.alert_screentime_limit_msg, limitSeconds / 3600),
             metadata = mapOf(
                 "limit" to limitSeconds,
                 "usage" to usageSeconds,
@@ -239,8 +245,8 @@ class AlertRepository @Inject constructor(
         return createAlert(
             alertType = AlertType.INAPPROPRIATE_IMAGE,
             severity = mapImageConfidenceToSeverity(confidence),
-            title = "Inappropriate Image Detected",
-            message = "NSFW content detected with ${(confidence * 100).toInt()}% confidence",
+            title = getString(R.string.alert_inappropriate_image_title),
+            message = getString(R.string.alert_inappropriate_image_msg, (confidence * 100).toInt()),
             metadata = mapOf(
                 "category" to category,
                 "confidence" to confidence,
@@ -371,42 +377,40 @@ class AlertRepository @Inject constructor(
     private fun getCategoryAlertContent(category: String, appName: String): Pair<String, String> {
         return when (category.lowercase()) {
             "self_harm" -> Pair(
-                "Self-Harm Content Detected",
-                "Content related to self-harm or suicide was detected in $appName. " +
-                    "Please check on your child and consider having a supportive conversation."
+                getString(R.string.alert_cat_selfharm_title),
+                getString(R.string.alert_cat_selfharm_msg, appName)
             )
             "predator_grooming" -> Pair(
-                "Suspicious Contact Pattern Detected",
-                "Potentially concerning communication patterns were detected in $appName. " +
-                    "This may indicate inappropriate contact attempts."
+                getString(R.string.alert_cat_grooming_title),
+                getString(R.string.alert_cat_grooming_msg, appName)
             )
             "violence" -> Pair(
-                "Violent Content Detected",
-                "Content containing violence or threats was detected in $appName."
+                getString(R.string.alert_cat_violence_title),
+                getString(R.string.alert_cat_violence_msg, appName)
             )
             "sexual" -> Pair(
-                "Sexual Content Detected",
-                "Sexually explicit or inappropriate content was detected in $appName."
+                getString(R.string.alert_cat_sexual_title),
+                getString(R.string.alert_cat_sexual_msg, appName)
             )
             "bullying" -> Pair(
-                "Cyberbullying Detected",
-                "Content related to bullying or harassment was detected in $appName."
+                getString(R.string.alert_cat_bullying_title),
+                getString(R.string.alert_cat_bullying_msg, appName)
             )
             "drugs" -> Pair(
-                "Drug-Related Content Detected",
-                "Content related to drugs or substance abuse was detected in $appName."
+                getString(R.string.alert_cat_drugs_title),
+                getString(R.string.alert_cat_drugs_msg, appName)
             )
             "profanity" -> Pair(
-                "Inappropriate Language Detected",
-                "Profane or inappropriate language was detected in $appName."
+                getString(R.string.alert_cat_profanity_title),
+                getString(R.string.alert_cat_profanity_msg, appName)
             )
             "custom" -> Pair(
-                "Blacklisted Word Detected",
-                "A word from your custom blacklist was detected in $appName."
+                getString(R.string.alert_cat_custom_title),
+                getString(R.string.alert_cat_custom_msg, appName)
             )
             else -> Pair(
-                "Inappropriate Text Detected",
-                "Potentially inappropriate content was detected in $appName."
+                getString(R.string.alert_cat_default_title),
+                getString(R.string.alert_cat_default_msg, appName)
             )
         }
     }
@@ -543,8 +547,8 @@ class AlertRepository @Inject constructor(
         return createAlert(
             alertType = AlertType.APP_BLOCKED,
             severity = AlertSeverity.LOW,
-            title = "App Blocked",
-            message = "${appName ?: packageName} was blocked",
+            title = getString(R.string.alert_app_blocked_title),
+            message = getString(R.string.alert_app_blocked_msg, appName ?: packageName),
             metadata = mapOf(
                 "package_name" to packageName,
                 "app_name" to (appName ?: "Unknown"),

@@ -1,5 +1,6 @@
 package com.safeguard.parentalcontrol.presentation
 
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -22,6 +23,7 @@ import com.safeguard.parentalcontrol.presentation.navigation.Screen
 import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
 import com.safeguard.parentalcontrol.service.MonitoringService
 import com.safeguard.parentalcontrol.util.AuthEvent
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.TokenManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -40,6 +42,10 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var preferencesManager: PreferencesManager
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install the splash screen before super.onCreate so the Haris logo shows during startup

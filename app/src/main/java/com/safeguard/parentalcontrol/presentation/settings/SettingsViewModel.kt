@@ -13,7 +13,9 @@ import com.safeguard.parentalcontrol.data.model.UserRole
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.AuthRepository
 import com.safeguard.parentalcontrol.service.ContentFilterVpnService
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
+import com.safeguard.parentalcontrol.util.ProtectionStatusHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -32,9 +34,11 @@ data class SettingsUiState(
     val userEmail: String = "",
     val userRole: UserRole = UserRole.CHILD,
     val isContentFilteringEnabled: Boolean = false,
+    val notificationsEnabled: Boolean = false,
     val isLoading: Boolean = false,
     val logoutSuccess: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val currentLanguage: String = LocaleHelper.LANGUAGE_ENGLISH
 )
 
 /**
@@ -82,7 +86,15 @@ class SettingsViewModel @Inject constructor(
     init {
         loadUserInfo()
         loadContentFilteringState()
+        refreshNotificationStatus()
         registerVpnStateReceiver()
+        _uiState.update { it.copy(currentLanguage = LocaleHelper.getLanguage(context)) }
+    }
+
+    /** Persists the chosen language. Caller (SettingsScreen) is responsible for `Activity.recreate()`. */
+    fun setLanguage(lang: String) {
+        LocaleHelper.setLanguage(context, lang)
+        _uiState.update { it.copy(currentLanguage = lang) }
     }
 
     private fun registerVpnStateReceiver() {
@@ -183,6 +195,15 @@ class SettingsViewModel @Inject constructor(
      */
     fun refreshContentFilteringState() {
         loadContentFilteringState()
+    }
+
+    /**
+     * Refresh notification permission state - called on init and when returning to Settings screen
+     */
+    fun refreshNotificationStatus() {
+        _uiState.update {
+            it.copy(notificationsEnabled = ProtectionStatusHelper.isNotificationsEnabled(context))
+        }
     }
 
     /**

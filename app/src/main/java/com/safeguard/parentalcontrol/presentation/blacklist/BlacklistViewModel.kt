@@ -1,10 +1,14 @@
 package com.safeguard.parentalcontrol.presentation.blacklist
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.ContentFilterRepository
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,11 +31,15 @@ data class BlacklistUiState(
  */
 @HiltViewModel
 class BlacklistViewModel @Inject constructor(
-    private val contentFilterRepository: ContentFilterRepository
+    private val contentFilterRepository: ContentFilterRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BlacklistUiState())
     val uiState: StateFlow<BlacklistUiState> = _uiState.asStateFlow()
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(context).getString(resId, *args)
 
     /**
      * Load blacklist for a device
@@ -69,18 +77,18 @@ class BlacklistViewModel @Inject constructor(
 
         // Validate domain
         if (trimmedDomain.isBlank()) {
-            _uiState.update { it.copy(error = "Domain cannot be empty") }
+            _uiState.update { it.copy(error = getString(R.string.blacklist_error_empty)) }
             return
         }
 
         if (trimmedDomain.length < 3) {
-            _uiState.update { it.copy(error = "Domain is too short") }
+            _uiState.update { it.copy(error = getString(R.string.blacklist_error_short)) }
             return
         }
 
         // Check if already in list
         if (_uiState.value.domains.any { it.equals(trimmedDomain, ignoreCase = true) }) {
-            _uiState.update { it.copy(error = "Domain already in blacklist") }
+            _uiState.update { it.copy(error = getString(R.string.blacklist_error_duplicate)) }
             return
         }
 
@@ -93,7 +101,7 @@ class BlacklistViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             domains = result.data.blockedDomains,
-                            successMessage = "Website added to blacklist"
+                            successMessage = getString(R.string.blacklist_msg_added)
                         )
                     }
                 }
@@ -122,7 +130,7 @@ class BlacklistViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             domains = result.data.blockedDomains,
-                            successMessage = "Website removed from blacklist"
+                            successMessage = getString(R.string.blacklist_msg_removed)
                         )
                     }
                 }
@@ -151,7 +159,7 @@ class BlacklistViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             domains = emptyList(),
-                            successMessage = "Blacklist cleared"
+                            successMessage = getString(R.string.blacklist_msg_cleared)
                         )
                     }
                 }

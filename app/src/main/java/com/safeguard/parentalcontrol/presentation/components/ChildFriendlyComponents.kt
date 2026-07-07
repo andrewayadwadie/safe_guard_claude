@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.theme.*
 
 // ============================================================================
@@ -61,9 +63,9 @@ fun ChildScreenTimeCard(
 
     // Determine mood based on remaining time
     val (moodIcon, moodColor, moodText) = when {
-        progress >= 0.9f -> Triple(Icons.Default.SentimentDissatisfied, SemanticColors.screenTimeExceeded, "Almost done for today!")
-        progress >= 0.7f -> Triple(Icons.Default.SentimentNeutral, SemanticColors.screenTimeWarning, "Time is running low")
-        else -> Triple(Icons.Default.SentimentSatisfied, SemanticColors.childSuccess, "You have lots of time!")
+        progress >= 0.9f -> Triple(Icons.Default.SentimentDissatisfied, SemanticColors.screenTimeExceeded, stringResource(R.string.components_child_mood_almost_done))
+        progress >= 0.7f -> Triple(Icons.Default.SentimentNeutral, SemanticColors.screenTimeWarning, stringResource(R.string.components_child_mood_running_low))
+        else -> Triple(Icons.Default.SentimentSatisfied, SemanticColors.childSuccess, stringResource(R.string.components_child_mood_lots_of_time))
     }
 
     Card(
@@ -91,7 +93,7 @@ fun ChildScreenTimeCard(
                 )
                 Spacer(modifier = Modifier.width(SafeGuardDimens.spacingMd))
                 Text(
-                    text = "My Screen Time",
+                    text = stringResource(R.string.components_child_my_screen_time),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = SemanticColors.childPrimary
@@ -128,7 +130,7 @@ fun ChildScreenTimeCard(
                 FunStatItem(
                     icon = Icons.Default.PhoneAndroid,
                     value = unlockCount.toString(),
-                    label = "Phone Opens",
+                    label = stringResource(R.string.components_child_phone_opens),
                     color = SemanticColors.childSecondary
                 )
 
@@ -136,7 +138,7 @@ fun ChildScreenTimeCard(
                     FunStatItem(
                         icon = Icons.Default.Timelapse,
                         value = formatFriendlyTime(it),
-                        label = "Time Left",
+                        label = stringResource(R.string.components_child_time_left),
                         color = moodColor
                     )
                 }
@@ -242,7 +244,7 @@ private fun FunCircularProgress(
             )
             limitMinutes?.let {
                 Text(
-                    text = "of ${formatFriendlyTime(it)}",
+                    text = stringResource(R.string.components_child_of_limit, formatFriendlyTime(it)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -363,16 +365,16 @@ fun ChildPermissionStatus(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (allGranted) "All Set!" else "Setup Needed",
+                    text = if (allGranted) stringResource(R.string.components_child_all_set) else stringResource(R.string.components_child_setup_needed),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = if (allGranted) SemanticColors.success else SemanticColors.warning
                 )
                 Text(
                     text = if (allGranted) {
-                        "Your parent can see your activity"
+                        stringResource(R.string.components_child_parent_can_see)
                     } else {
-                        "$grantedCount of $totalCount permissions ready"
+                        stringResource(R.string.components_child_permissions_ready, grantedCount, totalCount)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -382,7 +384,7 @@ fun ChildPermissionStatus(
             if (!allGranted) {
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "Setup",
+                    contentDescription = stringResource(R.string.components_child_cd_setup),
                     tint = SemanticColors.warning
                 )
             }
@@ -468,7 +470,7 @@ fun ChildAppUsageCard(
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = "${usageMinutes}m",
+                    text = stringResource(R.string.components_time_m, usageMinutes),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = color
@@ -542,14 +544,15 @@ fun EncouragementBanner(
 /**
  * Format time in a child-friendly way
  */
+@Composable
 private fun formatFriendlyTime(minutes: Int): String {
     val hours = minutes / 60
     val mins = minutes % 60
 
     return when {
-        hours > 0 && mins > 0 -> "${hours}h ${mins}m"
-        hours > 0 -> "${hours}h"
-        mins > 0 -> "${mins}m"
-        else -> "0m"
+        hours > 0 && mins > 0 -> stringResource(R.string.components_time_hm, hours, mins)
+        hours > 0 -> stringResource(R.string.components_time_h, hours)
+        mins > 0 -> stringResource(R.string.components_time_m, mins)
+        else -> stringResource(R.string.components_time_zero)
     }
 }

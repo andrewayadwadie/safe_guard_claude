@@ -16,10 +16,15 @@
         <item name="android:windowLightNavigationBar">true</item>
     </style>
 
-    <!-- Splash screen (androidx.core:core-splashscreen) shown at launch, then swaps to Theme.SafeGuard -->
+    <!-- Native launch splash: Haris logo only, centered on white.
+         The Android-12 system splash always clips its icon to a circle, so the icon
+         drawable insets the logo to fit fully INSIDE that circle: whole logo visible,
+         no cropping, no visible circle edge (no icon background color is set).
+         windowBackground covers pre-12 devices the same way. -->
     <style name="Theme.Haris.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon_inset</item>
+        <item name="android:windowBackground">@drawable/splash_screen</item>
         <item name="postSplashScreenTheme">@style/Theme.SafeGuard</item>
     </style>
 </resources>

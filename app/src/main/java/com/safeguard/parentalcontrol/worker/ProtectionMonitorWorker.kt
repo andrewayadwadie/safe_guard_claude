@@ -3,12 +3,14 @@ package com.safeguard.parentalcontrol.worker
 import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.AlertSeverity
 import com.safeguard.parentalcontrol.data.model.AlertType
 import com.safeguard.parentalcontrol.data.repository.AlertRepository
 import com.safeguard.parentalcontrol.service.ContentFilterVpnService
 import com.safeguard.parentalcontrol.util.AccessibilityServiceHelper
 import com.safeguard.parentalcontrol.util.Constants
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.ProtectionStatus
 import com.safeguard.parentalcontrol.util.ProtectionStatusHelper
@@ -52,6 +54,9 @@ class ProtectionMonitorWorker @AssistedInject constructor(
     private val alertRepository: AlertRepository,
     private val preferencesManager: PreferencesManager
 ) : CoroutineWorker(appContext, workerParams) {
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(applicationContext).getString(resId, *args)
 
     companion object {
         private const val WORK_NAME = "protection_monitor_work"
@@ -314,11 +319,8 @@ class ProtectionMonitorWorker @AssistedInject constructor(
             val result = alertRepository.createAlert(
                 alertType = AlertType.DEVICE_ADMIN_DISABLED,
                 severity = AlertSeverity.HIGH,
-                title = "Another VPN App Detected",
-                message = "A third-party VPN app is active on $deviceName. Android allows only one " +
-                        "VPN at a time, so SafeGuard's content filter cannot run while it is on and " +
-                        "web filtering is bypassed. Check the device for a VPN app (e.g. ProtonVPN) " +
-                        "and remove it or turn it off.",
+                title = getString(R.string.tamper_foreign_vpn_title),
+                message = getString(R.string.tamper_foreign_vpn_msg, deviceName),
                 metadata = mapOf(
                     "protection_type" to "FOREIGN_VPN",
                     "tamper_type" to "foreign_vpn",
@@ -354,10 +356,8 @@ class ProtectionMonitorWorker @AssistedInject constructor(
             val result = alertRepository.createAlert(
                 alertType = AlertType.DEVICE_ADMIN_DISABLED,
                 severity = AlertSeverity.HIGH,
-                title = "Automation Tool Detected",
-                message = "An automation or auto-clicker app with accessibility access was found on " +
-                        "$deviceName. These tools can be used to bypass the lock screen and screen-time " +
-                        "limits.\n\nDetected: $toolNames",
+                title = getString(R.string.protection_bypass_tool_title),
+                message = getString(R.string.protection_bypass_tool_msg, deviceName, toolNames),
                 metadata = mapOf(
                     "protection_type" to "BYPASS_TOOL",
                     "tamper_type" to "bypass_tool",
@@ -390,10 +390,8 @@ class ProtectionMonitorWorker @AssistedInject constructor(
             val result = alertRepository.createAlert(
                 alertType = AlertType.DEVICE_ADMIN_DISABLED,
                 severity = AlertSeverity.HIGH,
-                title = "Monitoring Is Turned Off",
-                message = "SafeGuard's text-monitoring service is turned off on $deviceName, so your " +
-                        "child's messages are not being checked for inappropriate content. Re-enable " +
-                        "SafeGuard in the device's Accessibility settings.",
+                title = getString(R.string.protection_monitoring_off_title),
+                message = getString(R.string.protection_monitoring_off_msg, deviceName),
                 metadata = mapOf(
                     "protection_type" to "MONITORING_OFF",
                     "tamper_type" to "monitoring_off",

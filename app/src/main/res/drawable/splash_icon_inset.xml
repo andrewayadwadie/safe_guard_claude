@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Splash icon for the Android-12 system splash. The system always clips the
+    windowSplashScreenAnimatedIcon to a circle covering the middle 2/3 of the
+    icon area, so the logo is inset ~17% per side to sit entirely INSIDE that
+    circle: the whole logo shows, nothing is cropped, and no circle edge is
+    visible (the area around it is just the white splash background).
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/splash_logo"
+    android:insetLeft="17%"
+    android:insetTop="17%"
+    android:insetRight="17%"
+    android:insetBottom="17%" />

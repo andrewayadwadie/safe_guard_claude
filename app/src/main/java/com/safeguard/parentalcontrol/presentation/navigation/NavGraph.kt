@@ -1,12 +1,14 @@
 package com.safeguard.parentalcontrol.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.alerts.AlertsScreen
 import com.safeguard.parentalcontrol.presentation.auth.LoginScreen
 import com.safeguard.parentalcontrol.presentation.auth.RegisterScreen
@@ -19,6 +21,8 @@ import com.safeguard.parentalcontrol.presentation.imagereview.ImageReviewScreen
 import com.safeguard.parentalcontrol.presentation.textreview.TextReviewScreen
 import com.safeguard.parentalcontrol.presentation.linkparent.LinkParentScreen
 import com.safeguard.parentalcontrol.presentation.screentimelimits.ScreenTimeLimitsScreen
+import com.safeguard.parentalcontrol.presentation.settings.ChangePasswordScreen
+import com.safeguard.parentalcontrol.presentation.settings.LegalDocScreen
 import com.safeguard.parentalcontrol.presentation.settings.SettingsScreen
 import com.safeguard.parentalcontrol.presentation.settings.TextMonitoringSettingsScreen
 import com.safeguard.parentalcontrol.presentation.setup.ConsentScreen
@@ -43,6 +47,15 @@ sealed class Screen(val route: String) {
         fun createRoute(isFromSetupFlow: Boolean = false): String = "permissions_setup/$isFromSetupFlow"
     }
     data object Settings : Screen("settings")
+    data object ChangePassword : Screen("change_password")
+
+    /**
+     * In-app legal document viewer. `doc` selects which bundled HTML to show
+     * ("privacy" or "terms").
+     */
+    data object Legal : Screen("legal/{doc}") {
+        fun createRoute(doc: String): String = "legal/$doc"
+    }
     data object Alerts : Screen("alerts?deviceId={deviceId}&deviceName={deviceName}") {
         fun createRoute(deviceId: Int? = null, deviceName: String? = null): String {
             return if (deviceId != null && deviceName != null) {
@@ -194,7 +207,8 @@ fun SafeGuardNavGraph(
                         popUpTo(Screen.Consent.route) { inclusive = true }
                     }
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToPrivacyPolicy = { navController.navigate(Screen.Legal.createRoute("privacy")) }
             )
         }
 
@@ -269,11 +283,37 @@ fun SafeGuardNavGraph(
                 onNavigateToPermissionsSetup = { navController.navigate(Screen.PermissionsSetup.createRoute(isFromSetupFlow = false)) },
                 onNavigateToImageReview = { navController.navigate(Screen.ImageReview.route) },
                 onNavigateToTextReview = { navController.navigate(Screen.TextReview.route) },
+                onNavigateToChangePassword = { navController.navigate(Screen.ChangePassword.route) },
+                onNavigateToPrivacyPolicy = { navController.navigate(Screen.Legal.createRoute("privacy")) },
+                onNavigateToTerms = { navController.navigate(Screen.Legal.createRoute("terms")) },
                 onLogout = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        // Legal document viewer (privacy policy / terms) — bundled offline HTML
+        composable(
+            route = Screen.Legal.route,
+            arguments = listOf(navArgument("doc") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val (title, assetDir) = when (backStackEntry.arguments?.getString("doc")) {
+                "terms" -> stringResource(R.string.legal_terms_title) to "terms"
+                else -> stringResource(R.string.legal_privacy_title) to "privacy-policy"
+            }
+            LegalDocScreen(
+                title = title,
+                assetDir = assetDir,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Change Password Screen
+        composable(Screen.ChangePassword.route) {
+            ChangePasswordScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

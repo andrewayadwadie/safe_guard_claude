@@ -13,10 +13,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.components.ParentPinGate
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 
 /**
  * Screen for a parent to review phrase-triggered text monitoring on the child's device.
@@ -46,16 +49,16 @@ private fun TextReviewContent(
     if (showClearConfirm) {
         AlertDialog(
             onDismissRequest = { showClearConfirm = false },
-            title = { Text("Clear all flagged text?") },
-            text = { Text("This permanently deletes the on-device review log. It cannot be undone.") },
+            title = { Text(stringResource(R.string.textreview_clear_dialog_title)) },
+            text = { Text(stringResource(R.string.textreview_clear_dialog_message)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.clearAll()
                     showClearConfirm = false
-                }) { Text("Clear all") }
+                }) { Text(stringResource(R.string.textreview_clear_all_button)) }
             },
             dismissButton = {
-                TextButton(onClick = { showClearConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showClearConfirm = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -63,16 +66,16 @@ private fun TextReviewContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Review Flagged Text") },
+                title = { Text(stringResource(R.string.textreview_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.common_back), modifier = Modifier.mirrorInRtl())
                     }
                 },
                 actions = {
                     if (uiState.events.isNotEmpty()) {
                         IconButton(onClick = { showClearConfirm = true }) {
-                            Icon(Icons.Default.DeleteSweep, contentDescription = "Clear all")
+                            Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.textreview_cd_clear_all))
                         }
                     }
                 },
@@ -97,7 +100,10 @@ private fun TextReviewContent(
                 ) {
                     item {
                         Text(
-                            text = "${uiState.events.size} flagged phrase(s). Kept on this device only.",
+                            text = if (uiState.events.size == 1)
+                                stringResource(R.string.textreview_count_one)
+                            else
+                                stringResource(R.string.textreview_count_other, uiState.events.size),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -137,7 +143,7 @@ private fun FlaggedTextCard(event: FlaggedTextUi, onDelete: () -> Unit) {
                 }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.textreview_cd_delete), modifier = Modifier.size(20.dp))
                 }
             }
 
@@ -149,7 +155,7 @@ private fun FlaggedTextCard(event: FlaggedTextUi, onDelete: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = event.phrase.ifBlank { "(no readable text captured)" },
+                    text = event.phrase.ifBlank { stringResource(R.string.textreview_no_text_captured) },
                     modifier = Modifier.padding(12.dp),
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -158,7 +164,7 @@ private fun FlaggedTextCard(event: FlaggedTextUi, onDelete: () -> Unit) {
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "${event.appName} · ${event.formattedDate}",
+                text = stringResource(R.string.textreview_app_date, event.appName, event.formattedDate),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -180,13 +186,13 @@ private fun EmptyState(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "No Flagged Text",
+            text = stringResource(R.string.textreview_empty_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Medium
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Nothing has been flagged on this device recently.",
+            text = stringResource(R.string.textreview_empty_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

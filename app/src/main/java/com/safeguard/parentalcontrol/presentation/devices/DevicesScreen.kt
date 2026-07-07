@@ -12,6 +12,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 import com.safeguard.parentalcontrol.presentation.theme.SemanticColors
 import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
 import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
@@ -106,15 +109,27 @@ fun DevicesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (childName != null) "$childName's Devices" else "Devices") },
+                title = {
+                    Text(
+                        if (childName != null) {
+                            stringResource(R.string.devices_title_child, childName)
+                        } else {
+                            stringResource(R.string.devices_title)
+                        }
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            modifier = Modifier.mirrorInRtl()
+                        )
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.loadDevices(childId) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.alerts_cd_refresh))
                     }
                 }
             )
@@ -159,7 +174,11 @@ fun DevicesScreen(
                     ) {
                         item {
                             Text(
-                                text = "${uiState.devices.size} device${if (uiState.devices.size != 1) "s" else ""} registered",
+                                text = if (uiState.devices.size == 1) {
+                                    stringResource(R.string.devices_count_one)
+                                } else {
+                                    stringResource(R.string.devices_count_other, uiState.devices.size)
+                                },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -198,12 +217,12 @@ private fun EmptyState(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No devices found",
+            text = stringResource(R.string.devices_empty_title),
             style = MaterialTheme.typography.titleLarge
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Your children's devices will appear here once they install Haris and link to your account",
+            text = stringResource(R.string.devices_empty_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -229,9 +248,9 @@ private fun DeviceCard(
     }
 
     val statusText = when (device.status) {
-        DeviceStatus.ACTIVE -> "Monitoring Active"
-        DeviceStatus.SUSPENDED -> "Suspended"
-        DeviceStatus.INACTIVE -> "Inactive"
+        DeviceStatus.ACTIVE -> stringResource(R.string.devices_status_active)
+        DeviceStatus.SUSPENDED -> stringResource(R.string.devices_status_suspended)
+        DeviceStatus.INACTIVE -> stringResource(R.string.devices_status_inactive)
     }
 
     Card(
@@ -277,7 +296,11 @@ private fun DeviceCard(
                         // Online/Offline indicator based on lastSync
                         Icon(
                             imageVector = connectivityIcon,
-                            contentDescription = if (device.isOnline) "Online" else "Offline",
+                            contentDescription = if (device.isOnline) {
+                                stringResource(R.string.dashboard_status_online)
+                            } else {
+                                stringResource(R.string.dashboard_status_offline)
+                            },
                             tint = connectivityColor,
                             modifier = Modifier.size(18.dp)
                         )
@@ -309,7 +332,11 @@ private fun DeviceCard(
                 }
 
                 IconButton(onClick = onClick) {
-                    Icon(Icons.Default.ChevronRight, contentDescription = "View details")
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = stringResource(R.string.devices_cd_view_details),
+                        modifier = Modifier.mirrorInRtl()
+                    )
                 }
             }
 
@@ -326,7 +353,7 @@ private fun DeviceCard(
                 ) {
                     Icon(Icons.Default.Timer, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Set Limits")
+                    Text(stringResource(R.string.devices_set_limits))
                 }
                 OutlinedButton(
                     onClick = onNavigateToBlacklist,
@@ -334,7 +361,7 @@ private fun DeviceCard(
                 ) {
                     Icon(Icons.Default.Block, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Blocked Sites")
+                    Text(stringResource(R.string.devices_blocked_sites))
                 }
             }
         }
@@ -363,9 +390,9 @@ private fun DeviceDetailsSheet(
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             icon = { Icon(Icons.Default.DeleteForever, contentDescription = null) },
-            title = { Text("Remove ${device.deviceName}?") },
+            title = { Text(stringResource(R.string.devices_remove_title, device.deviceName)) },
             text = {
-                Text("This will remove the device and all its monitoring data. This action cannot be undone.")
+                Text(stringResource(R.string.devices_remove_message))
             },
             confirmButton = {
                 TextButton(
@@ -377,12 +404,12 @@ private fun DeviceDetailsSheet(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Remove")
+                    Text(stringResource(R.string.devices_remove))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -443,18 +470,22 @@ private fun DeviceDetailsSheet(
             // Device info
             DeviceInfoRow(
                 icon = Icons.Default.Android,
-                label = "Android Version",
-                value = device.androidVersion ?: "Unknown"
+                label = stringResource(R.string.devices_android_version),
+                value = device.androidVersion ?: stringResource(R.string.devices_unknown)
             )
             DeviceInfoRow(
                 icon = Icons.Default.AppSettingsAlt,
-                label = "App Version",
-                value = device.appVersion ?: "Unknown"
+                label = stringResource(R.string.devices_app_version),
+                value = device.appVersion ?: stringResource(R.string.devices_unknown)
             )
             DeviceInfoRow(
                 icon = Icons.Default.Circle,
-                label = "Status",
-                value = device.status.name.lowercase().replaceFirstChar { it.uppercase() },
+                label = stringResource(R.string.devices_status_label),
+                value = when (device.status) {
+                    DeviceStatus.ACTIVE -> stringResource(R.string.devices_status_plain_active)
+                    DeviceStatus.SUSPENDED -> stringResource(R.string.devices_status_suspended)
+                    DeviceStatus.INACTIVE -> stringResource(R.string.devices_status_inactive)
+                },
                 valueColor = when (device.status) {
                     DeviceStatus.ACTIVE -> SemanticColors.statusOnline
                     DeviceStatus.SUSPENDED -> SemanticColors.statusSuspended
@@ -464,13 +495,13 @@ private fun DeviceDetailsSheet(
             device.lastSync?.let { lastSync ->
                 DeviceInfoRow(
                     icon = Icons.Default.Sync,
-                    label = "Last Sync",
+                    label = stringResource(R.string.devices_last_sync),
                     value = lastSync.formatAsRelative()
                 )
             }
             DeviceInfoRow(
                 icon = Icons.Default.CalendarToday,
-                label = "Registered",
+                label = stringResource(R.string.devices_registered_label),
                 value = device.createdAt.formatAsRelative()
             )
 
@@ -478,7 +509,7 @@ private fun DeviceDetailsSheet(
 
             // Content Filtering Control
             Text(
-                text = "Content Filtering",
+                text = stringResource(R.string.devices_content_filtering),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
@@ -505,14 +536,14 @@ private fun DeviceDetailsSheet(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Block Adult Content",
+                                text = stringResource(R.string.devices_block_adult),
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
                                 text = if (contentFilterEnabled) {
-                                    "VPN filtering is active on this device"
+                                    stringResource(R.string.devices_vpn_active)
                                 } else {
-                                    "Enable to block inappropriate websites"
+                                    stringResource(R.string.devices_enable_block)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -552,14 +583,14 @@ private fun DeviceDetailsSheet(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Block Social Media",
+                                text = stringResource(R.string.devices_block_social),
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
                                 text = if (blockSocialMediaEnabled) {
-                                    "Social media sites are blocked"
+                                    stringResource(R.string.devices_social_blocked)
                                 } else {
-                                    "Social media is allowed"
+                                    stringResource(R.string.devices_social_allowed)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -585,7 +616,7 @@ private fun DeviceDetailsSheet(
 
             // Actions
             Text(
-                text = "Actions",
+                text = stringResource(R.string.devices_actions),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
@@ -601,7 +632,7 @@ private fun DeviceDetailsSheet(
                 ) {
                     Icon(Icons.Default.PauseCircle, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Suspend Device")
+                    Text(stringResource(R.string.devices_suspend))
                 }
             } else if (device.status == DeviceStatus.SUSPENDED) {
                 OutlinedButton(
@@ -613,7 +644,7 @@ private fun DeviceDetailsSheet(
                 ) {
                     Icon(Icons.Default.PlayCircle, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Activate Device")
+                    Text(stringResource(R.string.devices_activate))
                 }
             }
 
@@ -626,7 +657,7 @@ private fun DeviceDetailsSheet(
             ) {
                 Icon(Icons.Default.Timer, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Screen Time Limits")
+                Text(stringResource(R.string.devices_screen_time_limits))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -638,7 +669,7 @@ private fun DeviceDetailsSheet(
             ) {
                 Icon(Icons.Default.Block, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Manage Blocked Sites")
+                Text(stringResource(R.string.devices_manage_blocked))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -653,7 +684,7 @@ private fun DeviceDetailsSheet(
             ) {
                 Icon(Icons.Default.DeleteForever, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Remove Device")
+                Text(stringResource(R.string.devices_remove_device))
             }
         }
     }

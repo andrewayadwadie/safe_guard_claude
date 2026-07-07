@@ -2,6 +2,7 @@ package com.safeguard.parentalcontrol.presentation.auth
 
 import android.content.Context
 import com.safeguard.parentalcontrol.MainDispatcherRule
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.User
 import com.safeguard.parentalcontrol.data.model.UserRole
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
@@ -10,16 +11,20 @@ import com.safeguard.parentalcontrol.data.repository.DeviceRepository
 import com.safeguard.parentalcontrol.util.AnalyticsHelper
 import com.safeguard.parentalcontrol.util.GoogleSignInManager
 import com.safeguard.parentalcontrol.util.GoogleSignInResult
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -52,10 +57,25 @@ class AuthViewModelGoogleTest {
         // ViewModel init() reads these
         every { authRepository.isLoggedIn() } returns false
         every { deviceRepository.isDeviceRegistered() } returns false
+
+        // AuthViewModel.getString() calls LocaleHelper.localizedContext(context).getString(...);
+        // the real implementation builds a Configuration off android.jar, which isn't available
+        // under plain JUnit (no Robolectric here). Skip the wrapping and resolve directly against
+        // this mock so getString(...) stubs below take effect.
+        mockkObject(LocaleHelper)
+        every { LocaleHelper.localizedContext(any()) } returns context
+        every {
+            context.getString(R.string.auth_error_google_signin_failed, *anyVararg())
+        } returns "Sign-in failed. Please try again."
+    }
+
+    @After
+    fun tearDown() {
+        unmockkObject(LocaleHelper)
     }
 
     private fun viewModel() = AuthViewModel(
-        authRepository, deviceRepository, googleSignInManager, analyticsHelper
+        authRepository, deviceRepository, googleSignInManager, analyticsHelper, context
     )
 
     @Test

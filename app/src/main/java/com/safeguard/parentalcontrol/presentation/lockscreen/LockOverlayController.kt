@@ -26,10 +26,12 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.AlertSeverity
 import com.safeguard.parentalcontrol.data.model.AlertType
 import com.safeguard.parentalcontrol.data.repository.AlertRepository
 import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -128,16 +130,19 @@ class LockOverlayController @Inject constructor(
                 onRequestMoreTime = {
                     sendParentRequest(
                         AlertType.SCREEN_TIME_LIMIT,
-                        "Asking for more time",
-                        "Your child has reached today's screen time limit and is asking for more time.",
+                        getString(R.string.lock_request_more_time_title),
+                        getString(R.string.lock_request_more_time_body),
                         lockType
                     )
                 },
                 onAskParent = {
                     sendParentRequest(
                         AlertType.APP_BLOCKED,
-                        "Asking about a blocked app",
-                        "Your child is asking about ${appName ?: "a blocked app"}.",
+                        getString(R.string.lock_request_blocked_title),
+                        getString(
+                            R.string.lock_request_blocked_body,
+                            appName ?: getString(R.string.lock_a_blocked_app)
+                        ),
                         lockType
                     )
                 },
@@ -145,6 +150,9 @@ class LockOverlayController @Inject constructor(
             )
         }
     }
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(context).getString(resId, *args)
 
     /**
      * Reuse the existing alert pipeline (POST /alerts -> FCM to the parent) to deliver a child request.

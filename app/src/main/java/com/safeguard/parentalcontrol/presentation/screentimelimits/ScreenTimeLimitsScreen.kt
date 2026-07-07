@@ -25,12 +25,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 import com.safeguard.parentalcontrol.util.formatAsHoursMinutes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -94,7 +97,7 @@ fun ScreenTimeLimitsScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Screen Time Limits")
+                        Text(stringResource(R.string.devices_screen_time_limits))
                         Text(
                             text = deviceName,
                             style = MaterialTheme.typography.bodySmall,
@@ -104,14 +107,18 @@ fun ScreenTimeLimitsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, "Back")
+                        Icon(
+                            Icons.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            modifier = Modifier.mirrorInRtl()
+                        )
                     }
                 },
                 actions = {
                     // Show delete button only if rules exist (have been saved to server)
                     if (uiState.rules != null) {
                         IconButton(onClick = { showDeleteConfirmDialog = true }) {
-                            Icon(Icons.Default.Delete, "Delete rules")
+                            Icon(Icons.Default.Delete, stringResource(R.string.screentime_cd_delete_rules))
                         }
                     }
                 }
@@ -121,7 +128,7 @@ fun ScreenTimeLimitsScreen(
             FloatingActionButton(
                 onClick = { viewModel.saveRules() }
             ) {
-                Icon(Icons.Default.Save, "Save")
+                Icon(Icons.Default.Save, stringResource(R.string.common_save))
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -190,8 +197,8 @@ fun ScreenTimeLimitsScreen(
                         if (uiState.studyTimeEnabled) {
                             item {
                                 SectionHeader(
-                                    title = "Allowed During Study Time",
-                                    actionText = "Add App",
+                                    title = stringResource(R.string.screentime_allowed_study),
+                                    actionText = stringResource(R.string.screentime_add_app),
                                     onAction = { showAddStudyTimeAppDialog = true }
                                 )
                             }
@@ -200,7 +207,7 @@ fun ScreenTimeLimitsScreen(
                                 item {
                                     EmptyListCard(
                                         icon = Icons.Default.School,
-                                        message = "No apps allowed during study time. All apps will be blocked."
+                                        message = stringResource(R.string.screentime_no_study_apps)
                                     )
                                 }
                             } else {
@@ -229,8 +236,8 @@ fun ScreenTimeLimitsScreen(
                         // Per-App Limits Section
                         item {
                             SectionHeader(
-                                title = "Per-App Limits",
-                                actionText = "Add App",
+                                title = stringResource(R.string.screentime_per_app_limits),
+                                actionText = stringResource(R.string.screentime_add_app),
                                 onAction = { showAddAppLimitDialog = true }
                             )
                         }
@@ -239,7 +246,7 @@ fun ScreenTimeLimitsScreen(
                             item {
                                 EmptyListCard(
                                     icon = Icons.Default.Timer,
-                                    message = "No app limits set. Tap 'Add App' to set time limits for specific apps."
+                                    message = stringResource(R.string.screentime_no_app_limits)
                                 )
                             }
                         } else {
@@ -258,8 +265,8 @@ fun ScreenTimeLimitsScreen(
                         // Blocked Apps Section
                         item {
                             SectionHeader(
-                                title = "Blocked Apps",
-                                actionText = "Block App",
+                                title = stringResource(R.string.screentime_blocked_apps),
+                                actionText = stringResource(R.string.screentime_block_app),
                                 onAction = { showAddBlockedAppDialog = true }
                             )
                         }
@@ -268,7 +275,7 @@ fun ScreenTimeLimitsScreen(
                             item {
                                 EmptyListCard(
                                     icon = Icons.Default.Block,
-                                    message = "No blocked apps. Tap 'Block App' to completely block specific apps."
+                                    message = stringResource(R.string.screentime_no_blocked_apps)
                                 )
                             }
                         } else {
@@ -340,9 +347,9 @@ fun ScreenTimeLimitsScreen(
                     tint = MaterialTheme.colorScheme.error
                 )
             },
-            title = { Text("Delete All Rules?") },
+            title = { Text(stringResource(R.string.screentime_delete_all_title)) },
             text = {
-                Text("This will remove all screen time limits, bedtime settings, app limits, and blocked apps for this device. This cannot be undone.")
+                Text(stringResource(R.string.screentime_delete_all_message))
             },
             confirmButton = {
                 TextButton(
@@ -352,14 +359,14 @@ fun ScreenTimeLimitsScreen(
                     }
                 ) {
                     Text(
-                        "Delete",
+                        stringResource(R.string.screentime_delete),
                         color = MaterialTheme.colorScheme.error
                     )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -454,11 +461,11 @@ private fun RulesActiveCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = if (isActive) "Rules Active" else "Rules Disabled",
+                        text = if (isActive) stringResource(R.string.screentime_rules_active) else stringResource(R.string.screentime_rules_disabled),
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
-                        text = if (isActive) "Screen time limits are being enforced" else "No restrictions applied",
+                        text = if (isActive) stringResource(R.string.screentime_rules_enforced) else stringResource(R.string.screentime_no_restrictions),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -501,7 +508,7 @@ private fun DailyLimitCard(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        "Daily Screen Time Limit",
+                        stringResource(R.string.screentime_daily_limit),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -523,7 +530,7 @@ private fun DailyLimitCard(
                         text = if (hours > 0 || minutes > 0) {
                             "${hours}h ${minutes}m per day"
                         } else {
-                            "Set daily limit"
+                            stringResource(R.string.screentime_set_daily_limit)
                         }
                     )
                 }
@@ -563,11 +570,11 @@ private fun BedtimeCard(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            "Bedtime Mode",
+                            stringResource(R.string.screentime_bedtime_mode),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            "Block device usage during sleep hours",
+                            stringResource(R.string.screentime_bedtime_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -590,7 +597,7 @@ private fun BedtimeCard(
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Start", style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.screentime_start), style = MaterialTheme.typography.labelSmall)
                             Text(startTime)
                         }
                     }
@@ -599,7 +606,7 @@ private fun BedtimeCard(
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("End", style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.screentime_end), style = MaterialTheme.typography.labelSmall)
                             Text(endTime)
                         }
                     }
@@ -640,11 +647,11 @@ private fun StudyTimeCard(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            "Study Time",
+                            stringResource(R.string.screentime_study_time),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            "Block all apps except educational ones",
+                            stringResource(R.string.screentime_study_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -667,7 +674,7 @@ private fun StudyTimeCard(
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Start", style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.screentime_start), style = MaterialTheme.typography.labelSmall)
                             Text(startTime)
                         }
                     }
@@ -676,7 +683,7 @@ private fun StudyTimeCard(
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("End", style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.screentime_end), style = MaterialTheme.typography.labelSmall)
                             Text(endTime)
                         }
                     }
@@ -722,11 +729,11 @@ private fun LockPhoneCard(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            if (isLocked) "Device Locked" else "Lock Device",
+                            if (isLocked) stringResource(R.string.screentime_device_locked) else stringResource(R.string.screentime_lock_device),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            if (isLocked) "Device is currently locked" else "Instantly lock child's device",
+                            if (isLocked) stringResource(R.string.screentime_locked_desc) else stringResource(R.string.screentime_lock_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -743,8 +750,8 @@ private fun LockPhoneCard(
                 OutlinedTextField(
                     value = message,
                     onValueChange = onMessageChange,
-                    label = { Text("Message to child (optional)") },
-                    placeholder = { Text("e.g., Time for dinner!") },
+                    label = { Text(stringResource(R.string.screentime_message_child)) },
+                    placeholder = { Text(stringResource(R.string.screentime_message_hint)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = false,
                     maxLines = 2
@@ -815,7 +822,7 @@ private fun StudyTimeAllowedAppItem(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "Allowed during study time",
+                        text = stringResource(R.string.screentime_allowed_during_study),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -824,7 +831,7 @@ private fun StudyTimeAllowedAppItem(
             IconButton(onClick = onRemove) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Remove",
+                    contentDescription = stringResource(R.string.screentime_cd_remove),
                     tint = MaterialTheme.colorScheme.error
                 )
             }
@@ -952,7 +959,7 @@ private fun AppLimitItem(
             IconButton(onClick = onRemove) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Remove",
+                    contentDescription = stringResource(R.string.screentime_cd_remove),
                     tint = MaterialTheme.colorScheme.error
                 )
             }
@@ -1033,7 +1040,7 @@ private fun BlockedAppItem(
             IconButton(onClick = onRemove) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Remove",
+                    contentDescription = stringResource(R.string.screentime_cd_remove),
                     tint = MaterialTheme.colorScheme.error
                 )
             }
@@ -1111,7 +1118,7 @@ private fun AddAppLimitDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Timer, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Add App Limit")
+                Text(stringResource(R.string.screentime_add_app_limit))
             }
         },
         text = {
@@ -1149,7 +1156,7 @@ private fun AddAppLimitDialog(
                                 )
                             }
                             IconButton(onClick = { selectedApp = null }) {
-                                Icon(Icons.Default.Close, "Remove selection")
+                                Icon(Icons.Default.Close, stringResource(R.string.screentime_cd_remove_selection))
                             }
                         }
                     }
@@ -1157,7 +1164,7 @@ private fun AddAppLimitDialog(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Time limit input
-                    Text("Daily Limit", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.screentime_daily_limit_label), style = MaterialTheme.typography.labelMedium)
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1166,7 +1173,7 @@ private fun AddAppLimitDialog(
                         OutlinedTextField(
                             value = hours,
                             onValueChange = { if (it.all { c -> c.isDigit() }) hours = it.take(2) },
-                            label = { Text("Hours") },
+                            label = { Text(stringResource(R.string.screentime_hours)) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true,
                             modifier = Modifier.weight(1f)
@@ -1174,7 +1181,7 @@ private fun AddAppLimitDialog(
                         OutlinedTextField(
                             value = minutes,
                             onValueChange = { if (it.all { c -> c.isDigit() }) minutes = it.take(2) },
-                            label = { Text("Minutes") },
+                            label = { Text(stringResource(R.string.screentime_minutes)) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true,
                             modifier = Modifier.weight(1f)
@@ -1185,7 +1192,7 @@ private fun AddAppLimitDialog(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        label = { Text("Search apps") },
+                        label = { Text(stringResource(R.string.screentime_search_apps)) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -1206,7 +1213,7 @@ private fun AddAppLimitDialog(
                                     CircularProgressIndicator()
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        "Loading apps from child's device...",
+                                        stringResource(R.string.screentime_loading_apps),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1228,7 +1235,7 @@ private fun AddAppLimitDialog(
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        "No app usage data yet.\nThe child needs to use the device first.",
+                                        stringResource(R.string.screentime_no_usage_data),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -1258,7 +1265,7 @@ private fun AddAppLimitDialog(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(
-                                                "No matching apps found",
+                                                stringResource(R.string.screentime_no_matching_apps),
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
@@ -1284,12 +1291,12 @@ private fun AddAppLimitDialog(
                 },
                 enabled = canSubmit
             ) {
-                Text("Add")
+                Text(stringResource(R.string.screentime_add))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -1432,7 +1439,7 @@ private fun AddBlockedAppDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Block, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Block App")
+                Text(stringResource(R.string.screentime_block_app))
             }
         },
         text = {
@@ -1470,7 +1477,7 @@ private fun AddBlockedAppDialog(
                                 )
                             }
                             IconButton(onClick = { selectedApp = null }) {
-                                Icon(Icons.Default.Close, "Remove selection")
+                                Icon(Icons.Default.Close, stringResource(R.string.screentime_cd_remove_selection))
                             }
                         }
                     }
@@ -1478,7 +1485,7 @@ private fun AddBlockedAppDialog(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        "This app will be completely blocked on the child's device.",
+                        stringResource(R.string.screentime_block_explain),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -1487,7 +1494,7 @@ private fun AddBlockedAppDialog(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        label = { Text("Search apps") },
+                        label = { Text(stringResource(R.string.screentime_search_apps)) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -1508,7 +1515,7 @@ private fun AddBlockedAppDialog(
                                     CircularProgressIndicator()
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        "Loading apps from child's device...",
+                                        stringResource(R.string.screentime_loading_apps),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1530,7 +1537,7 @@ private fun AddBlockedAppDialog(
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        "No app usage data yet.\nThe child needs to use the device first.",
+                                        stringResource(R.string.screentime_no_usage_data),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -1560,7 +1567,7 @@ private fun AddBlockedAppDialog(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(
-                                                "No matching apps found",
+                                                stringResource(R.string.screentime_no_matching_apps),
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
@@ -1581,12 +1588,12 @@ private fun AddBlockedAppDialog(
                 },
                 enabled = selectedApp != null
             ) {
-                Text("Block")
+                Text(stringResource(R.string.screentime_block))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -1621,7 +1628,7 @@ private fun AddStudyTimeAppDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.School, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Allow App During Study Time")
+                Text(stringResource(R.string.screentime_allow_study_title))
             }
         },
         text = {
@@ -1659,7 +1666,7 @@ private fun AddStudyTimeAppDialog(
                                 )
                             }
                             IconButton(onClick = { selectedApp = null }) {
-                                Icon(Icons.Default.Close, "Remove selection")
+                                Icon(Icons.Default.Close, stringResource(R.string.screentime_cd_remove_selection))
                             }
                         }
                     }
@@ -1667,7 +1674,7 @@ private fun AddStudyTimeAppDialog(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        "This app will be accessible during study time.",
+                        stringResource(R.string.screentime_allow_explain),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -1676,7 +1683,7 @@ private fun AddStudyTimeAppDialog(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        label = { Text("Search apps") },
+                        label = { Text(stringResource(R.string.screentime_search_apps)) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -1697,7 +1704,7 @@ private fun AddStudyTimeAppDialog(
                                     CircularProgressIndicator()
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        "Loading apps from child's device...",
+                                        stringResource(R.string.screentime_loading_apps),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1719,7 +1726,7 @@ private fun AddStudyTimeAppDialog(
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        "No app usage data yet.\nThe child needs to use the device first.",
+                                        stringResource(R.string.screentime_no_usage_data),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -1749,7 +1756,7 @@ private fun AddStudyTimeAppDialog(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(
-                                                "No matching apps found",
+                                                stringResource(R.string.screentime_no_matching_apps),
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
@@ -1770,12 +1777,12 @@ private fun AddStudyTimeAppDialog(
                 },
                 enabled = selectedApp != null
             ) {
-                Text("Allow")
+                Text(stringResource(R.string.screentime_allow))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -1797,7 +1804,7 @@ private fun TimePickerDialogWrapper(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Time") },
+        title = { Text(stringResource(R.string.screentime_select_time)) },
         text = {
             TimePicker(state = timePickerState)
         },
@@ -1807,12 +1814,12 @@ private fun TimePickerDialogWrapper(
                     onConfirm(timePickerState.hour, timePickerState.minute)
                 }
             ) {
-                Text("OK")
+                Text(stringResource(R.string.common_ok))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )

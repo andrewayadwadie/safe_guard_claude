@@ -28,6 +28,7 @@ import com.safeguard.parentalcontrol.presentation.MainActivity
 import com.safeguard.parentalcontrol.presentation.lockscreen.LockOverlayController
 import com.safeguard.parentalcontrol.presentation.lockscreen.LockScreenActivity
 import com.safeguard.parentalcontrol.util.Constants
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.getAppName
 import com.safeguard.parentalcontrol.worker.ImageScanWorker
@@ -47,6 +48,9 @@ import javax.inject.Inject
  */
 @AndroidEntryPoint
 class MonitoringService : Service() {
+
+    private fun getLocalizedString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(this).getString(resId, *args)
 
     @Inject
     lateinit var screenTimeRepository: ScreenTimeRepository
@@ -651,7 +655,7 @@ class MonitoringService : Service() {
         // Check parent lock first (highest priority - parent can override everything)
         if (rules.isDeviceLocked) {
             Timber.d("ENFORCEMENT: DEVICE LOCKED BY PARENT - showing lock screen")
-            val message = rules.deviceLockedMessage ?: "Your parent has locked this device."
+            val message = rules.deviceLockedMessage ?: getLocalizedString(R.string.notif_lock_parent_locked_msg)
             showLockScreen(
                 LockScreenActivity.LOCK_TYPE_PARENT_LOCKED,
                 message
@@ -669,7 +673,7 @@ class MonitoringService : Service() {
             Timber.d("ENFORCEMENT: BEDTIME ACTIVE - showing lock screen")
             showLockScreen(
                 LockScreenActivity.LOCK_TYPE_BEDTIME,
-                "It's bedtime. Device usage is restricted."
+                getLocalizedString(R.string.notif_lock_bedtime_msg)
             )
             return
         }
@@ -689,7 +693,7 @@ class MonitoringService : Service() {
                     Timber.d("ENFORCEMENT: STUDY TIME - app $foregroundApp not allowed (allowedApps=$allowedApps)")
                     showLockScreen(
                         LockScreenActivity.LOCK_TYPE_STUDY_TIME,
-                        "It's study time. Only educational apps are allowed.",
+                        getLocalizedString(R.string.notif_lock_study_time_msg),
                         foregroundApp
                     )
                     return
@@ -706,7 +710,7 @@ class MonitoringService : Service() {
             Timber.d("ENFORCEMENT: Daily limit exceeded: ${todayScreenTime}s >= ${dailyLimit}s")
             showLockScreen(
                 LockScreenActivity.LOCK_TYPE_DAILY_LIMIT,
-                "Daily screen time limit has been reached."
+                getLocalizedString(R.string.notif_lock_daily_limit_msg)
             )
             return
         }
@@ -733,7 +737,7 @@ class MonitoringService : Service() {
             Timber.d("ENFORCEMENT: BLOCKED APP DETECTED: $foregroundApp")
             showLockScreen(
                 LockScreenActivity.LOCK_TYPE_APP_BLOCKED,
-                "This app has been blocked.",
+                getLocalizedString(R.string.notif_lock_app_blocked_msg),
                 getAppName(foregroundApp) ?: foregroundApp
             )
             return
@@ -747,7 +751,7 @@ class MonitoringService : Service() {
                 Timber.d("ENFORCEMENT: App limit exceeded: $foregroundApp (${appUsageToday}s >= ${appLimit}s)")
                 showLockScreen(
                     LockScreenActivity.LOCK_TYPE_APP_LIMIT,
-                    "Time limit for this app has been reached.",
+                    getLocalizedString(R.string.notif_lock_app_limit_msg),
                     getAppName(foregroundApp) ?: foregroundApp
                 )
                 return
@@ -1144,13 +1148,13 @@ class MonitoringService : Service() {
      */
     private fun getLockScreenTitle(lockType: String): String {
         return when (lockType) {
-            LockScreenActivity.LOCK_TYPE_DAILY_LIMIT -> "Daily Screen Time Limit Reached"
-            LockScreenActivity.LOCK_TYPE_BEDTIME -> "Bedtime Mode Active"
-            LockScreenActivity.LOCK_TYPE_APP_BLOCKED -> "App Blocked"
-            LockScreenActivity.LOCK_TYPE_APP_LIMIT -> "App Time Limit Reached"
-            LockScreenActivity.LOCK_TYPE_STUDY_TIME -> "Study Time Active"
-            LockScreenActivity.LOCK_TYPE_PARENT_LOCKED -> "Device Locked by Parent"
-            else -> "Device Locked"
+            LockScreenActivity.LOCK_TYPE_DAILY_LIMIT -> getLocalizedString(R.string.notif_lock_daily_limit_title)
+            LockScreenActivity.LOCK_TYPE_BEDTIME -> getLocalizedString(R.string.notif_lock_bedtime_title)
+            LockScreenActivity.LOCK_TYPE_APP_BLOCKED -> getLocalizedString(R.string.notif_lock_app_blocked_title)
+            LockScreenActivity.LOCK_TYPE_APP_LIMIT -> getLocalizedString(R.string.notif_lock_app_limit_title)
+            LockScreenActivity.LOCK_TYPE_STUDY_TIME -> getLocalizedString(R.string.notif_lock_study_time_title)
+            LockScreenActivity.LOCK_TYPE_PARENT_LOCKED -> getLocalizedString(R.string.notif_lock_parent_locked_title)
+            else -> getLocalizedString(R.string.notif_lock_default_title)
         }
     }
 
@@ -1249,8 +1253,8 @@ class MonitoringService : Service() {
         )
 
         return NotificationCompat.Builder(this, SafeGuardApplication.CHANNEL_MONITORING_SERVICE)
-            .setContentTitle("Haris Active")
-            .setContentText("Monitoring device activity")
+            .setContentTitle(getLocalizedString(R.string.notif_monitoring_title))
+            .setContentText(getLocalizedString(R.string.notif_monitoring_text))
             .setSmallIcon(R.drawable.ic_shield)
             .setOngoing(true)
             .setContentIntent(pendingIntent)
@@ -1258,8 +1262,8 @@ class MonitoringService : Service() {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setGroup("safeguard_monitoring")
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
-            .setStyle(NotificationCompat.BigTextStyle().bigText("Monitoring device activity and enforcing parental controls"))
-            .addAction(R.drawable.ic_shield, "Sync Now", syncPendingIntent)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(getLocalizedString(R.string.notif_monitoring_bigtext)))
+            .addAction(R.drawable.ic_shield, getLocalizedString(R.string.notif_monitoring_sync_now), syncPendingIntent)
             .build()
     }
 

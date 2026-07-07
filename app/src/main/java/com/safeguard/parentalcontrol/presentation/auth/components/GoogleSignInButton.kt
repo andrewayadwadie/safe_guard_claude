@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.safeguard.parentalcontrol.R
 
@@ -49,12 +50,12 @@ fun GoogleSignInButton(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_google),
-                    contentDescription = "Google",
+                    contentDescription = stringResource(R.string.auth_google_cd),
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "Continue with Google",
+                    text = stringResource(R.string.auth_google_continue),
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }

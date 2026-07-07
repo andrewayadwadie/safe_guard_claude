@@ -15,6 +15,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 import com.safeguard.parentalcontrol.presentation.theme.SemanticColors
 import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
 import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
@@ -78,7 +81,7 @@ fun AlertsScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Alerts")
+                        Text(stringResource(R.string.alerts_title))
                         uiState.deviceName?.let { name ->
                             Text(
                                 text = name,
@@ -90,15 +93,19 @@ fun AlertsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            modifier = Modifier.mirrorInRtl()
+                        )
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.markAllAsRead() }) {
-                        Icon(Icons.Default.DoneAll, contentDescription = "Mark all as read")
+                        Icon(Icons.Default.DoneAll, contentDescription = stringResource(R.string.alerts_cd_mark_all_read))
                     }
                     IconButton(onClick = { viewModel.loadAlerts() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.alerts_cd_refresh))
                     }
                 }
             )
@@ -119,14 +126,14 @@ fun AlertsScreen(
                     FilterChip(
                         selected = uiState.selectedFilter == AlertFilter.ALL,
                         onClick = { viewModel.setFilter(AlertFilter.ALL) },
-                        label = { Text("All") }
+                        label = { Text(stringResource(R.string.alerts_filter_all)) }
                     )
                 }
                 item {
                     FilterChip(
                         selected = uiState.selectedFilter == AlertFilter.UNREAD,
                         onClick = { viewModel.setFilter(AlertFilter.UNREAD) },
-                        label = { Text("Unread") },
+                        label = { Text(stringResource(R.string.alerts_filter_unread)) },
                         leadingIcon = if (uiState.selectedFilter == AlertFilter.UNREAD) {
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
                         } else null
@@ -136,7 +143,7 @@ fun AlertsScreen(
                     FilterChip(
                         selected = uiState.selectedFilter == AlertFilter.CRITICAL,
                         onClick = { viewModel.setFilter(AlertFilter.CRITICAL) },
-                        label = { Text("Critical") },
+                        label = { Text(stringResource(R.string.alerts_filter_critical)) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = SemanticColors.severityCritical.copy(alpha = 0.2f)
                         )
@@ -146,7 +153,7 @@ fun AlertsScreen(
                     FilterChip(
                         selected = uiState.selectedFilter == AlertFilter.HIGH,
                         onClick = { viewModel.setFilter(AlertFilter.HIGH) },
-                        label = { Text("High") },
+                        label = { Text(stringResource(R.string.alerts_filter_high)) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = SemanticColors.severityHigh.copy(alpha = 0.2f)
                         )
@@ -225,16 +232,16 @@ private fun EmptyAlertsState(
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = when (filter) {
-                AlertFilter.ALL -> "No alerts"
-                AlertFilter.UNREAD -> "No unread alerts"
-                AlertFilter.CRITICAL -> "No critical alerts"
-                AlertFilter.HIGH -> "No high priority alerts"
+                AlertFilter.ALL -> stringResource(R.string.alerts_empty_all)
+                AlertFilter.UNREAD -> stringResource(R.string.alerts_empty_unread)
+                AlertFilter.CRITICAL -> stringResource(R.string.alerts_empty_critical)
+                AlertFilter.HIGH -> stringResource(R.string.alerts_empty_high)
             },
             style = MaterialTheme.typography.titleLarge
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "You're all caught up!",
+            text = stringResource(R.string.alerts_caught_up),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -360,7 +367,7 @@ private fun AlertCard(
                 // Menu
                 Box {
                     IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.alerts_cd_more_options))
                     }
                     DropdownMenu(
                         expanded = showMenu,
@@ -368,7 +375,7 @@ private fun AlertCard(
                     ) {
                         if (!alert.isRead) {
                             DropdownMenuItem(
-                                text = { Text("Mark as read") },
+                                text = { Text(stringResource(R.string.alerts_mark_read)) },
                                 onClick = {
                                     showMenu = false
                                     onMarkAsRead()
@@ -379,7 +386,7 @@ private fun AlertCard(
                             )
                         }
                         DropdownMenuItem(
-                            text = { Text("Dismiss") },
+                            text = { Text(stringResource(R.string.alerts_dismiss)) },
                             onClick = {
                                 showMenu = false
                                 onDismiss()
@@ -389,7 +396,7 @@ private fun AlertCard(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Delete") },
+                            text = { Text(stringResource(R.string.alerts_delete)) },
                             onClick = {
                                 showMenu = false
                                 onDelete()

@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -25,10 +26,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.UserRole
 import com.safeguard.parentalcontrol.presentation.auth.components.GoogleSignInButton
 import com.safeguard.parentalcontrol.presentation.auth.components.RoleSelectionDialog
 import com.safeguard.parentalcontrol.presentation.designsystem.HarisPrimaryButton
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 import com.safeguard.parentalcontrol.presentation.designsystem.HarisTextField
 import com.safeguard.parentalcontrol.presentation.theme.SafeGuardDimens
 import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
@@ -68,10 +71,14 @@ fun RegisterScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Create Account") },
+                title = { Text(stringResource(R.string.register_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            modifier = Modifier.mirrorInRtl()
+                        )
                     }
                 }
             )
@@ -125,7 +132,7 @@ private fun RegisterContent(
     ) {
         Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
 
-        Text(text = "I am a", style = MaterialTheme.typography.titleMedium, modifier = Modifier.fillMaxWidth())
+        Text(text = stringResource(R.string.auth_i_am_a), style = MaterialTheme.typography.titleMedium, modifier = Modifier.fillMaxWidth())
 
         Spacer(modifier = Modifier.height(SafeGuardDimens.stackSm))
 
@@ -134,16 +141,16 @@ private fun RegisterContent(
             horizontalArrangement = Arrangement.spacedBy(SafeGuardDimens.gutter)
         ) {
             RoleOption(
-                title = "Parent",
-                description = "Monitor and manage children's devices",
+                title = stringResource(R.string.role_parent),
+                description = stringResource(R.string.role_parent_description),
                 icon = Icons.Default.SupervisorAccount,
                 selected = selectedRole == UserRole.PARENT,
                 onClick = { onRoleChange(UserRole.PARENT) },
                 modifier = Modifier.weight(1f)
             )
             RoleOption(
-                title = "Child",
-                description = "Device to be monitored",
+                title = stringResource(R.string.role_child),
+                description = stringResource(R.string.role_child_description),
                 icon = Icons.Default.ChildCare,
                 selected = selectedRole == UserRole.CHILD,
                 onClick = { onRoleChange(UserRole.CHILD) },
@@ -154,8 +161,8 @@ private fun RegisterContent(
         Spacer(modifier = Modifier.height(SafeGuardDimens.stackLg))
 
         HarisTextField(
-            value = fullName, onValueChange = onFullNameChange, label = "Full Name",
-            placeholder = "Enter your name",
+            value = fullName, onValueChange = onFullNameChange, label = stringResource(R.string.full_name_label),
+            placeholder = stringResource(R.string.auth_name_placeholder),
             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
@@ -165,8 +172,8 @@ private fun RegisterContent(
         Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
 
         HarisTextField(
-            value = email, onValueChange = onEmailChange, label = "Email",
-            placeholder = "Enter your email",
+            value = email, onValueChange = onEmailChange, label = stringResource(R.string.email_label),
+            placeholder = stringResource(R.string.auth_email_placeholder),
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
@@ -176,26 +183,26 @@ private fun RegisterContent(
         Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
 
         HarisTextField(
-            value = password, onValueChange = onPasswordChange, label = "Password",
-            placeholder = "At least 8 characters",
+            value = password, onValueChange = onPasswordChange, label = stringResource(R.string.password_label),
+            placeholder = stringResource(R.string.auth_password_min_placeholder),
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-            errorText = if (password.isNotEmpty() && password.length < 8) "Password must be at least 8 characters" else null,
+            errorText = if (password.isNotEmpty() && password.length < 8) stringResource(R.string.auth_password_too_short) else null,
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
 
         HarisTextField(
-            value = confirmPassword, onValueChange = onConfirmPasswordChange, label = "Confirm Password",
-            placeholder = "Re-enter your password",
+            value = confirmPassword, onValueChange = onConfirmPasswordChange, label = stringResource(R.string.confirm_password_label),
+            placeholder = stringResource(R.string.auth_confirm_password_placeholder),
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-            errorText = if (confirmPassword.isNotEmpty() && password != confirmPassword) "Passwords do not match" else null,
+            errorText = if (confirmPassword.isNotEmpty() && password != confirmPassword) stringResource(R.string.auth_passwords_mismatch) else null,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -205,7 +212,7 @@ private fun RegisterContent(
                 password.length >= 8 && password == confirmPassword
 
         HarisPrimaryButton(
-            text = "Create Account",
+            text = stringResource(R.string.register_title),
             onClick = onRegister,
             enabled = !isLoading && isValid,
             modifier = Modifier.fillMaxWidth(),
@@ -218,7 +225,7 @@ private fun RegisterContent(
 
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Divider(modifier = Modifier.weight(1f))
-            Text("  OR  ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("  ${stringResource(R.string.auth_or_divider)}  ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Divider(modifier = Modifier.weight(1f))
         }
 
@@ -233,7 +240,7 @@ private fun RegisterContent(
         Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
 
         Text(
-            text = "By creating an account, you agree to our Terms of Service and Privacy Policy",
+            text = stringResource(R.string.auth_terms_privacy_notice),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = SafeGuardDimens.gutter)

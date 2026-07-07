@@ -13,8 +13,10 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.theme.SafeGuardDimens
 import kotlinx.coroutines.launch
 
@@ -118,7 +120,7 @@ fun SafeGuardPullToRefresh(
                             val progress = (pullOffset / refreshTriggerPx).coerceIn(0f, 1f)
                             Icon(
                                 imageVector = Icons.Default.Refresh,
-                                contentDescription = "Pull to refresh",
+                                contentDescription = stringResource(R.string.components_cd_pull_refresh),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier
                                     .size(24.dp)
@@ -160,7 +162,7 @@ fun RefreshingIndicator(
                 )
                 Spacer(modifier = Modifier.width(SafeGuardDimens.spacingMd))
                 Text(
-                    text = "Refreshing...",
+                    text = stringResource(R.string.components_refreshing),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

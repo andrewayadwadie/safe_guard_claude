@@ -1,0 +1,169 @@
+/* ============================================================================
+   Haris legal sites — theme derived from the app's Compose theme (Theme.kt).
+   Petrol/teal + gold, Inter (Latin) + Cairo (Arabic). Dark is the canonical
+   brand rendering; light is supported. Self-contained: no external requests.
+   ============================================================================ */
+
+/* ---- Fonts (self-hosted WOFF2; see tools/legal-sites/fetch-fonts.py) ------- */
+@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/inter-400.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/inter-600.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/inter-700.woff2') format('woff2');}
+
+/* Cairo: Arabic + Latin subsets share family/weight, so unicode-range keeps
+   both files live simultaneously. */
+@font-face{font-family:'Cairo';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/cairo-ar-400.woff2') format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200E,U+2010-2011;}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/cairo-latin-400.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212;}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/cairo-ar-600.woff2') format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200E,U+2010-2011;}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/cairo-latin-600.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212;}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/cairo-ar-700.woff2') format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200E,U+2010-2011;}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/cairo-latin-700.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212;}
+
+/* ---- Theme tokens: light base (from Theme.kt LightColorScheme) ------------- */
+:root{
+  --primary:#168BB6; --on-primary:#FFFFFF;
+  --secondary:#AF861D; --gold:#C8941E;
+  --background:#FAFCFC; --on-background:#1C2022;
+  --surface:#FFFFFF; --surface-container:#F0F5F7; --surface-container-high:#E8F0F3;
+  --on-surface:#1C2022; --on-surface-variant:#3C4E53;
+  --outline:#6B8C94; --outline-variant:#C4D1D4;
+  --gradient-start:#0E6A86; --gradient-end:#2799A5;
+  --link:#0E6A86;
+  --font-latin:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --font-arabic:'Cairo','Tahoma',system-ui,sans-serif;
+  --radius:12px; --radius-lg:16px; --maxw:74ch; --gutter:20px;
+  --shadow:0 2px 8px rgba(14,34,42,.08);
+}
+
+/* ---- Dark: canonical brand (from Theme.kt DarkColorScheme) ----------------- */
+@media (prefers-color-scheme:dark){
+  :root{
+    --primary:#A4DFF4; --on-primary:#0B465B;
+    --secondary:#F1DCA7; --gold:#E0B45A;
+    --background:#0F1719; --on-background:#DDE1E3;
+    --surface:#0F1719; --surface-container:#1A2427; --surface-container-high:#242F33;
+    --on-surface:#DDE1E3; --on-surface-variant:#C4D1D4;
+    --outline:#8FA7AE; --outline-variant:#3C4E53;
+    --link:#A4DFF4;
+    --shadow:0 2px 12px rgba(0,0,0,.35);
+  }
+}
+/* Explicit theme override wins over system when set on <html data-theme>. */
+:root[data-theme="light"]{color-scheme:light;}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --primary:#A4DFF4; --on-primary:#0B465B; --secondary:#F1DCA7; --gold:#E0B45A;
+  --background:#0F1719; --on-background:#DDE1E3; --surface:#0F1719;
+  --surface-container:#1A2427; --surface-container-high:#242F33;
+  --on-surface:#DDE1E3; --on-surface-variant:#C4D1D4; --outline:#8FA7AE;
+  --outline-variant:#3C4E53; --link:#A4DFF4; --shadow:0 2px 12px rgba(0,0,0,.35);
+}
+
+/* ---- Base ----------------------------------------------------------------- */
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;scroll-padding-top:1rem;}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;}}
+body{
+  margin:0;background:var(--background);color:var(--on-background);
+  font-family:var(--font-latin);font-size:16px;line-height:1.65;
+  -webkit-text-size-adjust:100%;
+}
+[lang="ar"],[dir="rtl"]{font-family:var(--font-arabic);}
+a{color:var(--link);text-underline-offset:2px;}
+a:hover{text-decoration:underline;}
+:focus-visible{outline:3px solid var(--primary);outline-offset:2px;border-radius:4px;}
+
+.skip-link{
+  position:absolute;left:8px;top:-48px;background:var(--primary);color:var(--on-primary);
+  padding:10px 16px;border-radius:8px;z-index:20;transition:top .15s;
+}
+.skip-link:focus{top:8px;}
+
+/* ---- Header --------------------------------------------------------------- */
+.site-header{
+  background:linear-gradient(135deg,var(--gradient-start),var(--gradient-end));
+  color:#F1F3F4;padding:2.5rem 1.25rem 2rem;position:relative;
+}
+.header-inner{max-width:var(--maxw);margin:0 auto;text-align:center;}
+.brandmark{
+  font-weight:700;letter-spacing:.18em;font-size:.8rem;text-transform:uppercase;
+  color:#F1DCA7;margin-bottom:.75rem;
+}
+.site-header h1{
+  margin:0;font-size:clamp(1.7rem,5vw,2.4rem);font-weight:800;letter-spacing:-.01em;
+  line-height:1.15;
+}
+.meta{margin-top:1rem;font-size:.9rem;opacity:.92;}
+.meta-line{margin:.15rem 0;}
+.lang-toggle{
+  position:absolute;top:1rem;inset-inline-end:1rem;
+  background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.4);
+  border-radius:999px;padding:.5rem 1rem;font:inherit;font-weight:600;font-size:.85rem;
+  min-height:44px;cursor:pointer;backdrop-filter:blur(2px);
+}
+.lang-toggle:hover{background:rgba(255,255,255,.24);}
+
+/* ---- Language-unavailable notice ------------------------------------------ */
+.lang-notice{
+  max-width:var(--maxw);margin:1rem auto 0;padding:.9rem 1.1rem;
+  background:var(--surface-container-high);border:1px solid var(--gold);
+  border-radius:var(--radius);color:var(--on-surface);text-align:center;
+  font-family:var(--font-arabic);
+}
+.lang-notice p{margin:0;}
+
+/* ---- Layout: ToC sidebar + content ---------------------------------------- */
+.layout{
+  max-width:calc(var(--maxw) + 300px);margin:0 auto;padding:2rem var(--gutter);
+  display:grid;grid-template-columns:1fr;gap:2rem;
+}
+@media (min-width:960px){
+  .layout{grid-template-columns:260px minmax(0,1fr);align-items:start;}
+}
+
+.toc{
+  background:var(--surface-container);border:1px solid var(--outline-variant);
+  border-radius:var(--radius-lg);padding:1.1rem 1.25rem;
+}
+@media (min-width:960px){.toc{position:sticky;top:1rem;max-height:calc(100vh - 2rem);overflow:auto;}}
+.toc-title{margin:.1rem 0 .6rem;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--on-surface-variant);}
+.toc ol{margin:0;padding-inline-start:1.2rem;display:flex;flex-direction:column;gap:.1rem;}
+.toc li{margin:0;}
+.toc a{display:block;padding:.4rem .3rem;color:var(--on-surface);text-decoration:none;border-radius:6px;font-size:.9rem;line-height:1.35;}
+.toc a:hover{background:var(--surface-container-high);color:var(--link);}
+.toc a[aria-current="true"]{color:var(--primary);font-weight:700;}
+
+/* ---- Content -------------------------------------------------------------- */
+.content{min-width:0;max-width:var(--maxw);}
+.content section{margin-bottom:2.25rem;}
+.content h2{
+  font-size:clamp(1.25rem,3.5vw,1.6rem);font-weight:800;line-height:1.25;
+  margin:0 0 .9rem;padding-bottom:.5rem;color:var(--on-background);
+  border-bottom:3px solid var(--gold);
+}
+.content h3{font-size:1.15rem;font-weight:700;margin:1.6rem 0 .6rem;color:var(--on-background);}
+.content h4{font-size:1rem;font-weight:700;margin:1.2rem 0 .4rem;color:var(--primary);}
+.content p{margin:0 0 .85rem;}
+.content ul{margin:0 0 1rem;padding-inline-start:1.3rem;}
+.content li{margin:.3rem 0;}
+.content li::marker{color:var(--gold);}
+.content a{word-break:break-word;}
+
+/* ---- Back to top ---------------------------------------------------------- */
+.back-to-top{
+  position:fixed;bottom:1.25rem;inset-inline-end:1.25rem;z-index:15;
+  width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;
+  background:var(--primary);color:var(--on-primary);font-size:1.3rem;line-height:1;
+  box-shadow:var(--shadow);
+}
+.back-to-top[hidden]{display:none;}
+
+/* ---- RTL tweaks ----------------------------------------------------------- */
+[dir="rtl"] .content h2{border-bottom-color:var(--gold);}
+[dir="rtl"] .toc a,[dir="rtl"] .content{text-align:right;}
+
+/* ---- Print ---------------------------------------------------------------- */
+@media print{
+  .toc,.lang-toggle,.back-to-top,.skip-link{display:none!important;}
+  .layout{display:block;}.site-header{color:#000;background:none;}
+  body{font-size:12pt;color:#000;background:#fff;}
+}

@@ -1,13 +1,17 @@
 package com.safeguard.parentalcontrol.presentation.alerts
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.Alert
 import com.safeguard.parentalcontrol.data.model.AlertSeverity
 import com.safeguard.parentalcontrol.data.model.AlertType
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.AlertRepository
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,11 +35,15 @@ enum class AlertFilter {
 
 @HiltViewModel
 class AlertsViewModel @Inject constructor(
-    private val alertRepository: AlertRepository
+    private val alertRepository: AlertRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AlertsUiState())
     val uiState: StateFlow<AlertsUiState> = _uiState.asStateFlow()
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(context).getString(resId, *args)
 
     init {
         loadAlerts()
@@ -139,7 +147,7 @@ class AlertsViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             alerts = state.alerts.filter { it.id != alertId },
-                            successMessage = "Alert dismissed"
+                            successMessage = getString(R.string.alerts_msg_dismissed)
                         )
                     }
                 }
@@ -161,7 +169,7 @@ class AlertsViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             alerts = state.alerts.map { it.copy(isRead = true) },
-                            successMessage = "All alerts marked as read"
+                            successMessage = getString(R.string.alerts_msg_all_read)
                         )
                     }
                 }
@@ -183,7 +191,7 @@ class AlertsViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             alerts = state.alerts.filter { it.id != alertId },
-                            successMessage = "Alert deleted"
+                            successMessage = getString(R.string.alerts_msg_deleted)
                         )
                     }
                 }

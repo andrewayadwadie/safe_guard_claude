@@ -1,0 +1,785 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_description">نظام الرقابة الأبوية</string>
+
+    <!-- Common / shared -->
+    <string name="common_cancel">إلغاء</string>
+    <string name="common_back">رجوع</string>
+    <string name="common_save">حفظ</string>
+    <string name="common_ok">موافق</string>
+    <string name="common_retry">إعادة المحاولة</string>
+    <string name="common_loading">جارٍ التحميل…</string>
+    <string name="common_continue">متابعة</string>
+
+    <!-- Authentication -->
+    <string name="login_title">مرحباً بعودتك</string>
+    <string name="login_subtitle">سجّل الدخول للمتابعة</string>
+    <string name="register_title">إنشاء حساب</string>
+    <string name="email_label">البريد الإلكتروني</string>
+    <string name="password_label">كلمة المرور</string>
+    <string name="confirm_password_label">تأكيد كلمة المرور</string>
+    <string name="full_name_label">الاسم الكامل</string>
+    <string name="sign_in">تسجيل الدخول</string>
+    <string name="sign_up">إنشاء حساب</string>
+    <string name="dont_have_account">ليس لديك حساب؟</string>
+    <string name="already_have_account">لديك حساب بالفعل؟</string>
+
+    <!-- Roles -->
+    <string name="role_parent">ولي الأمر</string>
+    <string name="role_child">الطفل</string>
+    <string name="role_parent_description">راقب وأدر أجهزة أطفالك</string>
+    <string name="role_child_description">جهاز مراقَب</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">لوحة التحكم</string>
+    <string name="screen_time_today">وقت الشاشة اليوم</string>
+    <string name="top_apps">أكثر التطبيقات استخداماً اليوم</string>
+    <string name="recent_alerts">التنبيهات الأخيرة</string>
+    <string name="see_all">عرض الكل</string>
+    <string name="unlocks">مرات الفتح</string>
+    <string name="limit">الحد: %s</string>
+
+    <!-- Devices -->
+    <string name="devices_title">الأجهزة</string>
+    <string name="device_active">نشط</string>
+    <string name="device_suspended">موقوف</string>
+    <string name="device_inactive">غير نشط</string>
+
+    <!-- Alerts -->
+    <string name="alerts_title">التنبيهات</string>
+    <string name="mark_all_read">تعليم الكل كمقروء</string>
+
+    <!-- Settings -->
+    <string name="settings_title">الإعدادات</string>
+    <string name="logout">تسجيل الخروج</string>
+    <string name="logout_confirmation">هل أنت متأكد أنك تريد تسجيل الخروج؟</string>
+
+    <!-- Notifications -->
+    <string name="notification_monitoring_title">تطبيق حارس نشط</string>
+    <string name="notification_monitoring_text">جارٍ مراقبة نشاط الجهاز</string>
+
+    <!-- Permissions -->
+    <string name="permission_usage_stats_title">مطلوب إذن الوصول لاستخدام التطبيقات</string>
+    <string name="permission_usage_stats_message">يحتاج حارس إلى الوصول لبيانات استخدام التطبيقات لتتبع وقت الشاشة.</string>
+    <string name="permission_accessibility_title">مطلوب إذن إمكانية الوصول</string>
+    <string name="permission_accessibility_message">يحتاج حارس إلى إذن إمكانية الوصول لمراقبة المحتوى النصي من أجل السلامة.</string>
+    <string name="permission_vpn_title">مطلوب إذن VPN</string>
+    <string name="permission_vpn_message">يحتاج حارس إلى إذن VPN لتصفية المحتوى غير اللائق.</string>
+    <string name="grant_permission">منح الإذن</string>
+
+    <!-- Errors -->
+    <string name="error_network">خطأ في الشبكة. يرجى المحاولة مرة أخرى.</string>
+    <string name="error_invalid_credentials">البريد الإلكتروني أو كلمة المرور غير صحيحة</string>
+    <string name="error_email_exists">البريد الإلكتروني مسجل بالفعل</string>
+    <string name="error_unknown">حدث خطأ. يرجى المحاولة مرة أخرى.</string>
+
+    <!-- Accessibility -->
+    <string name="accessibility_service_description">يراقب حارس المحتوى النصي لاكتشاف المحتوى الضار أو غير اللائق المحتمل وحماية طفلك عبر الإنترنت.</string>
+
+    <!-- Settings screen (detailed) -->
+    <string name="settings_language_title">اللغة</string>
+    <string name="settings_language_dialog_title">اختر اللغة</string>
+    <string name="settings_content_filtering">تصفية المحتوى</string>
+    <string name="settings_text_monitoring">مراقبة النصوص</string>
+    <string name="settings_text_monitoring_desc">تكوين تحليل النصوص وفئات التنبيهات</string>
+    <string name="settings_custom_word_lists">قوائم الكلمات المخصصة</string>
+    <string name="settings_custom_word_lists_desc">أضف كلمات إلى القائمة البيضاء أو السوداء</string>
+    <string name="settings_device_setup">إعداد الجهاز</string>
+    <string name="settings_permissions_setup">إعداد الأذونات</string>
+    <string name="settings_permissions_setup_desc">تكوين الأذونات المطلوبة للمراقبة</string>
+    <string name="settings_content_filtering_active">نشط - يتحكم به ولي الأمر</string>
+    <string name="settings_content_filtering_inactive">غير نشط - يتحكم به ولي الأمر</string>
+    <string name="settings_parent_review">مراجعة ولي الأمر</string>
+    <string name="settings_review_images">مراجعة الصور المُبلّغ عنها</string>
+    <string name="settings_review_images_desc">ولي الأمر: راجع الصور المموهة ووافق عليها أو ارفضها</string>
+    <string name="settings_review_text">مراجعة النصوص المُبلّغ عنها</string>
+    <string name="settings_review_text_desc">ولي الأمر: اطّلع على العبارات المُبلّغ عنها في هذا الجهاز</string>
+    <string name="settings_notifications">الإشعارات</string>
+    <string name="settings_notifications_on">تشغيل</string>
+    <string name="settings_notifications_off_tap">إيقاف — اضغط للتفعيل</string>
+    <string name="settings_notifications_off">إيقاف</string>
+    <string name="settings_account">الحساب</string>
+    <string name="settings_change_password">تغيير كلمة المرور</string>
+    <string name="settings_change_password_desc">تحديث كلمة مرور حسابك</string>
+    <string name="settings_logout_item_desc">تسجيل الخروج من حسابك</string>
+    <string name="settings_about">حول</string>
+    <string name="settings_app_version">إصدار التطبيق</string>
+    <string name="settings_privacy_policy">سياسة الخصوصية</string>
+    <string name="settings_privacy_policy_desc">اطّلع على سياسة الخصوصية الخاصة بنا</string>
+    <string name="settings_terms">شروط الخدمة</string>
+    <string name="settings_terms_desc">اطّلع على شروط الخدمة الخاصة بنا</string>
+    <string name="settings_profile_parent_account">حساب ولي الأمر</string>
+    <string name="settings_profile_child_account">حساب الطفل</string>
+    <string name="settings_content_filtering_enabled_snackbar">تم تفعيل تصفية المحتوى</string>
+    <string name="settings_logout_dialog_title">تسجيل الخروج؟</string>
+
+    <!-- Auth cluster -->
+    <string name="auth_tagline">الرقابة الأبوية</string>
+    <string name="auth_email_placeholder">أدخل بريدك الإلكتروني</string>
+    <string name="auth_password_placeholder">أدخل كلمة المرور</string>
+    <string name="auth_show_password">إظهار كلمة المرور</string>
+    <string name="auth_hide_password">إخفاء كلمة المرور</string>
+    <string name="auth_or_divider">أو</string>
+    <string name="auth_i_am_a">أنا</string>
+    <string name="auth_name_placeholder">أدخل اسمك</string>
+    <string name="auth_password_min_placeholder">8 أحرف على الأقل</string>
+    <string name="auth_confirm_password_placeholder">أعد إدخال كلمة المرور</string>
+    <string name="auth_password_too_short">يجب أن تتكون كلمة المرور من 8 أحرف على الأقل</string>
+    <string name="auth_passwords_mismatch">كلمتا المرور غير متطابقتين</string>
+    <string name="auth_terms_privacy_notice">بإنشاء حساب، فإنك توافق على شروط الخدمة وسياسة الخصوصية الخاصة بنا</string>
+    <string name="auth_error_email_required">البريد الإلكتروني مطلوب</string>
+    <string name="auth_error_email_invalid">صيغة البريد الإلكتروني غير صحيحة</string>
+    <string name="auth_error_password_required">كلمة المرور مطلوبة</string>
+    <string name="auth_error_password_min_length">يجب أن تتكون كلمة المرور من %1$d أحرف على الأقل</string>
+    <string name="auth_error_password_uppercase">يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل</string>
+    <string name="auth_error_password_lowercase">يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل</string>
+    <string name="auth_error_password_digit">يجب أن تحتوي كلمة المرور على رقم واحد على الأقل</string>
+    <string name="auth_error_confirm_password_required">يرجى تأكيد كلمة المرور</string>
+    <string name="auth_error_fullname_required">الاسم الكامل مطلوب</string>
+    <string name="auth_error_fullname_min_length">يجب أن يتكون الاسم الكامل من %1$d أحرف على الأقل</string>
+    <string name="auth_error_fullname_max_length">الاسم الكامل طويل جداً (الحد الأقصى %1$d حرفاً)</string>
+    <string name="auth_error_device_name_required">اسم الجهاز مطلوب</string>
+    <string name="auth_error_device_name_too_short">اسم الجهاز قصير جداً</string>
+    <string name="auth_error_google_no_accounts">لا توجد حسابات جوجل على هذا الجهاز</string>
+    <string name="auth_error_google_signin_failed">فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.</string>
+    <string name="auth_error_google_session_expired">انتهت جلسة تسجيل الدخول عبر جوجل. يرجى المحاولة مرة أخرى.</string>
+    <string name="auth_google_continue">المتابعة باستخدام جوجل</string>
+    <string name="auth_role_dialog_title">اختر دورك</string>
+    <string name="auth_role_dialog_message">هل أنت ولي أمر يدير جهاز طفلك، أم طفل يستخدم جهازاً مراقَباً؟</string>
+    <string name="auth_role_parent_cd">ولي الأمر — أدير جهاز طفلي</string>
+    <string name="auth_role_parent_desc">أدير جهاز طفلي</string>
+    <string name="auth_role_child_cd">الطفل — جهازي مراقَب</string>
+    <string name="auth_role_child_desc">جهازي مراقَب</string>
+
+    <!-- Setup: Consent -->
+    <string name="consent_title">المراقبة والخصوصية</string>
+    <string name="consent_heading">كيف يحمي حارس طفلك</string>
+    <string name="consent_intro">للحفاظ على سلامة طفلك، يراقب حارس هذا الجهاز. يرجى مراجعة ما يتم جمعه قبل المتابعة. يتم الإعداد بواسطة ولي الأمر أو الوصي.</string>
+    <string name="consent_messages_title">الرسائل والنصوص المكتوبة</string>
+    <string name="consent_messages_detail">يتم فحص النصوص المكتوبة والمعروضة في التطبيقات لاكتشاف التنمر والاستدراج ومحتوى ضار آخر.</string>
+    <string name="consent_screentime_title">استخدام التطبيقات ووقت الشاشة</string>
+    <string name="consent_screentime_detail">أي التطبيقات تُستخدم ولأي مدة، لفرض الحدود اليومية ووقت النوم.</string>
+    <string name="consent_photos_title">الصور والوسائط</string>
+    <string name="consent_photos_detail">يتم فحص الصور على هذا الجهاز لتمويه المحتوى الصريح.</string>
+    <string name="consent_web_title">نشاط الويب</string>
+    <string name="consent_web_detail">يتم تصفية عناوين الويب لحظر المواقع غير اللائقة. يقوم VPN محلي بذلك على الجهاز.</string>
+    <string name="consent_ondevice_notice">يتم التحليل على هذا الجهاز. تُرسل الأحداث والتنبيهات المُبلّغ عنها إلى حساب ولي الأمر في حارس لمراجعتها. يُعرض لطفلك إشعار بأن المراقبة نشطة.</string>
+    <string name="consent_privacy_link">اطّلع على سياسة الخصوصية الخاصة بنا</string>
+    <string name="consent_checkbox_label">أنا ولي أمر أو وصي هذا الطفل، وأوافق على مراقبة حارس لهذا الجهاز كما هو موضح أعلاه.</string>
+    <string name="consent_accept_button">فهمت وأوافق</string>
+
+    <!-- Setup: Permissions -->
+    <string name="permissions_setup_title">إعداد الأذونات</string>
+    <string name="permissions_heading">إعداد الأذونات</string>
+    <string name="permissions_intro">لحماية طفلك، يحتاج حارس إلى الأذونات التالية. تتيح لنا هذه الأذونات مراقبة النشاط وفرض حدود وقت الشاشة.</string>
+    <string name="permissions_granted_count">تم منح %1$d من %2$d أذونات</string>
+    <string name="permissions_accessibility_title">خدمة إمكانية الوصول</string>
+    <string name="permissions_accessibility_desc">مطلوبة لمراقبة المحتوى النصي عبر التطبيقات لاكتشاف الرسائل غير اللائقة والتنمر الإلكتروني والسلوك الافتراسي المحتمل.</string>
+    <string name="permissions_usage_stats_title">الوصول إلى إحصاءات الاستخدام</string>
+    <string name="permissions_usage_stats_desc">مطلوب لتتبع وقت الشاشة واستخدام التطبيقات لفرض الحدود اليومية وقيود وقت النوم.</string>
+    <string name="permissions_overlay_title">العرض فوق التطبيقات</string>
+    <string name="permissions_overlay_desc">مطلوب لعرض شاشة القفل عند تجاوز حدود وقت الشاشة أو خلال ساعات النوم.</string>
+    <string name="permissions_battery_title">تحسين البطارية</string>
+    <string name="permissions_battery_desc">مطلوب لمنع نظام أندرويد من إيقاف حارس في الخلفية. بدون هذا، قد تتوقف مراقبة النصوص بشكل غير متوقع.</string>
+    <string name="permissions_vpn_title">تصفية المحتوى عبر VPN</string>
+    <string name="permissions_vpn_desc">مطلوب لتصفية المحتوى لحظر المواقع غير اللائقة. يستخدم حارس VPN محلياً لتصفية محتوى الويب - لا تُرسل أي بيانات إلى خوادم خارجية.</string>
+    <string name="permissions_phone_title">المكالمات الهاتفية</string>
+    <string name="permissions_phone_desc">مطلوب للسماح بالمكالمات الهاتفية أثناء وقت النوم وحدود وقت الشاشة. سيتمكن طفلك دائماً من إجراء واستقبال مكالمات الطوارئ.</string>
+    <string name="permissions_media_title">الصور والوسائط</string>
+    <string name="permissions_media_desc">مطلوب لمنع المحتوى الجنسي. يحتاج حارس إلى وصول كامل للتخزين لاكتشاف وتمويه الصور غير اللائقة، لحماية طفلك من المحتوى الضار.</string>
+    <string name="permissions_media_desc_r_plus">مطلوب لمنع المحتوى الجنسي. فعّل \'الوصول لجميع الملفات\' للسماح لحارس باكتشاف وتمويه الصور غير اللائقة، لحماية طفلك من المحتوى الضار.</string>
+    <string name="permissions_notifications_title">الإشعارات</string>
+    <string name="permissions_notifications_desc">مطلوب لعرض التنبيهات والإشعارات حول نشاط جهاز طفلك.</string>
+    <string name="permissions_continue_dashboard">المتابعة إلى لوحة التحكم</string>
+    <string name="permissions_skip_for_now">تخطي الآن</string>
+    <string name="permissions_incomplete_notice">قد لا تعمل بعض الميزات بدون جميع الأذونات</string>
+    <string name="permissions_active">نشط</string>
+    <string name="permissions_enable">تفعيل</string>
+    <string name="common_view">عرض</string>
+    <string name="common_open_settings">فتح الإعدادات</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_role_parent">لوحة تحكم ولي الأمر</string>
+    <string name="dashboard_role_child">نشاطي</string>
+    <string name="dashboard_cd_refresh">تحديث لوحة التحكم</string>
+    <string name="dashboard_refresh">تحديث</string>
+    <string name="dashboard_cd_alerts">عرض التنبيهات. %1$d غير مقروءة</string>
+    <string name="dashboard_cd_more_options">خيارات إضافية</string>
+    <string name="dashboard_menu_children">أطفالي</string>
+    <string name="dashboard_menu_link_parent">ربط ولي أمر</string>
+    <string name="dashboard_welcome">مرحباً بعودتك</string>
+    <string name="dashboard_family_title">لوحة تحكم العائلة</string>
+    <string name="dashboard_offline_single">آخر تسجيل دخول لـ %1$s كان %2$s. قد يكون الجهاز مغلقاً أو غير متصل أو توقفت المراقبة.</string>
+    <string name="dashboard_offline_multiple">%1$d أجهزة لم تُسجّل الدخول منذ فترة. قد تكون مغلقة أو غير متصلة أو توقفت المراقبة.</string>
+    <string name="dashboard_offline_fallback_time">منذ فترة</string>
+    <string name="dashboard_select_device">اختر الجهاز</string>
+    <string name="dashboard_usage_stats_grant_msg">امنح إذن الوصول لاستخدام التطبيقات لتتبع وقت الشاشة. اضغط لفتح الإعدادات.</string>
+    <string name="dashboard_setup_required">الإعداد مطلوب</string>
+    <string name="dashboard_permissions_needed_one">مطلوب إذن واحد</string>
+    <string name="dashboard_permissions_needed_other">مطلوب %1$d أذونات</string>
+    <string name="dashboard_apps_used_one">تطبيق واحد مستخدَم</string>
+    <string name="dashboard_apps_used_other">%1$d تطبيقات مستخدَمة</string>
+    <string name="dashboard_unread_count">%1$d غير مقروءة</string>
+    <string name="dashboard_no_apps_message">لا توجد بيانات استخدام تطبيقات بعد</string>
+    <string name="dashboard_no_alerts_parent">لا توجد تنبيهات حديثة - كل شيء على ما يرام!</string>
+    <string name="dashboard_no_alerts_child">أحسنت! لا توجد تنبيهات حديثة!</string>
+    <string name="dashboard_block_adult_content">حظر المحتوى للبالغين</string>
+    <string name="dashboard_vpn_active">تصفية VPN نشطة</string>
+    <string name="dashboard_filter_disabled">معطّل</string>
+    <string name="dashboard_social_media">وسائل التواصل الاجتماعي</string>
+    <string name="dashboard_all_platforms_allowed">جميع المنصات مسموحة</string>
+    <string name="dashboard_platforms_blocked_one">منصة واحدة محظورة</string>
+    <string name="dashboard_platforms_blocked_other">%1$d منصات محظورة</string>
+    <string name="dashboard_collapse">طي</string>
+    <string name="dashboard_expand">توسيع</string>
+    <string name="dashboard_block_all">حظر الكل</string>
+    <string name="dashboard_allow_all">السماح للكل</string>
+    <string name="dashboard_complete_setup">إكمال الإعداد</string>
+    <string name="dashboard_last_active">آخر نشاط %1$s</string>
+    <string name="dashboard_no_activity_yet">لم يُبلَّغ عن أي نشاط بعد</string>
+    <string name="dashboard_limit_reached">تم بلوغ الحد</string>
+    <string name="dashboard_keep_balanced">حافظ على التوازن</string>
+    <string name="dashboard_status_over_limit">تجاوز الحد</string>
+    <string name="dashboard_status_warning">تحذير</string>
+    <string name="dashboard_status_on_track">على المسار الصحيح</string>
+    <string name="dashboard_of_limit">من %1$s</string>
+    <string name="dashboard_remaining">المتبقي</string>
+    <string name="dashboard_manage_time_limits">إدارة حدود الوقت</string>
+    <string name="dashboard_time_limits_label">حدود الوقت</string>
+    <string name="dashboard_filters_label">التصفية</string>
+    <string name="dashboard_sign_out">تسجيل الخروج</string>
+    <string name="dashboard_signout_message">هل أنت متأكد أنك تريد تسجيل الخروج؟ ستحتاج لتسجيل الدخول مرة أخرى للوصول إلى حسابك.</string>
+    <string name="dashboard_cd_selected">محدد</string>
+    <string name="dashboard_error_refresh">فشل التحديث: %1$s</string>
+    <string name="dashboard_error_device_not_registered">الجهاز غير مسجل</string>
+    <string name="dashboard_error_update_filter">فشل تحديث فلتر المحتوى</string>
+    <string name="dashboard_error_update_social">فشل تحديث إعداد وسائل التواصل الاجتماعي</string>
+    <string name="dashboard_error_block_social">فشل حظر وسائل التواصل الاجتماعي</string>
+    <string name="dashboard_error_unblock_social">فشل إلغاء حظر وسائل التواصل الاجتماعي</string>
+    <string name="dashboard_error_create_filter">فشل إنشاء فلتر المحتوى</string>
+
+    <!-- Alerts -->
+    <string name="alerts_cd_mark_all_read">تحديد الكل كمقروء</string>
+    <string name="alerts_cd_refresh">تحديث</string>
+    <string name="alerts_cd_more_options">خيارات إضافية</string>
+    <string name="alerts_filter_all">الكل</string>
+    <string name="alerts_filter_unread">غير مقروء</string>
+    <string name="alerts_filter_critical">حرِج</string>
+    <string name="alerts_filter_high">مرتفع</string>
+    <string name="alerts_empty_all">لا توجد تنبيهات</string>
+    <string name="alerts_empty_unread">لا توجد تنبيهات غير مقروءة</string>
+    <string name="alerts_empty_critical">لا توجد تنبيهات حرجة</string>
+    <string name="alerts_empty_high">لا توجد تنبيهات ذات أولوية مرتفعة</string>
+    <string name="alerts_caught_up">أنت على اطلاع بكل جديد!</string>
+    <string name="alerts_mark_read">تحديد كمقروء</string>
+    <string name="alerts_dismiss">تجاهل</string>
+    <string name="alerts_delete">حذف</string>
+    <string name="alerts_msg_dismissed">تم تجاهل التنبيه</string>
+    <string name="alerts_msg_all_read">تم تحديد جميع التنبيهات كمقروءة</string>
+    <string name="alerts_msg_deleted">تم حذف التنبيه</string>
+
+    <!-- Children -->
+    <string name="children_title">أطفالي</string>
+    <string name="children_add_child">إضافة طفل</string>
+    <string name="children_count_one">طفل واحد مرتبط</string>
+    <string name="children_count_other">%1$d أطفال مرتبطون</string>
+    <string name="children_empty_title">لا يوجد أطفال مرتبطون بعد</string>
+    <string name="children_empty_subtitle">أضف حساب طفلك لبدء مراقبة نشاط جهازه</string>
+    <string name="children_add_first">أضف طفلك الأول</string>
+    <string name="children_remove_title">إزالة %1$s؟</string>
+    <string name="children_remove_message">سيؤدي هذا إلى إلغاء ربط حساب %1$s. لن تتمكن بعد الآن من مراقبة أجهزته.</string>
+    <string name="children_remove">إزالة</string>
+    <string name="children_linked_when">تم الربط %1$s</string>
+    <string name="children_view_devices">عرض الأجهزة</string>
+    <string name="children_add_instructions">على جهاز طفلك، افتح تطبيق حارس واضغط على "ربط ولي أمر" للحصول على رمز الاقتران. أدخل هذا الرمز هنا.</string>
+    <string name="children_pairing_code">رمز الاقتران</string>
+    <string name="children_error_enter_code">أدخل الرمز الظاهر على جهاز طفلك</string>
+    <string name="children_msg_linked">تم ربط %1$s بنجاح</string>
+    <string name="children_msg_removed">تمت إزالة %1$s من عائلتك</string>
+
+    <!-- Devices -->
+    <string name="devices_title_child">أجهزة %1$s</string>
+    <string name="devices_count_one">جهاز واحد مسجل</string>
+    <string name="devices_count_other">%1$d أجهزة مسجلة</string>
+    <string name="devices_empty_title">لم يتم العثور على أجهزة</string>
+    <string name="devices_empty_subtitle">ستظهر أجهزة أطفالك هنا بمجرد تثبيت تطبيق حارس وربطها بحسابك</string>
+    <string name="devices_status_active">المراقبة نشطة</string>
+    <string name="devices_status_suspended">موقوف</string>
+    <string name="devices_status_inactive">غير نشط</string>
+    <string name="devices_status_plain_active">نشط</string>
+    <string name="devices_cd_view_details">عرض التفاصيل</string>
+    <string name="devices_set_limits">تحديد الحدود</string>
+    <string name="devices_blocked_sites">المواقع المحظورة</string>
+    <string name="devices_remove_title">إزالة %1$s؟</string>
+    <string name="devices_remove_message">سيؤدي هذا إلى إزالة الجهاز وجميع بيانات المراقبة الخاصة به. لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="devices_remove">إزالة</string>
+    <string name="devices_android_version">إصدار أندرويد</string>
+    <string name="devices_app_version">إصدار التطبيق</string>
+    <string name="devices_status_label">الحالة</string>
+    <string name="devices_last_sync">آخر مزامنة</string>
+    <string name="devices_registered_label">تاريخ التسجيل</string>
+    <string name="devices_unknown">غير معروف</string>
+    <string name="devices_content_filtering">تصفية المحتوى</string>
+    <string name="devices_block_adult">حظر محتوى البالغين</string>
+    <string name="devices_vpn_active">تصفية VPN نشطة على هذا الجهاز</string>
+    <string name="devices_enable_block">فعّل لحظر المواقع غير اللائقة</string>
+    <string name="devices_block_social">حظر وسائل التواصل الاجتماعي</string>
+    <string name="devices_social_blocked">مواقع التواصل الاجتماعي محظورة</string>
+    <string name="devices_social_allowed">وسائل التواصل الاجتماعي مسموح بها</string>
+    <string name="devices_actions">الإجراءات</string>
+    <string name="devices_suspend">إيقاف الجهاز مؤقتًا</string>
+    <string name="devices_activate">تفعيل الجهاز</string>
+    <string name="devices_screen_time_limits">حدود وقت الشاشة</string>
+    <string name="devices_manage_blocked">إدارة المواقع المحظورة</string>
+    <string name="devices_remove_device">إزالة الجهاز</string>
+    <string name="devices_msg_filter_enabled">تم تفعيل تصفية المحتوى</string>
+    <string name="devices_msg_filter_disabled">تم إيقاف تصفية المحتوى</string>
+    <string name="devices_msg_social_blocked">تم حظر وسائل التواصل الاجتماعي</string>
+    <string name="devices_msg_social_allowed">تم السماح بوسائل التواصل الاجتماعي</string>
+    <string name="devices_msg_suspended">تم إيقاف الجهاز مؤقتًا</string>
+    <string name="devices_msg_activated">تم تفعيل الجهاز</string>
+    <string name="devices_error_update_filter">فشل تحديث فلتر المحتوى: %1$s</string>
+    <string name="devices_error_update_social">فشل تحديث إعداد وسائل التواصل الاجتماعي: %1$s</string>
+    <string name="devices_error_create_filter">فشل إنشاء فلتر المحتوى: %1$s</string>
+
+    <!-- Device Setup -->
+    <string name="devicesetup_title">إعداد هذا الجهاز</string>
+    <string name="devicesetup_subtitle">سجّل هذا الجهاز لتفعيل حماية حارس والسماح لولي أمرك بمراقبة نشاطك على الإنترنت.</string>
+    <string name="devicesetup_device_name">اسم الجهاز</string>
+    <string name="devicesetup_device_name_hint">مثال: هاتف يوسف</string>
+    <string name="devicesetup_name_helper">سيساعد هذا الاسم ولي أمرك على التعرف على هذا الجهاز</string>
+    <string name="devicesetup_register">تسجيل الجهاز</string>
+    <string name="devicesetup_what_next">ماذا سيحدث بعد ذلك؟</string>
+    <string name="devicesetup_next_steps">• سيتمكن ولي أمرك من رؤية وقت استخدامك للشاشة\n• ستحظر تصفية المحتوى المواقع غير اللائقة\n• ستحتاج إلى منح إذن الوصول إلى بيانات الاستخدام</string>
+    <string name="devicesetup_registered">تم تسجيل الجهاز!</string>
+    <string name="devicesetup_enable_tracking">لنقم الآن بتفعيل تتبع وقت الشاشة عن طريق منح إذن الوصول إلى بيانات الاستخدام.</string>
+    <string name="devicesetup_usage_required">مطلوب إذن الوصول إلى بيانات الاستخدام</string>
+    <string name="devicesetup_usage_explain">لتتبع وقت الشاشة، يحتاج تطبيق حارس إلى إذن للوصول إلى بيانات الاستخدام. اضغط على الزر أدناه، وابحث عن \'Haris\' في القائمة، وقم بتفعيل الوصول.</string>
+    <string name="devicesetup_open_usage_settings">فتح إعدادات الوصول إلى بيانات الاستخدام</string>
+    <string name="devicesetup_continue_dashboard">المتابعة إلى لوحة التحكم</string>
+    <string name="devicesetup_enable_later">يمكنك تفعيل هذا الإذن لاحقًا من لوحة التحكم</string>
+    <string name="devicesetup_error_empty_name">يرجى إدخال اسم الجهاز</string>
+    <string name="devicesetup_error_short_name">اسم الجهاز قصير جدًا</string>
+
+    <!-- Link Parent -->
+    <string name="linkparent_title">ربط ولي أمر</string>
+    <string name="linkparent_heading">اربط ولي أمر بهذا الجهاز</string>
+    <string name="linkparent_instructions">أنشئ رمزًا أدناه، ثم أدخله في تطبيق حارس لدى ولي الأمر ضمن "إضافة طفل". يعمل الرمز مرة واحدة وتنتهي صلاحيته قريبًا.</string>
+    <string name="linkparent_expires_at">تنتهي الصلاحية في %1$s</string>
+    <string name="linkparent_generate">إنشاء رمز</string>
+    <string name="linkparent_generate_new">إنشاء رمز جديد</string>
+
+    <!-- Lock Screen -->
+    <string name="lock_daily_title">تم بلوغ الحد اليومي</string>
+    <string name="lock_daily_desc">لقد استخدمت كل وقت الشاشة المخصص لك اليوم. سيكون الجهاز متاحًا مرة أخرى غدًا.</string>
+    <string name="lock_daily_meta">يعود غدًا</string>
+    <string name="lock_ask_more_time">اطلب وقتًا إضافيًا</string>
+    <string name="lock_bedtime_title">وقت الراحة</string>
+    <string name="lock_bedtime_desc">حان وقت النوم. جهازك يأخذ استراحة حتى الصباح لتتمكن من النوم.</string>
+    <string name="lock_bedtime_meta">يُفتح في الصباح</string>
+    <string name="lock_study_title">وقت المذاكرة</string>
+    <string name="lock_study_desc">إنه وقت المذاكرة. التطبيقات التعليمية فقط متاحة الآن.</string>
+    <string name="lock_study_meta">يعود عند انتهاء وقت المذاكرة</string>
+    <string name="lock_app_paused_title">%1$s متوقف مؤقتًا</string>
+    <string name="lock_app_paused_title_generic">هذا التطبيق متوقف مؤقتًا</string>
+    <string name="lock_app_paused_desc">أوقف ولي أمرك هذا التطبيق مؤقتًا الآن. لا يزال بإمكانك استخدام تطبيقاتك الأخرى.</string>
+    <string name="lock_okay">حسنًا</string>
+    <string name="lock_ask_parent">اسأل ولي الأمر</string>
+    <string name="lock_app_limit_title">انتهى وقت %1$s</string>
+    <string name="lock_app_limit_title_generic">انتهى وقت التطبيق</string>
+    <string name="lock_app_limit_desc">لقد بلغت حد اليوم لتطبيق %1$s. لا يزال بإمكانك استخدام تطبيقاتك الأخرى.</string>
+    <string name="lock_this_app">هذا التطبيق</string>
+    <string name="lock_device_locked">الجهاز مقفل</string>
+    <string name="lock_parent_locked_desc">قام ولي أمرك بقفل هذا الجهاز حاليًا. سيُفتح عندما يقرر ذلك.</string>
+    <string name="lock_generic_desc">هذا الجهاز مقفل الآن.</string>
+    <string name="lock_request_sent">تم الإرسال. سيراه ولي أمرك.</string>
+    <string name="lock_emergency_call">مكالمة طوارئ</string>
+    <string name="lock_protected_by">محمي بواسطة حارس</string>
+    <string name="lock_default_message">تم بلوغ حد وقت الشاشة</string>
+    <string name="lock_request_more_time_title">يطلب وقتًا إضافيًا</string>
+    <string name="lock_request_more_time_body">بلغ طفلك حد وقت الشاشة لليوم ويطلب وقتًا إضافيًا.</string>
+    <string name="lock_request_blocked_title">يسأل عن تطبيق محظور</string>
+    <string name="lock_request_blocked_body">طفلك يسأل عن %1$s.</string>
+    <string name="lock_a_blocked_app">تطبيق محظور</string>
+
+    <!-- Screen Time Limits -->
+    <string name="screentime_cd_delete_rules">حذف القواعد</string>
+    <string name="screentime_allowed_study">مسموح أثناء وقت المذاكرة</string>
+    <string name="screentime_add_app">إضافة تطبيق</string>
+    <string name="screentime_no_study_apps">لا توجد تطبيقات مسموح بها أثناء وقت المذاكرة. سيتم حظر جميع التطبيقات.</string>
+    <string name="screentime_per_app_limits">حدود لكل تطبيق</string>
+    <string name="screentime_no_app_limits">لم يتم تحديد حدود للتطبيقات. اضغط على \'إضافة تطبيق\' لتحديد حدود زمنية لتطبيقات معينة.</string>
+    <string name="screentime_blocked_apps">التطبيقات المحظورة</string>
+    <string name="screentime_block_app">حظر تطبيق</string>
+    <string name="screentime_no_blocked_apps">لا توجد تطبيقات محظورة. اضغط على \'حظر تطبيق\' لحظر تطبيقات معينة تمامًا.</string>
+    <string name="screentime_delete_all_title">حذف جميع القواعد؟</string>
+    <string name="screentime_delete_all_message">سيؤدي هذا إلى إزالة جميع حدود وقت الشاشة وإعدادات وقت النوم وحدود التطبيقات والتطبيقات المحظورة لهذا الجهاز. لا يمكن التراجع عن هذا.</string>
+    <string name="screentime_delete">حذف</string>
+    <string name="screentime_rules_active">القواعد مفعّلة</string>
+    <string name="screentime_rules_disabled">القواعد معطّلة</string>
+    <string name="screentime_rules_enforced">يتم تطبيق حدود وقت الشاشة</string>
+    <string name="screentime_no_restrictions">لا توجد قيود مطبقة</string>
+    <string name="screentime_daily_limit">الحد اليومي لوقت الشاشة</string>
+    <string name="screentime_set_daily_limit">تحديد الحد اليومي</string>
+    <string name="screentime_bedtime_mode">وضع وقت النوم</string>
+    <string name="screentime_bedtime_desc">حظر استخدام الجهاز أثناء ساعات النوم</string>
+    <string name="screentime_start">البداية</string>
+    <string name="screentime_end">النهاية</string>
+    <string name="screentime_study_time">وقت المذاكرة</string>
+    <string name="screentime_study_desc">حظر جميع التطبيقات باستثناء التعليمية</string>
+    <string name="screentime_device_locked">الجهاز مقفل</string>
+    <string name="screentime_lock_device">قفل الجهاز</string>
+    <string name="screentime_locked_desc">الجهاز مقفل حاليًا</string>
+    <string name="screentime_lock_desc">قفل جهاز الطفل فورًا</string>
+    <string name="screentime_message_child">رسالة إلى الطفل (اختياري)</string>
+    <string name="screentime_message_hint">مثال: حان وقت العشاء!</string>
+    <string name="screentime_allowed_during_study">مسموح أثناء وقت المذاكرة</string>
+    <string name="screentime_cd_remove">إزالة</string>
+    <string name="screentime_add_app_limit">إضافة حد للتطبيق</string>
+    <string name="screentime_cd_remove_selection">إزالة الاختيار</string>
+    <string name="screentime_daily_limit_label">الحد اليومي</string>
+    <string name="screentime_hours">ساعات</string>
+    <string name="screentime_minutes">دقائق</string>
+    <string name="screentime_search_apps">البحث في التطبيقات</string>
+    <string name="screentime_loading_apps">جارٍ تحميل التطبيقات من جهاز الطفل…</string>
+    <string name="screentime_no_usage_data">لا توجد بيانات استخدام للتطبيقات بعد.\nيحتاج الطفل إلى استخدام الجهاز أولًا.</string>
+    <string name="screentime_no_matching_apps">لم يتم العثور على تطبيقات مطابقة</string>
+    <string name="screentime_add">إضافة</string>
+    <string name="screentime_block">حظر</string>
+    <string name="screentime_allow_study_title">السماح بتطبيق أثناء وقت المذاكرة</string>
+    <string name="screentime_block_explain">سيتم حظر هذا التطبيق تمامًا على جهاز الطفل.</string>
+    <string name="screentime_allow_explain">سيكون هذا التطبيق متاحًا أثناء وقت المذاكرة.</string>
+    <string name="screentime_allow">السماح</string>
+    <string name="screentime_select_time">اختر الوقت</string>
+    <string name="screentime_error_invalid_device">معرّف الجهاز غير صالح</string>
+    <string name="screentime_msg_saved">تم حفظ قواعد وقت الشاشة بنجاح</string>
+    <string name="screentime_msg_deleted">تم حذف قواعد وقت الشاشة</string>
+
+    <!-- Blacklist -->
+    <string name="blacklist_title">المواقع المحظورة</string>
+    <string name="blacklist_cd_clear_all">حذف الكل</string>
+    <string name="blacklist_cd_add_website">إضافة موقع</string>
+    <string name="blacklist_count_one">موقع محظور واحد</string>
+    <string name="blacklist_count_other">%1$d مواقع محظورة</string>
+    <string name="blacklist_dialog_title">حظر موقع</string>
+    <string name="blacklist_dialog_desc">أدخل النطاق المراد حظره. لا تُضمّن \'http://\' أو \'https://\'.</string>
+    <string name="blacklist_domain_label">النطاق</string>
+    <string name="blacklist_domain_placeholder" translatable="false">example.com</string>
+    <string name="blacklist_block_button">حظر</string>
+    <string name="blacklist_clear_title">حذف قائمة الحظر؟</string>
+    <string name="blacklist_clear_message">سيؤدي هذا إلى إزالة جميع المواقع المحظورة البالغ عددها %1$d. لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="blacklist_clear_all_button">حذف الكل</string>
+    <string name="blacklist_empty_title">لا توجد مواقع محظورة</string>
+    <string name="blacklist_empty_message">اضغط على + لإضافة مواقع للحظر</string>
+    <string name="blacklist_error_empty">لا يمكن أن يكون النطاق فارغًا</string>
+    <string name="blacklist_error_short">النطاق قصير جدًا</string>
+    <string name="blacklist_error_duplicate">النطاق موجود بالفعل في قائمة الحظر</string>
+    <string name="blacklist_msg_added">تمت إضافة الموقع إلى قائمة الحظر</string>
+    <string name="blacklist_msg_removed">تمت إزالة الموقع من قائمة الحظر</string>
+    <string name="blacklist_msg_cleared">تم حذف قائمة الحظر</string>
+
+    <!-- Word List -->
+    <string name="wordlist_title">قوائم الكلمات المخصصة</string>
+    <string name="wordlist_cd_clear_list">حذف القائمة</string>
+    <string name="wordlist_cd_add_word">إضافة كلمة</string>
+    <string name="wordlist_tab_blacklist">المحظورة (%1$d)</string>
+    <string name="wordlist_tab_whitelist">المسموحة (%1$d)</string>
+    <string name="wordlist_blacklisted_words_title">الكلمات المحظورة</string>
+    <string name="wordlist_whitelisted_words_title">الكلمات المسموحة</string>
+    <string name="wordlist_blacklist_desc">سيتم دائمًا الإبلاغ عن هذه الكلمات كمحتوى غير لائق، حتى لو لم تطابق الأنماط الافتراضية.</string>
+    <string name="wordlist_whitelist_desc">سيتم السماح بهذه الكلمات ولن تُطلق تنبيهات، حتى لو طابقت الأنماط الافتراضية (باستثناء المحتوى الحرج مثل إيذاء النفس).</string>
+    <string name="wordlist_empty_no_match">لم يتم العثور على كلمات مطابقة</string>
+    <string name="wordlist_empty_none_blacklist">لا توجد كلمات في قائمة الحظر</string>
+    <string name="wordlist_empty_none_whitelist">لا توجد كلمات في القائمة المسموحة</string>
+    <string name="wordlist_empty_try_filters">جرّب تعديل البحث أو الفلاتر</string>
+    <string name="wordlist_empty_tap_add">اضغط على + لإضافة كلمات</string>
+    <string name="wordlist_clear_filters">مسح الفلاتر</string>
+    <string name="wordlist_showing_count">عرض %1$d من %2$d كلمة</string>
+    <string name="wordlist_chip_case_sensitive">حساس لحالة الأحرف</string>
+    <string name="wordlist_chip_partial_match">مطابقة جزئية</string>
+    <string name="wordlist_clear_title_blacklist">حذف قائمة الحظر؟</string>
+    <string name="wordlist_clear_title_whitelist">حذف القائمة المسموحة؟</string>
+    <string name="wordlist_clear_message_blacklist">سيؤدي هذا إلى إزالة جميع الكلمات من قائمة الحظر. لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="wordlist_clear_message_whitelist">سيؤدي هذا إلى إزالة جميع الكلمات من القائمة المسموحة. لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="wordlist_clear_all_button">حذف الكل</string>
+    <string name="wordlist_add_dialog_title_blacklist">إضافة إلى قائمة الحظر</string>
+    <string name="wordlist_add_dialog_title_whitelist">إضافة إلى القائمة المسموحة</string>
+    <string name="wordlist_word_label">كلمة أو عبارة</string>
+    <string name="wordlist_category_label">الفئة</string>
+    <string name="wordlist_case_sensitive_label">حساس لحالة الأحرف</string>
+    <string name="wordlist_whole_word_label">مطابقة الكلمة كاملة فقط</string>
+    <string name="wordlist_add_button">إضافة</string>
+    <string name="wordlist_search_placeholder">البحث عن كلمات…</string>
+    <string name="wordlist_cd_search">بحث</string>
+    <string name="wordlist_cd_clear_search">مسح البحث</string>
+    <string name="wordlist_all_categories">جميع الفئات</string>
+    <string name="wordlist_cd_clear_all_filters">مسح جميع الفلاتر</string>
+    <string name="wordlist_error_word_empty">لا يمكن أن تكون الكلمة فارغة</string>
+    <string name="wordlist_error_whitelist_dup">الكلمة موجودة بالفعل في القائمة المسموحة</string>
+    <string name="wordlist_error_blacklist_dup">الكلمة موجودة بالفعل في قائمة الحظر</string>
+    <string name="wordlist_msg_added_whitelist">تمت إضافة الكلمة إلى القائمة المسموحة</string>
+    <string name="wordlist_msg_added_blacklist">تمت إضافة الكلمة إلى قائمة الحظر</string>
+    <string name="wordlist_msg_removed">تمت إزالة الكلمة</string>
+    <string name="wordlist_msg_cleared_whitelist">تم حذف القائمة المسموحة</string>
+    <string name="wordlist_msg_cleared_blacklist">تم حذف قائمة الحظر</string>
+
+    <!-- Text Monitoring Settings -->
+    <string name="textmon_title">مراقبة النصوص</string>
+    <string name="textmon_categories_title">فئات المحتوى</string>
+    <string name="textmon_categories_desc">اختر أنواع المحتوى المراد مراقبتها. لا يمكن تعطيل الفئات الحرجة لسلامة الطفل.</string>
+    <string name="textmon_manage_wordlist">إدارة قائمة الكلمات المخصصة</string>
+    <string name="textmon_alert_prefs_title">تفضيلات التنبيهات</string>
+    <string name="textmon_alert_sound_title">صوت التنبيه</string>
+    <string name="textmon_alert_sound_desc">تشغيل صوت عند استلام التنبيهات</string>
+    <string name="textmon_vibration_title">الاهتزاز</string>
+    <string name="textmon_vibration_desc">الاهتزاز عند استلام التنبيهات</string>
+    <string name="textmon_privacy_title">ملاحظة الخصوصية</string>
+    <string name="textmon_privacy_desc">يتم تحليل محتوى النص محليًا على الجهاز. يُرسل إلى لوحة التحكم الخاصة بك إشعارات التنبيه فقط (الفئة، اسم التطبيق، الوقت). لا يتم تخزين محتوى النص الفعلي أو نقله أبدًا.</string>
+    <string name="textmon_monitoring_active">جارٍ مراقبة محتوى النصوص بنشاط</string>
+    <string name="textmon_monitoring_paused">المراقبة متوقفة مؤقتًا</string>
+    <string name="textmon_required_badge">مطلوب</string>
+    <string name="textmon_alerts_today">تنبيهات اليوم: %1$d/%2$d</string>
+    <string name="textmon_cooldown">فترة الانتظار: %1$d ثانية</string>
+    <string name="textmon_error_load">فشل تحميل الإعدادات</string>
+    <string name="textmon_error_critical_disable">لا يمكن تعطيل هذه الفئة لأسباب تتعلق بالسلامة</string>
+    <string name="textmon_cat_selfharm_name">إيذاء النفس والانتحار</string>
+    <string name="textmon_cat_selfharm_desc">يكتشف المحتوى المتعلق بإيذاء النفس أو الانتحار أو الأفكار الضارة. هذه الفئة مفعّلة دائمًا لسلامة الطفل.</string>
+    <string name="textmon_cat_predator_name">سلوك افتراسي</string>
+    <string name="textmon_cat_predator_desc">يكتشف أنماط الاستمالة المحتملة ومحاولات الاتصال المشبوهة. هذه الفئة مفعّلة دائمًا لسلامة الطفل.</string>
+    <string name="textmon_cat_sexual_name">محتوى جنسي</string>
+    <string name="textmon_cat_sexual_desc">يكتشف المحتوى الجنسي الصريح أو غير اللائق بما في ذلك الرسائل الجنسية.</string>
+    <string name="textmon_cat_violence_name">العنف والتهديدات</string>
+    <string name="textmon_cat_violence_desc">يكتشف المحتوى العنيف والتهديدات واللغة العدوانية.</string>
+    <string name="textmon_cat_bullying_name">التنمر الإلكتروني</string>
+    <string name="textmon_cat_bullying_desc">يكتشف التنمر والمضايقة والمحتوى المسيء.</string>
+    <string name="textmon_cat_drugs_name">المخدرات والمواد</string>
+    <string name="textmon_cat_drugs_desc">يكتشف الإشارات إلى المخدرات والكحول وتعاطي المواد.</string>
+    <string name="textmon_cat_profanity_name">الألفاظ النابية</string>
+    <string name="textmon_cat_profanity_desc">يكتشف الألفاظ النابية وكلمات السباب والعبارات غير اللائقة.</string>
+    <string name="textmon_cat_custom_name">القائمة المخصصة المحظورة</string>
+    <string name="textmon_cat_custom_desc">يكتشف الكلمات من قائمة الحظر المخصصة الخاصة بك.</string>
+
+    <!-- Image Review -->
+    <string name="imagereview_title">مراجعة الصور المُبلَّغ عنها</string>
+    <string name="imagereview_pending_one">صورة واحدة بانتظار المراجعة</string>
+    <string name="imagereview_pending_other">%1$d صور بانتظار المراجعة</string>
+    <string name="imagereview_empty_title">لا توجد صور للمراجعة</string>
+    <string name="imagereview_empty_desc">تمت مراجعة جميع الصور المُبلَّغ عنها.</string>
+    <string name="imagereview_dialog_title">مراجعة الصورة</string>
+    <string name="imagereview_label_category">الفئة:</string>
+    <string name="imagereview_label_confidence">مستوى الثقة:</string>
+    <string name="imagereview_label_detected">تاريخ الاكتشاف:</string>
+    <string name="imagereview_hide_original">إخفاء الصورة الأصلية</string>
+    <string name="imagereview_view_original">عرض الصورة الأصلية</string>
+    <string name="imagereview_cd_original_image">الصورة الأصلية</string>
+    <string name="imagereview_unable_load">تعذّر تحميل الصورة الأصلية</string>
+    <string name="imagereview_info_text">• الموافقة: استعادة الصورة الأصلية (غير المموّهة)\n• الرفض: حذف الصورة نهائيًا</string>
+    <string name="imagereview_reject_button">رفض</string>
+    <string name="imagereview_approve_button">موافقة</string>
+    <string name="imagereview_error_load">فشل تحميل المراجعات المعلّقة</string>
+    <string name="imagereview_error_restore">فشل استعادة الصورة</string>
+    <string name="imagereview_error_delete">فشل حذف الصورة</string>
+    <string name="imagereview_error_generic">خطأ: %1$s</string>
+    <string name="imagereview_cat_adult">محتوى للبالغين</string>
+    <string name="imagereview_cat_suggestive">محتوى موحٍ</string>
+    <string name="imagereview_cat_animated_adult">محتوى رسوم متحركة للبالغين</string>
+    <string name="imagereview_cat_violent">محتوى عنيف</string>
+    <string name="imagereview_cat_nudity">عري</string>
+
+    <!-- Text Review -->
+    <string name="textreview_title">مراجعة النصوص المُبلَّغ عنها</string>
+    <string name="textreview_cd_clear_all">حذف الكل</string>
+    <string name="textreview_clear_dialog_title">حذف جميع النصوص المُبلَّغ عنها؟</string>
+    <string name="textreview_clear_dialog_message">سيؤدي هذا إلى حذف سجل المراجعة المخزّن على الجهاز نهائيًا. لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="textreview_clear_all_button">حذف الكل</string>
+    <string name="textreview_count_one">عبارة واحدة مُبلَّغ عنها. محفوظة على هذا الجهاز فقط.</string>
+    <string name="textreview_count_other">%1$d عبارات مُبلَّغ عنها. محفوظة على هذا الجهاز فقط.</string>
+    <string name="textreview_cd_delete">حذف</string>
+    <string name="textreview_no_text_captured">(لم يتم التقاط نص قابل للقراءة)</string>
+    <string name="textreview_app_date">%1$s · %2$s</string>
+    <string name="textreview_empty_title">لا يوجد نص مُبلَّغ عنه</string>
+    <string name="textreview_empty_desc">لم يتم الإبلاغ عن أي شيء على هذا الجهاز مؤخرًا.</string>
+    <string name="textreview_cat_profanity">ألفاظ نابية</string>
+    <string name="textreview_cat_selfharm">إيذاء النفس</string>
+    <string name="textreview_cat_violence">عنف</string>
+    <string name="textreview_cat_sexual">محتوى جنسي</string>
+    <string name="textreview_cat_bullying">تنمر</string>
+    <string name="textreview_cat_grooming">استمالة</string>
+    <string name="textreview_cat_unknown">مُبلَّغ عنه</string>
+
+    <!-- Shared Components -->
+    <string name="components_screentime_hero_title">وقت الشاشة اليوم</string>
+    <string name="components_stat_unlocks">مرات الفتح</string>
+    <string name="components_stat_remaining">المتبقي</string>
+    <string name="components_manage_limits">إدارة الحدود</string>
+    <string name="components_cd_dismiss">إغلاق</string>
+    <string name="components_cd_more_options">خيارات إضافية</string>
+    <string name="components_device_status_online">متصل</string>
+    <string name="components_device_status_suspended">موقوف</string>
+    <string name="components_device_status_offline">غير متصل</string>
+    <string name="components_last_seen">آخر ظهور: %1$s</string>
+    <string name="components_empty_devices_title">لا توجد أجهزة بعد</string>
+    <string name="components_empty_devices_desc">أضف جهاز الطفل لبدء مراقبة نشاطه والحفاظ على سلامته عبر الإنترنت.</string>
+    <string name="components_empty_devices_action">إضافة جهاز</string>
+    <string name="components_empty_alerts_title_filtered">لا توجد تنبيهات مطابقة</string>
+    <string name="components_empty_alerts_title_clear">كل شيء على ما يرام!</string>
+    <string name="components_empty_alerts_desc_filtered">لا توجد تنبيهات تطابق الفلتر الحالي. جرّب تعديل الفلتر أو تحقق لاحقًا.</string>
+    <string name="components_empty_alerts_desc_clear">لا توجد تنبيهات لعرضها. يبدو نشاط طفلك عبر الإنترنت آمنًا!</string>
+    <string name="components_empty_usage_title_has_perm">لا توجد بيانات استخدام</string>
+    <string name="components_empty_usage_title_no_perm">الإذن مطلوب</string>
+    <string name="components_empty_usage_desc_has_perm">لا توجد بيانات استخدام تطبيقات متاحة بعد. تحقق لاحقًا لمعرفة التطبيقات المستخدمة.</string>
+    <string name="components_empty_usage_desc_no_perm">امنح إذن الوصول إلى الاستخدام لعرض إحصاءات استخدام التطبيقات.</string>
+    <string name="components_empty_children_title">لا يوجد أطفال مرتبطون</string>
+    <string name="components_empty_children_desc">اربط حساب طفلك لبدء مراقبة نشاط جهازه وسلامته عبر الإنترنت.</string>
+    <string name="components_empty_children_action">ربط حساب طفل</string>
+    <string name="components_empty_screentime_title">لا توجد بيانات وقت شاشة</string>
+    <string name="components_empty_screentime_desc">لم يسجّل تتبع وقت الشاشة أي بيانات بعد. سيتم التحديث مع استخدام الجهاز.</string>
+    <string name="components_empty_wordlist_title">لا توجد %1$s مخصصة</string>
+    <string name="components_empty_wordlist_desc">أضف كلمات مخصصة لمراقبتها في الرسائل النصية والمحتوى. تساعد هذه في تحديد المحتوى المثير للقلق.</string>
+    <string name="components_empty_wordlist_action">إضافة كلمة</string>
+    <string name="components_error_title">حدث خطأ ما</string>
+    <string name="components_error_desc">تعذّر تحميل البيانات. يرجى المحاولة مرة أخرى.</string>
+    <string name="components_error_try_again">حاول مرة أخرى</string>
+    <string name="components_network_error_title">لا يوجد اتصال</string>
+    <string name="components_network_error_message">يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.</string>
+    <string name="components_permission_required_title">الإذن مطلوب</string>
+    <string name="components_permission_required_desc">يحتاج Haris إلى إذن %1$s للعمل بشكل صحيح. يرجى منح الوصول في الإعدادات.</string>
+    <string name="components_open_settings">فتح الإعدادات</string>
+    <string name="components_inline_retry">إعادة المحاولة</string>
+    <string name="components_cd_pull_refresh">اسحب للتحديث</string>
+    <string name="components_child_mood_almost_done">أوشكت على الانتهاء لليوم!</string>
+    <string name="components_child_mood_running_low">الوقت أوشك على النفاد</string>
+    <string name="components_child_mood_lots_of_time">لديك متسع من الوقت!</string>
+    <string name="components_child_my_screen_time">وقت شاشتي</string>
+    <string name="components_child_phone_opens">مرات فتح الهاتف</string>
+    <string name="components_child_time_left">الوقت المتبقي</string>
+    <string name="components_child_of_limit">من %1$s</string>
+    <string name="components_child_all_set">كل شيء جاهز!</string>
+    <string name="components_child_setup_needed">الإعداد مطلوب</string>
+    <string name="components_child_parent_can_see">يمكن لوالدك رؤية نشاطك</string>
+    <string name="components_child_permissions_ready">%1$d من %2$d أذونات جاهزة</string>
+    <string name="components_child_cd_setup">إعداد</string>
+    <string name="components_no_limit">بلا حد</string>
+    <string name="components_pin_enter_title">أدخل رمز PIN الخاص بالوالد</string>
+    <string name="components_pin_create_title">إنشاء رمز PIN للوالد</string>
+    <string name="components_pin_enter_desc">أدخل رمز PIN لمراجعة ما تم الإبلاغ عنه على هذا الجهاز.</string>
+    <string name="components_pin_create_desc">عيّن رمز PIN من %1$d–%2$d أرقام. ستستخدمه لمراجعة الصور والنصوص المُبلَّغ عنها على هذا الجهاز. حافظ على سريته من طفلك.</string>
+    <string name="components_pin_label">رمز PIN</string>
+    <string name="components_pin_confirm_label">تأكيد رمز PIN</string>
+    <string name="components_pin_error_incorrect">رمز PIN غير صحيح</string>
+    <string name="components_pin_error_min_length">يجب أن يتكون رمز PIN من %1$d أرقام على الأقل</string>
+    <string name="components_pin_error_mismatch">رمزا PIN غير متطابقين</string>
+    <string name="components_pin_unlock">فتح</string>
+    <string name="components_pin_set">تعيين رمز PIN</string>
+    <string name="components_cd_haris_logo">شعار Haris</string>
+    <string name="changepw_title">تغيير كلمة المرور</string>
+    <string name="changepw_current_label">كلمة المرور الحالية</string>
+    <string name="changepw_current_placeholder">أدخل كلمة مرورك الحالية</string>
+    <string name="changepw_new_label">كلمة المرور الجديدة</string>
+    <string name="changepw_new_placeholder">أدخل كلمة مرورك الجديدة</string>
+    <string name="changepw_error_required">كلا الحقلين مطلوبان</string>
+    <string name="changepw_error_too_short">يجب أن تتكون كلمة المرور الجديدة من 8 أحرف على الأقل</string>
+    <string name="changepw_error_same_password">يجب أن تختلف كلمة المرور الجديدة عن كلمة المرور الحالية</string>
+    <string name="legal_terms_title">شروط الخدمة</string>
+    <string name="legal_privacy_title">سياسة الخصوصية</string>
+    <string name="components_refreshing">جارٍ التحديث…</string>
+
+    <!-- Tamper Alerts (background worker) -->
+    <string name="tamper_unknown_attempt">محاولة عبث غير معروفة</string>
+    <string name="tamper_data_cleared_title">تم مسح بيانات التطبيق</string>
+    <string name="tamper_data_cleared_msg">تم مسح بيانات Haris على %1$s. فُقدت جميع إعدادات المراقبة والسجل. قد يحاول الطفل تجاوز الرقابة الأبوية.</string>
+    <string name="tamper_app_disabled_title">تم تعطيل Haris</string>
+    <string name="tamper_app_disabled_msg">تم تعطيل Haris على %1$s. المراقبة لم تعد نشطة. يرجى إعادة تفعيل التطبيق.</string>
+    <string name="tamper_force_stopped_title">تم إيقاف Haris قسريًا</string>
+    <string name="tamper_force_stopped_msg">تم إيقاف Haris قسريًا على %1$s. تم مقاطعة المراقبة.</string>
+    <string name="tamper_vpn_disconnected_title">تم تعطيل مرشح محتوى VPN</string>
+    <string name="tamper_vpn_disconnected_msg">تم قطع اتصال مرشح محتوى VPN على %1$s. تصفية محتوى الويب لم تعد تحمي هذا الجهاز. يرجى إعادة الاتصال بالـ VPN في تطبيق Haris.</string>
+    <string name="tamper_foreign_vpn_title">تم اكتشاف تطبيق VPN آخر</string>
+    <string name="tamper_foreign_vpn_msg">يعمل تطبيق VPN تابع لجهة خارجية على %1$s. يسمح Android بشبكة VPN واحدة فقط في كل مرة، لذا لا يمكن لمرشح محتوى Haris العمل أثناء تشغيله، وتُتجاوز تصفية الويب. تحقق من الجهاز بحثًا عن تطبيق VPN (مثل ProtonVPN) وأزله أو أوقف تشغيله.</string>
+    <string name="tamper_service_stopped_title">توقفت خدمة المراقبة</string>
+    <string name="tamper_service_stopped_msg">توقفت خدمة مراقبة Haris على %1$s. تم مقاطعة تتبع وقت الشاشة ومراقبة التطبيقات.</string>
+    <string name="tamper_generic_title">تم اكتشاف محاولة عبث</string>
+    <string name="tamper_generic_msg">تم اكتشاف محاولة عبث على %1$s: %2$s</string>
+
+    <!-- Protection Monitor Worker alerts -->
+    <string name="protection_bypass_tool_title">تم اكتشاف أداة أتمتة</string>
+    <string name="protection_bypass_tool_msg">تم العثور على تطبيق أتمتة أو نقر تلقائي لديه صلاحية إمكانية الوصول على %1$s. يمكن استخدام هذه الأدوات لتجاوز شاشة القفل وحدود وقت الشاشة.\n\nتم اكتشاف: %2$s</string>
+    <string name="protection_monitoring_off_title">المراقبة متوقفة</string>
+    <string name="protection_monitoring_off_msg">خدمة مراقبة النصوص في Haris متوقفة على %1$s، لذا لا يتم فحص رسائل طفلك بحثًا عن محتوى غير لائق. أعد تفعيل Haris في إعدادات إمكانية الوصول بالجهاز.</string>
+
+    <!-- Notification channels -->
+    <string name="notif_monitoring_channel_name">خدمة المراقبة</string>
+    <string name="notif_monitoring_channel_desc">تظهر عندما يكون Haris يراقب بنشاط</string>
+    <string name="notif_alerts_channel_name">تنبيهات الأمان</string>
+    <string name="notif_alerts_channel_desc">تنبيهات أمان ومراقبة مهمة</string>
+    <string name="notif_screentime_channel_name">وقت الشاشة</string>
+    <string name="notif_screentime_channel_desc">إشعارات حدود وقت الشاشة</string>
+    <string name="notif_sync_channel_name">مزامنة البيانات</string>
+    <string name="notif_sync_channel_desc">مزامنة البيانات في الخلفية</string>
+    <string name="notif_lockscreen_channel_name">شاشة القفل</string>
+    <string name="notif_lockscreen_channel_desc">فرض حدود وقت الشاشة</string>
+
+    <!-- Monitoring service persistent notification -->
+    <string name="notif_monitoring_title">Haris نشط</string>
+    <string name="notif_monitoring_text">مراقبة نشاط الجهاز</string>
+    <string name="notif_monitoring_bigtext">مراقبة نشاط الجهاز وفرض الرقابة الأبوية</string>
+    <string name="notif_monitoring_sync_now">مزامنة الآن</string>
+
+    <!-- Lock screen notification (shown outside the app when device is locked) -->
+    <string name="notif_lock_daily_limit_title">تم الوصول إلى الحد اليومي لوقت الشاشة</string>
+    <string name="notif_lock_daily_limit_msg">تم الوصول إلى الحد اليومي لوقت الشاشة.</string>
+    <string name="notif_lock_bedtime_title">وضع وقت النوم نشط</string>
+    <string name="notif_lock_bedtime_msg">حان وقت النوم. استخدام الجهاز مقيّد الآن.</string>
+    <string name="notif_lock_app_blocked_title">التطبيق محظور</string>
+    <string name="notif_lock_app_blocked_msg">تم حظر هذا التطبيق.</string>
+    <string name="notif_lock_app_limit_title">تم الوصول إلى حد وقت التطبيق</string>
+    <string name="notif_lock_app_limit_msg">تم الوصول إلى الحد الزمني لهذا التطبيق.</string>
+    <string name="notif_lock_study_time_title">وقت المذاكرة نشط</string>
+    <string name="notif_lock_study_time_msg">حان وقت المذاكرة. يُسمح فقط بالتطبيقات التعليمية.</string>
+    <string name="notif_lock_parent_locked_title">تم قفل الجهاز بواسطة الوالد</string>
+    <string name="notif_lock_parent_locked_msg">قام والدك بقفل هذا الجهاز.</string>
+    <string name="notif_lock_default_title">الجهاز مقفل</string>
+
+    <!-- Alert content (AlertRepository, generated on child device) -->
+    <string name="alert_content_blocked_title">تم حظر المحتوى</string>
+    <string name="alert_content_blocked_msg">تم حظر الوصول إلى %1$s</string>
+    <string name="alert_screentime_limit_title">تم الوصول إلى حد وقت الشاشة</string>
+    <string name="alert_screentime_limit_msg">تم الوصول إلى الحد اليومي لوقت الشاشة البالغ %1$d ساعة</string>
+    <string name="alert_inappropriate_image_title">تم اكتشاف صورة غير لائقة</string>
+    <string name="alert_inappropriate_image_msg">تم اكتشاف محتوى غير لائق بثقة %1$d%%</string>
+    <string name="alert_app_blocked_title">التطبيق محظور</string>
+    <string name="alert_app_blocked_msg">تم حظر %1$s</string>
+    <string name="alert_cat_selfharm_title">تم اكتشاف محتوى إيذاء النفس</string>
+    <string name="alert_cat_selfharm_msg">تم اكتشاف محتوى متعلق بإيذاء النفس أو الانتحار في %1$s. يرجى الاطمئنان على طفلك والتفكير في إجراء محادثة داعمة.</string>
+    <string name="alert_cat_grooming_title">تم اكتشاف نمط اتصال مشبوه</string>
+    <string name="alert_cat_grooming_msg">تم اكتشاف أنماط تواصل مثيرة للقلق المحتمل في %1$s. قد يشير هذا إلى محاولات اتصال غير لائقة.</string>
+    <string name="alert_cat_violence_title">تم اكتشاف محتوى عنيف</string>
+    <string name="alert_cat_violence_msg">تم اكتشاف محتوى يحتوي على عنف أو تهديدات في %1$s.</string>
+    <string name="alert_cat_sexual_title">تم اكتشاف محتوى جنسي</string>
+    <string name="alert_cat_sexual_msg">تم اكتشاف محتوى جنسي صريح أو غير لائق في %1$s.</string>
+    <string name="alert_cat_bullying_title">تم اكتشاف تنمر إلكتروني</string>
+    <string name="alert_cat_bullying_msg">تم اكتشاف محتوى متعلق بالتنمر أو المضايقة في %1$s.</string>
+    <string name="alert_cat_drugs_title">تم اكتشاف محتوى متعلق بالمخدرات</string>
+    <string name="alert_cat_drugs_msg">تم اكتشاف محتوى متعلق بالمخدرات أو تعاطي المواد في %1$s.</string>
+    <string name="alert_cat_profanity_title">تم اكتشاف لغة غير لائقة</string>
+    <string name="alert_cat_profanity_msg">تم اكتشاف ألفاظ نابية أو لغة غير لائقة في %1$s.</string>
+    <string name="alert_cat_custom_title">تم اكتشاف كلمة محظورة</string>
+    <string name="alert_cat_custom_msg">تم اكتشاف كلمة من قائمة الحظر المخصصة في %1$s.</string>
+    <string name="alert_cat_default_title">تم اكتشاف نص غير لائق</string>
+    <string name="alert_cat_default_msg">تم اكتشاف محتوى قد يكون غير لائق في %1$s.</string>
+
+    <!-- VPN content filter service notification -->
+    <string name="notif_vpn_channel_name">مرشح المحتوى</string>
+    <string name="notif_vpn_channel_desc">تصفية محتوى Haris نشطة</string>
+    <string name="notif_vpn_title">VPN الخاص بـ Haris نشط</string>
+    <string name="notif_vpn_text">تصفية المحتوى تحمي هذا الجهاز</string>
+    <string name="notif_vpn_bigtext">تصفية المحتوى تحمي هذا الجهاز بنشاط من المحتوى الضار</string>
+
+    <!-- Sync worker screen time notifications -->
+    <string name="notif_sync_limit_reached_title">تم الوصول إلى حد وقت الشاشة</string>
+    <string name="notif_sync_limit_reached_msg">تم الوصول إلى الحد اليومي لوقت الشاشة.</string>
+    <string name="notif_sync_limit_warning_title">تحذير وقت الشاشة</string>
+    <string name="notif_sync_limit_warning_msg">تبقّى %1$d دقيقة فقط من وقت الشاشة اليوم.</string>
+    <string name="notif_sync_bedtime_title">وضع وقت النوم نشط</string>
+    <string name="notif_sync_bedtime_msg">استخدام الجهاز مقيّد خلال ساعات النوم.</string>
+</resources>

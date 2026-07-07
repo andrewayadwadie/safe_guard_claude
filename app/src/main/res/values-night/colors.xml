@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Splash screen background (day/night aware): dark surface in dark mode -->
-    <color name="splash_background">#0F1719</color>
+    <!-- Splash screen background: white in dark mode too, so the logo always shows on white -->
+    <color name="splash_background">#FFFFFF</color>
 </resources>

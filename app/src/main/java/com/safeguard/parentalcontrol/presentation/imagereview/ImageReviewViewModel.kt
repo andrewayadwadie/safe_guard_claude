@@ -1,10 +1,14 @@
 package com.safeguard.parentalcontrol.presentation.imagereview
 
+import android.content.Context
 import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.util.ImageBlurManager
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,11 +30,15 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class ImageReviewViewModel @Inject constructor(
-    private val imageBlurManager: ImageBlurManager
+    private val imageBlurManager: ImageBlurManager,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ImageReviewUiState())
     val uiState: StateFlow<ImageReviewUiState> = _uiState.asStateFlow()
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(context).getString(resId, *args)
 
     private val _selectedImage = MutableStateFlow<PendingImage?>(null)
     val selectedImage: StateFlow<PendingImage?> = _selectedImage.asStateFlow()
@@ -74,7 +82,7 @@ class ImageReviewViewModel @Inject constructor(
                 Timber.e(e, "Error loading pending reviews")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = "Failed to load pending reviews"
+                    error = getString(R.string.imagereview_error_load)
                 )
             }
         }
@@ -113,14 +121,14 @@ class ImageReviewViewModel @Inject constructor(
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isProcessing = false,
-                        error = "Failed to restore image"
+                        error = getString(R.string.imagereview_error_restore)
                     )
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error approving image")
                 _uiState.value = _uiState.value.copy(
                     isProcessing = false,
-                    error = "Error: ${e.message}"
+                    error = getString(R.string.imagereview_error_generic, e.message ?: "")
                 )
             }
         }
@@ -145,14 +153,14 @@ class ImageReviewViewModel @Inject constructor(
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isProcessing = false,
-                        error = "Failed to delete image"
+                        error = getString(R.string.imagereview_error_delete)
                     )
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error rejecting image")
                 _uiState.value = _uiState.value.copy(
                     isProcessing = false,
-                    error = "Error: ${e.message}"
+                    error = getString(R.string.imagereview_error_generic, e.message ?: "")
                 )
             }
         }
@@ -186,17 +194,17 @@ class ImageReviewViewModel @Inject constructor(
     }
 
     private fun formatDate(timestamp: Long): String {
-        val sdf = SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", Locale.getDefault())
+        val sdf = SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", Locale.US)
         return sdf.format(Date(timestamp))
     }
 
     private fun formatCategory(category: String): String {
         return when (category.lowercase()) {
-            "nsfw", "porn" -> "Adult Content"
-            "sexy" -> "Suggestive Content"
-            "hentai" -> "Animated Adult Content"
-            "violence" -> "Violent Content"
-            "nudity" -> "Nudity"
+            "nsfw", "porn" -> getString(R.string.imagereview_cat_adult)
+            "sexy" -> getString(R.string.imagereview_cat_suggestive)
+            "hentai" -> getString(R.string.imagereview_cat_animated_adult)
+            "violence" -> getString(R.string.imagereview_cat_violent)
+            "nudity" -> getString(R.string.imagereview_cat_nudity)
             else -> category.replaceFirstChar { it.uppercase() }
         }
     }

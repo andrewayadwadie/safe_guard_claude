@@ -15,7 +15,9 @@ import com.safeguard.parentalcontrol.data.repository.AuthRepository
 import com.safeguard.parentalcontrol.data.repository.ContentFilterRepository
 import com.safeguard.parentalcontrol.data.repository.DeviceRepository
 import com.safeguard.parentalcontrol.data.repository.ScreenTimeRepository
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.util.AccessibilityServiceHelper
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,6 +81,10 @@ class DashboardViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(getApplication<Application>().applicationContext)
+            .getString(resId, *args)
 
     init {
         _uiState.update { it.copy(isParent = authRepository.isParent()) }
@@ -179,7 +185,7 @@ class DashboardViewModel @Inject constructor(
                 Timber.d("Manual refresh completed successfully")
             } catch (e: Exception) {
                 Timber.e(e, "Error during manual refresh")
-                _uiState.update { it.copy(error = "Failed to refresh: ${e.message}") }
+                _uiState.update { it.copy(error = getString(R.string.dashboard_error_refresh, e.message ?: "")) }
             } finally {
                 _uiState.update { it.copy(isRefreshing = false) }
             }
@@ -219,7 +225,7 @@ class DashboardViewModel @Inject constructor(
     private suspend fun loadChildDashboard() {
         val deviceId = preferencesManager.deviceDbId
         if (deviceId == -1) {
-            _uiState.update { it.copy(error = "Device not registered") }
+            _uiState.update { it.copy(error = getString(R.string.dashboard_error_device_not_registered)) }
             return
         }
 
@@ -388,7 +394,7 @@ class DashboardViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoadingContentFilter = false,
-                                error = "Failed to update content filter"
+                                error = getString(R.string.dashboard_error_update_filter)
                             )
                         }
                     }
@@ -448,7 +454,7 @@ class DashboardViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoadingContentFilter = false,
-                                error = "Failed to update social media setting"
+                                error = getString(R.string.dashboard_error_update_social)
                             )
                         }
                     }
@@ -492,7 +498,7 @@ class DashboardViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoadingContentFilter = false,
-                                error = "Failed to block social media"
+                                error = getString(R.string.dashboard_error_block_social)
                             )
                         }
                     }
@@ -530,7 +536,7 @@ class DashboardViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoadingContentFilter = false,
-                            error = "Failed to unblock social media"
+                            error = getString(R.string.dashboard_error_unblock_social)
                         )
                     }
                 }
@@ -571,7 +577,7 @@ class DashboardViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoadingContentFilter = false,
-                        error = "Failed to create content filter"
+                        error = getString(R.string.dashboard_error_create_filter)
                     )
                 }
             }
@@ -620,7 +626,7 @@ class DashboardViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoadingContentFilter = false,
-                        error = "Failed to create content filter"
+                        error = getString(R.string.dashboard_error_create_filter)
                     )
                 }
             }
@@ -655,7 +661,7 @@ class DashboardViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoadingContentFilter = false,
-                        error = "Failed to create content filter"
+                        error = getString(R.string.dashboard_error_create_filter)
                     )
                 }
             }

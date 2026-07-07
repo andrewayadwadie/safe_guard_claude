@@ -2,6 +2,10 @@ package com.safeguard.parentalcontrol.presentation.lockscreen
 
 import androidx.compose.ui.tooling.preview.Preview
 
+import androidx.compose.ui.res.stringResource
+import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.util.LocaleHelper
+
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.KeyguardManager
@@ -85,6 +89,10 @@ class LockScreenActivity : ComponentActivity() {
 
     @Inject
     lateinit var alertRepository: AlertRepository
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
 
     /**
      * Send a request from the child device to the parent. Reuses the existing alert
@@ -186,7 +194,7 @@ class LockScreenActivity : ComponentActivity() {
         )
 
         val lockType = intent.getStringExtra(EXTRA_LOCK_TYPE) ?: LOCK_TYPE_DAILY_LIMIT
-        val message = intent.getStringExtra(EXTRA_MESSAGE) ?: "Screen time limit reached"
+        val message = intent.getStringExtra(EXTRA_MESSAGE) ?: getString(R.string.lock_default_message)
         val appName = intent.getStringExtra(EXTRA_APP_NAME)
 
         // Track that we're showing for this lock type
@@ -207,16 +215,19 @@ class LockScreenActivity : ComponentActivity() {
                     onRequestMoreTime = {
                         sendParentRequest(
                             AlertType.SCREEN_TIME_LIMIT,
-                            "Asking for more time",
-                            "Your child has reached today's screen time limit and is asking for more time.",
+                            getString(R.string.lock_request_more_time_title),
+                            getString(R.string.lock_request_more_time_body),
                             lockType
                         )
                     },
                     onAskParent = {
                         sendParentRequest(
                             AlertType.APP_BLOCKED,
-                            "Asking about a blocked app",
-                            "Your child is asking about ${appName ?: "a blocked app"}.",
+                            getString(R.string.lock_request_blocked_title),
+                            getString(
+                                R.string.lock_request_blocked_body,
+                                appName ?: getString(R.string.lock_a_blocked_app)
+                            ),
                             lockType
                         )
                     },
@@ -593,51 +604,59 @@ internal fun LockScreen(
     // Pine-DRENCHED (the surface IS the calm) with a translucent halo and an unlock-time
     // pill; app blocks are the lighter "block" dialect (clay halo on linen) since the child
     // can still use other apps. Never a punitive red wash, never shaming language.
-    val app = appName ?: "this app"
+    val app = appName ?: stringResource(R.string.lock_this_app)
     val spec = when (lockType) {
         LockScreenActivity.LOCK_TYPE_DAILY_LIMIT -> LockSpec(
             icon = Icons.Default.Timer,
-            title = "Daily limit reached",
-            description = "You've used all your screen time for today. The device will be available again tomorrow.",
-            meta = "Back tomorrow",
-            accentLabel = "Ask for more time"
+            title = stringResource(R.string.lock_daily_title),
+            description = stringResource(R.string.lock_daily_desc),
+            meta = stringResource(R.string.lock_daily_meta),
+            accentLabel = stringResource(R.string.lock_ask_more_time)
         )
         LockScreenActivity.LOCK_TYPE_BEDTIME -> LockSpec(
             icon = Icons.Default.Bedtime,
-            title = "Time to rest",
-            description = "It's bedtime. Your device is taking a break until morning so you can sleep.",
-            meta = "Unlocks in the morning",
+            title = stringResource(R.string.lock_bedtime_title),
+            description = stringResource(R.string.lock_bedtime_desc),
+            meta = stringResource(R.string.lock_bedtime_meta),
             deepBedtime = true
         )
         LockScreenActivity.LOCK_TYPE_STUDY_TIME -> LockSpec(
             icon = Icons.Default.School,
-            title = "Study time",
-            description = "It's study time. Only educational apps are available right now.",
-            meta = "Back when study time ends"
+            title = stringResource(R.string.lock_study_title),
+            description = stringResource(R.string.lock_study_desc),
+            meta = stringResource(R.string.lock_study_meta)
         )
         LockScreenActivity.LOCK_TYPE_APP_BLOCKED -> LockSpec(
             icon = Icons.Default.Block,
-            title = if (appName != null) "$appName is paused" else "This app is paused",
-            description = "Your parent has paused this app right now. You can still use your other apps.",
-            primaryLabel = "Okay",
-            ghostLabel = "Ask a parent"
+            title = if (appName != null) {
+                stringResource(R.string.lock_app_paused_title, appName)
+            } else {
+                stringResource(R.string.lock_app_paused_title_generic)
+            },
+            description = stringResource(R.string.lock_app_paused_desc),
+            primaryLabel = stringResource(R.string.lock_okay),
+            ghostLabel = stringResource(R.string.lock_ask_parent)
         )
         LockScreenActivity.LOCK_TYPE_APP_LIMIT -> LockSpec(
             icon = Icons.Default.Timer,
-            title = if (appName != null) "$appName's time is up" else "App time is up",
-            description = "You've reached today's limit for $app. You can still use your other apps.",
-            primaryLabel = "Okay",
-            ghostLabel = "Ask a parent"
+            title = if (appName != null) {
+                stringResource(R.string.lock_app_limit_title, appName)
+            } else {
+                stringResource(R.string.lock_app_limit_title_generic)
+            },
+            description = stringResource(R.string.lock_app_limit_desc, app),
+            primaryLabel = stringResource(R.string.lock_okay),
+            ghostLabel = stringResource(R.string.lock_ask_parent)
         )
         LockScreenActivity.LOCK_TYPE_PARENT_LOCKED -> LockSpec(
             icon = Icons.Default.PhonelinkLock,
-            title = "Device locked",
-            description = message.ifEmpty { "Your parent has locked this device for now. It will unlock when they choose." }
+            title = stringResource(R.string.lock_device_locked),
+            description = message.ifEmpty { stringResource(R.string.lock_parent_locked_desc) }
         )
         else -> LockSpec(
             icon = Icons.Default.Lock,
-            title = "Device locked",
-            description = message.ifEmpty { "This device is locked right now." }
+            title = stringResource(R.string.lock_device_locked),
+            description = message.ifEmpty { stringResource(R.string.lock_generic_desc) }
         )
     }
 
@@ -855,7 +874,7 @@ internal fun LockScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Sent. Your parent will see it.",
+                                text = stringResource(R.string.lock_request_sent),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.SemiBold,
                                 color = if (spec.pine) cream else SemanticColors.success
@@ -886,7 +905,7 @@ internal fun LockScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Emergency call",
+                        text = stringResource(R.string.lock_emergency_call),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -897,7 +916,7 @@ internal fun LockScreen(
 
             val pBrand = rememberEntrance(visible, delayMillis = 450)
             Text(
-                text = "Protected by Haris",
+                text = stringResource(R.string.lock_protected_by),
                 style = MaterialTheme.typography.labelMedium,
                 color = if (spec.pine) onPineMuted.copy(alpha = 0.7f)
                         else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),

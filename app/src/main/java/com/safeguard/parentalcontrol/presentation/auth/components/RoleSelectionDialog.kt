@@ -27,10 +27,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.UserRole
 
 @Composable
@@ -48,25 +50,26 @@ fun RoleSelectionDialog(
         ),
         title = {
             Text(
-                text = "Choose Your Role",
+                text = stringResource(R.string.auth_role_dialog_title),
                 style = MaterialTheme.typography.headlineSmall
             )
         },
         text = {
             Column {
                 Text(
-                    text = "Are you a parent managing your child's device, or a child using a monitored device?",
+                    text = stringResource(R.string.auth_role_dialog_message),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                val parentCd = stringResource(R.string.auth_role_parent_cd)
                 OutlinedCard(
                     onClick = { selectedRole = UserRole.PARENT },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { contentDescription = "Parent — I manage my child's device" },
+                        .semantics { contentDescription = parentCd },
                     border = if (selectedRole == UserRole.PARENT) {
                         BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
                     } else {
@@ -99,11 +102,11 @@ fun RoleSelectionDialog(
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
                             Text(
-                                text = "Parent",
+                                text = stringResource(R.string.role_parent),
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
-                                text = "I manage my child's device",
+                                text = stringResource(R.string.auth_role_parent_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -113,11 +116,12 @@ fun RoleSelectionDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                val childCd = stringResource(R.string.auth_role_child_cd)
                 OutlinedCard(
                     onClick = { selectedRole = UserRole.CHILD },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { contentDescription = "Child — My device is monitored" },
+                        .semantics { contentDescription = childCd },
                     border = if (selectedRole == UserRole.CHILD) {
                         BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
                     } else {
@@ -150,11 +154,11 @@ fun RoleSelectionDialog(
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
                             Text(
-                                text = "Child",
+                                text = stringResource(R.string.role_child),
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
-                                text = "My device is monitored",
+                                text = stringResource(R.string.auth_role_child_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -168,12 +172,12 @@ fun RoleSelectionDialog(
                 onClick = { selectedRole?.let { onRoleSelected(it) } },
                 enabled = selectedRole != null
             ) {
-                Text("Continue")
+                Text(stringResource(R.string.common_continue))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )

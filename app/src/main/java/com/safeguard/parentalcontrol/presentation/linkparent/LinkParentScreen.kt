@@ -11,12 +11,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -36,10 +39,14 @@ fun LinkParentScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Link a Parent") },
+                title = { Text(stringResource(R.string.linkparent_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            modifier = Modifier.mirrorInRtl()
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -65,13 +72,13 @@ fun LinkParentScreen(
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "Connect a parent to this device",
+                text = stringResource(R.string.linkparent_heading),
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Generate a code below, then enter it in the parent's SafeGuard app under \"Add Child\". The code works once and expires shortly.",
+                text = stringResource(R.string.linkparent_instructions),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -102,9 +109,11 @@ fun LinkParentScreen(
                         )
                         uiState.expiresAt?.let { exp ->
                             Spacer(Modifier.height(8.dp))
-                            val fmt = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
+                            // Locale.US keeps the pairing-expiry time in Western digits so it
+                            // matches the Latin-digit pairing code shown above it.
+                            val fmt = remember { SimpleDateFormat("h:mm a", Locale.US) }
                             Text(
-                                text = "Expires at ${fmt.format(exp)}",
+                                text = stringResource(R.string.linkparent_expires_at, fmt.format(exp)),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
@@ -138,7 +147,13 @@ fun LinkParentScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text(if (code == null) "Generate Code" else "Generate New Code")
+                    Text(
+                        if (code == null) {
+                            stringResource(R.string.linkparent_generate)
+                        } else {
+                            stringResource(R.string.linkparent_generate_new)
+                        }
+                    )
                 }
             }
         }

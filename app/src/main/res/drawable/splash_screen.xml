@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Native launch splash background: the Haris logo centered on a white background,
+    with NO circular icon mask (unlike windowSplashScreenAnimatedIcon, which the
+    Android-12 splash always clips to a circle). Just the logo, nothing cropped.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background" />
+    <item
+        android:width="160dp"
+        android:height="160dp"
+        android:gravity="center"
+        android:drawable="@drawable/splash_logo" />
+</layer-list>

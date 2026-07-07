@@ -14,9 +14,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.theme.*
 
 // ============================================================================
@@ -131,13 +133,13 @@ fun CircularScreenTimeProgress(
             )
             if (limitMinutes != null) {
                 Text(
-                    text = "of ${formatMinutesToTime(limitMinutes)}",
+                    text = stringResource(R.string.components_child_of_limit, formatMinutesToTime(limitMinutes)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
                 Text(
-                    text = "No limit",
+                    text = stringResource(R.string.components_no_limit),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

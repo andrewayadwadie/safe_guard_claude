@@ -31,11 +31,14 @@ import com.safeguard.parentalcontrol.presentation.theme.SemanticColors
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.components.ParentPinGate
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 import java.io.File
 
 /**
@@ -88,10 +91,10 @@ private fun ImageReviewContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Review Flagged Images") },
+                title = { Text(stringResource(R.string.imagereview_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.common_back), modifier = Modifier.mirrorInRtl())
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -124,7 +127,10 @@ private fun ImageReviewContent(
                     ) {
                         item {
                             Text(
-                                text = "${uiState.pendingImages.size} image(s) pending review",
+                                text = if (uiState.pendingImages.size == 1)
+                                    stringResource(R.string.imagereview_pending_one)
+                                else
+                                    stringResource(R.string.imagereview_pending_other, uiState.pendingImages.size),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -169,13 +175,13 @@ private fun EmptyState(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No Images to Review",
+            text = stringResource(R.string.imagereview_empty_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Medium
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "All flagged images have been reviewed.",
+            text = stringResource(R.string.imagereview_empty_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -272,7 +278,7 @@ private fun ImageReviewDialog(
         onDismissRequest = { if (!isProcessing) onDismiss() },
         title = {
             Text(
-                text = "Review Image",
+                text = stringResource(R.string.imagereview_dialog_title),
                 style = MaterialTheme.typography.headlineSmall
             )
         },
@@ -284,7 +290,7 @@ private fun ImageReviewDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Category:",
+                        text = stringResource(R.string.imagereview_label_category),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -303,7 +309,7 @@ private fun ImageReviewDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Confidence:",
+                        text = stringResource(R.string.imagereview_label_confidence),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -321,7 +327,7 @@ private fun ImageReviewDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Detected:",
+                        text = stringResource(R.string.imagereview_label_detected),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -338,7 +344,7 @@ private fun ImageReviewDialog(
                     onClick = { showOriginal = !showOriginal },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (showOriginal) "Hide Original" else "View Original Image")
+                    Text(if (showOriginal) stringResource(R.string.imagereview_hide_original) else stringResource(R.string.imagereview_view_original))
                 }
 
                 // Show original image if requested
@@ -364,7 +370,7 @@ private fun ImageReviewDialog(
                     if (bitmap != null) {
                         Image(
                             bitmap = bitmap.asImageBitmap(),
-                            contentDescription = "Original image",
+                            contentDescription = stringResource(R.string.imagereview_cd_original_image),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(max = 300.dp)
@@ -373,7 +379,7 @@ private fun ImageReviewDialog(
                         )
                     } else {
                         Text(
-                            text = "Unable to load original image",
+                            text = stringResource(R.string.imagereview_unable_load),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -384,7 +390,7 @@ private fun ImageReviewDialog(
 
                 // Info text
                 Text(
-                    text = "• Approve: Restore the original (unblurred) image\n• Reject: Permanently delete the image",
+                    text = stringResource(R.string.imagereview_info_text),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -412,7 +418,7 @@ private fun ImageReviewDialog(
                         Icon(Icons.Default.Delete, contentDescription = null)
                     }
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Reject")
+                    Text(stringResource(R.string.imagereview_reject_button))
                 }
 
                 // Approve button
@@ -433,7 +439,7 @@ private fun ImageReviewDialog(
                         Icon(Icons.Default.Check, contentDescription = null)
                     }
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Approve")
+                    Text(stringResource(R.string.imagereview_approve_button))
                 }
             }
         },
@@ -442,7 +448,7 @@ private fun ImageReviewDialog(
                 onClick = onDismiss,
                 enabled = !isProcessing
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )

@@ -1,7 +1,5 @@
 package com.safeguard.parentalcontrol.presentation.setup
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,19 +9,18 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.safeguard.parentalcontrol.util.Constants
-import timber.log.Timber
+import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.presentation.designsystem.HarisLogo
 
 /**
  * Monitoring disclosure + consent screen.
@@ -39,15 +36,15 @@ import timber.log.Timber
 fun ConsentScreen(
     onConsentGranted: () -> Unit,
     onNavigateBack: () -> Unit,
+    onNavigateToPrivacyPolicy: () -> Unit = {},
     viewModel: ConsentViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
     var acknowledged by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Monitoring & Privacy") }
+                title = { Text(stringResource(R.string.consent_title)) }
             )
         }
     ) { padding ->
@@ -59,17 +56,12 @@ fun ConsentScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                imageVector = Icons.Default.Shield,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            HarisLogo(size = 64.dp)
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "How SafeGuard protects your child",
+                text = stringResource(R.string.consent_heading),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -78,9 +70,7 @@ fun ConsentScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "To keep your child safe, SafeGuard monitors this device. " +
-                        "Please review what is collected before you continue. Set up by a " +
-                        "parent or guardian.",
+                text = stringResource(R.string.consent_intro),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -90,26 +80,23 @@ fun ConsentScreen(
 
             DisclosureItem(
                 icon = Icons.Default.Chat,
-                title = "Messages & typed text",
-                detail = "Text typed and shown in apps is checked to detect bullying, " +
-                        "grooming, and other harmful content."
+                title = stringResource(R.string.consent_messages_title),
+                detail = stringResource(R.string.consent_messages_detail)
             )
             DisclosureItem(
                 icon = Icons.Default.BarChart,
-                title = "App & screen-time usage",
-                detail = "Which apps are used and for how long, to enforce daily limits " +
-                        "and bedtime."
+                title = stringResource(R.string.consent_screentime_title),
+                detail = stringResource(R.string.consent_screentime_detail)
             )
             DisclosureItem(
                 icon = Icons.Default.Image,
-                title = "Photos & images",
-                detail = "Images are scanned on this device to blur explicit content."
+                title = stringResource(R.string.consent_photos_title),
+                detail = stringResource(R.string.consent_photos_detail)
             )
             DisclosureItem(
                 icon = Icons.Default.Language,
-                title = "Web activity",
-                detail = "Web addresses are filtered to block inappropriate sites. A " +
-                        "local VPN does this on-device."
+                title = stringResource(R.string.consent_web_title),
+                detail = stringResource(R.string.consent_web_detail)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -122,9 +109,7 @@ fun ConsentScreen(
                 )
             ) {
                 Text(
-                    text = "Analysis happens on this device. Flagged events and alerts are " +
-                            "sent to the parent's SafeGuard account so you can review them. " +
-                            "Your child is shown a notice that monitoring is active.",
+                    text = stringResource(R.string.consent_ondevice_notice),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(16.dp)
@@ -133,18 +118,8 @@ fun ConsentScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            TextButton(
-                onClick = {
-                    try {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse(Constants.PRIVACY_POLICY_URL))
-                        )
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to open privacy policy")
-                    }
-                }
-            ) {
-                Text("Read our Privacy Policy")
+            TextButton(onClick = onNavigateToPrivacyPolicy) {
+                Text(stringResource(R.string.consent_privacy_link))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -159,8 +134,7 @@ fun ConsentScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "I am this child's parent or guardian, and I consent to " +
-                            "SafeGuard monitoring this device as described above.",
+                    text = stringResource(R.string.consent_checkbox_label),
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -175,13 +149,13 @@ fun ConsentScreen(
                 enabled = acknowledged,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("I Understand & Consent")
+                Text(stringResource(R.string.consent_accept_button))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             TextButton(onClick = onNavigateBack) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     }

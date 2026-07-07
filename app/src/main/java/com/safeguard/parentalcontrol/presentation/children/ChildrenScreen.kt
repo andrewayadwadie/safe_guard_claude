@@ -18,13 +18,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.FamilyLink
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 import com.safeguard.parentalcontrol.util.formatAsRelative
 
 /**
@@ -75,15 +78,19 @@ fun ChildrenScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Children") },
+                title = { Text(stringResource(R.string.children_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            modifier = Modifier.mirrorInRtl()
+                        )
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.loadChildren() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.alerts_cd_refresh))
                     }
                 }
             )
@@ -92,7 +99,7 @@ fun ChildrenScreen(
             ExtendedFloatingActionButton(
                 onClick = { viewModel.showAddChildDialog() },
                 icon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
-                text = { Text("Add Child") }
+                text = { Text(stringResource(R.string.children_add_child)) }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -122,7 +129,11 @@ fun ChildrenScreen(
                     ) {
                         item {
                             Text(
-                                text = "${uiState.children.size} child${if (uiState.children.size != 1) "ren" else ""} linked",
+                                text = if (uiState.children.size == 1) {
+                                    stringResource(R.string.children_count_one)
+                                } else {
+                                    stringResource(R.string.children_count_other, uiState.children.size)
+                                },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -166,12 +177,12 @@ private fun EmptyState(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No children linked yet",
+            text = stringResource(R.string.children_empty_title),
             style = MaterialTheme.typography.titleLarge
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Add your child's account to start monitoring their device activity",
+            text = stringResource(R.string.children_empty_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -179,7 +190,7 @@ private fun EmptyState(
         Button(onClick = onAddChild) {
             Icon(Icons.Default.PersonAdd, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Add Your First Child")
+            Text(stringResource(R.string.children_add_first))
         }
     }
 }
@@ -196,9 +207,9 @@ private fun ChildCard(
         AlertDialog(
             onDismissRequest = { showRemoveDialog = false },
             icon = { Icon(Icons.Default.PersonRemove, contentDescription = null) },
-            title = { Text("Remove ${child.childName}?") },
+            title = { Text(stringResource(R.string.children_remove_title, child.childName)) },
             text = {
-                Text("This will unlink ${child.childName}'s account. You will no longer be able to monitor their devices.")
+                Text(stringResource(R.string.children_remove_message, child.childName))
             },
             confirmButton = {
                 TextButton(
@@ -210,12 +221,12 @@ private fun ChildCard(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Remove")
+                    Text(stringResource(R.string.children_remove))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRemoveDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -265,7 +276,7 @@ private fun ChildCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "Linked ${child.createdAt.formatAsRelative()}",
+                        text = stringResource(R.string.children_linked_when, child.createdAt.formatAsRelative()),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -274,7 +285,7 @@ private fun ChildCard(
                 IconButton(onClick = { showRemoveDialog = true }) {
                     Icon(
                         Icons.Default.PersonRemove,
-                        contentDescription = "Remove",
+                        contentDescription = stringResource(R.string.children_remove),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -293,7 +304,7 @@ private fun ChildCard(
                 ) {
                     Icon(Icons.Default.Devices, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("View Devices")
+                    Text(stringResource(R.string.children_view_devices))
                 }
             }
         }
@@ -312,19 +323,19 @@ private fun AddChildDialog(
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
         icon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
-        title = { Text("Add Child") },
+        title = { Text(stringResource(R.string.children_add_child)) },
         text = {
             Column {
                 Text(
-                    text = "On your child's device, open SafeGuard and tap \"Link a parent\" to get a pairing code. Enter that code here.",
+                    text = stringResource(R.string.children_add_instructions),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = code,
                     onValueChange = { code = it.uppercase() },
-                    label = { Text("Pairing Code") },
-                    placeholder = { Text("ABCD2345") },
+                    label = { Text(stringResource(R.string.children_pairing_code)) },
+                    placeholder = { Text(stringResource(R.string.children_pairing_code_hint)) },
                     singleLine = true,
                     enabled = !isLoading,
                     isError = error != null,
@@ -352,7 +363,7 @@ private fun AddChildDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text("Add Child")
+                Text(stringResource(R.string.children_add_child))
             }
         },
         dismissButton = {
@@ -360,7 +371,7 @@ private fun AddChildDialog(
                 onClick = onDismiss,
                 enabled = !isLoading
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )

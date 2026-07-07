@@ -1,12 +1,16 @@
 package com.safeguard.parentalcontrol.presentation.screentimelimits
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.ScreenTimeRule
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.ScreenTimeRepository
 import com.safeguard.parentalcontrol.data.repository.ScreenTimeRulesRepository
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,7 +61,8 @@ data class ScreenTimeLimitsUiState(
 @HiltViewModel
 class ScreenTimeLimitsViewModel @Inject constructor(
     private val screenTimeRulesRepository: ScreenTimeRulesRepository,
-    private val screenTimeRepository: ScreenTimeRepository
+    private val screenTimeRepository: ScreenTimeRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ScreenTimeLimitsUiState())
@@ -65,12 +70,15 @@ class ScreenTimeLimitsViewModel @Inject constructor(
 
     private var currentDeviceId: Int = -1
 
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(context).getString(resId, *args)
+
     /**
      * Load screen time rules for a device
      */
     fun loadRules(deviceId: Int) {
         if (deviceId <= 0) {
-            _uiState.update { it.copy(error = "Invalid device ID") }
+            _uiState.update { it.copy(error = getString(R.string.screentime_error_invalid_device)) }
             return
         }
 
@@ -395,7 +403,7 @@ class ScreenTimeLimitsViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             rules = result.data,
-                            successMessage = "Screen time rules saved successfully"
+                            successMessage = getString(R.string.screentime_msg_saved)
                         )
                     }
                 }
@@ -424,7 +432,7 @@ class ScreenTimeLimitsViewModel @Inject constructor(
                 is NetworkResult.Success -> {
                     _uiState.update {
                         ScreenTimeLimitsUiState(
-                            successMessage = "Screen time rules deleted"
+                            successMessage = getString(R.string.screentime_msg_deleted)
                         )
                     }
                 }

@@ -1,7 +1,9 @@
 package com.safeguard.parentalcontrol.presentation.devices
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.ContentFilter
 import com.safeguard.parentalcontrol.data.model.ContentFilterUpdate
 import com.safeguard.parentalcontrol.data.model.Device
@@ -9,7 +11,9 @@ import com.safeguard.parentalcontrol.data.model.DeviceStatus
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.ContentFilterRepository
 import com.safeguard.parentalcontrol.data.repository.DeviceRepository
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,11 +38,15 @@ data class DevicesUiState(
 @HiltViewModel
 class DevicesViewModel @Inject constructor(
     private val deviceRepository: DeviceRepository,
-    private val contentFilterRepository: ContentFilterRepository
+    private val contentFilterRepository: ContentFilterRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DevicesUiState())
     val uiState: StateFlow<DevicesUiState> = _uiState.asStateFlow()
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(context).getString(resId, *args)
 
     init {
         loadDevices()
@@ -161,7 +169,7 @@ class DevicesViewModel @Inject constructor(
                         it.copy(
                             contentFilterEnabled = result.data.isActive,
                             isLoadingContentFilter = false,
-                            successMessage = if (enabled) "Content filtering enabled" else "Content filtering disabled"
+                            successMessage = if (enabled) getString(R.string.devices_msg_filter_enabled) else getString(R.string.devices_msg_filter_disabled)
                         )
                     }
                 }
@@ -173,7 +181,7 @@ class DevicesViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoadingContentFilter = false,
-                                error = "Failed to update content filter: ${result.message}"
+                                error = getString(R.string.devices_error_update_filter, result.message ?: "")
                             )
                         }
                     }
@@ -202,7 +210,7 @@ class DevicesViewModel @Inject constructor(
                         it.copy(
                             blockSocialMediaEnabled = result.data.blockSocialMedia,
                             isLoadingContentFilter = false,
-                            successMessage = if (blocked) "Social media blocked" else "Social media allowed"
+                            successMessage = if (blocked) getString(R.string.devices_msg_social_blocked) else getString(R.string.devices_msg_social_allowed)
                         )
                     }
                 }
@@ -214,7 +222,7 @@ class DevicesViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoadingContentFilter = false,
-                                error = "Failed to update social media setting: ${result.message}"
+                                error = getString(R.string.devices_error_update_social, result.message ?: "")
                             )
                         }
                     }
@@ -244,7 +252,7 @@ class DevicesViewModel @Inject constructor(
                         contentFilterEnabled = result.data.isActive,
                         blockSocialMediaEnabled = result.data.blockSocialMedia,
                         isLoadingContentFilter = false,
-                        successMessage = if (blockSocialMedia) "Social media blocked" else "Social media allowed"
+                        successMessage = if (blockSocialMedia) getString(R.string.devices_msg_social_blocked) else getString(R.string.devices_msg_social_allowed)
                     )
                 }
             }
@@ -252,7 +260,7 @@ class DevicesViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoadingContentFilter = false,
-                        error = "Failed to create content filter: ${result.message}"
+                        error = getString(R.string.devices_error_create_filter, result.message ?: "")
                     )
                 }
             }
@@ -278,7 +286,7 @@ class DevicesViewModel @Inject constructor(
                     it.copy(
                         contentFilterEnabled = result.data.isActive,
                         isLoadingContentFilter = false,
-                        successMessage = if (enabled) "Content filtering enabled" else "Content filtering disabled"
+                        successMessage = if (enabled) getString(R.string.devices_msg_filter_enabled) else getString(R.string.devices_msg_filter_disabled)
                     )
                 }
             }
@@ -286,7 +294,7 @@ class DevicesViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoadingContentFilter = false,
-                        error = "Failed to create content filter: ${result.message}"
+                        error = getString(R.string.devices_error_create_filter, result.message ?: "")
                     )
                 }
             }
@@ -310,7 +318,7 @@ class DevicesViewModel @Inject constructor(
                             },
                             selectedDevice = if (state.selectedDevice?.id == deviceId) result.data else state.selectedDevice,
                             isLoading = false,
-                            successMessage = "Device suspended"
+                            successMessage = getString(R.string.devices_msg_suspended)
                         )
                     }
                 }
@@ -343,7 +351,7 @@ class DevicesViewModel @Inject constructor(
                             },
                             selectedDevice = if (state.selectedDevice?.id == deviceId) result.data else state.selectedDevice,
                             isLoading = false,
-                            successMessage = "Device activated"
+                            successMessage = getString(R.string.devices_msg_activated)
                         )
                     }
                 }

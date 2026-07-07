@@ -92,10 +92,6 @@ object Constants {
     // IMPORTANT: Replace with actual certificate hashes before production deployment
     const val API_HOST = "api.safeguard.app"
 
-    // Privacy policy / terms shown during the monitoring-consent flow and Settings.
-    // TODO: replace with the hosted URLs before release.
-    const val PRIVACY_POLICY_URL = "https://api.safeguard.app/privacy"
-    const val TERMS_OF_SERVICE_URL = "https://api.safeguard.app/terms"
     const val CERTIFICATE_PIN_PRIMARY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
     const val CERTIFICATE_PIN_BACKUP = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="
 

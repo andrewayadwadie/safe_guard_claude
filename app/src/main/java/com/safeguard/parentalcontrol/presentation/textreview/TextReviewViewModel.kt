@@ -1,10 +1,14 @@
 package com.safeguard.parentalcontrol.presentation.textreview
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.util.FlaggedTextEvent
 import com.safeguard.parentalcontrol.util.FlaggedTextStore
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,11 +28,15 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class TextReviewViewModel @Inject constructor(
-    private val flaggedTextStore: FlaggedTextStore
+    private val flaggedTextStore: FlaggedTextStore,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TextReviewUiState())
     val uiState: StateFlow<TextReviewUiState> = _uiState.asStateFlow()
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(context).getString(resId, *args)
 
     init {
         load()
@@ -69,16 +77,16 @@ class TextReviewViewModel @Inject constructor(
     )
 
     private fun formatDate(timestamp: Long): String =
-        SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", Locale.getDefault()).format(Date(timestamp))
+        SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", Locale.US).format(Date(timestamp))
 
     private fun formatCategory(category: String): String = when (category.lowercase()) {
-        "profanity" -> "Profanity"
-        "self_harm", "selfharm" -> "Self-harm"
-        "violence" -> "Violence"
-        "sexual", "sexual_content" -> "Sexual content"
-        "bullying", "harassment" -> "Bullying"
-        "grooming" -> "Grooming"
-        "unknown", "" -> "Flagged"
+        "profanity" -> getString(R.string.textreview_cat_profanity)
+        "self_harm", "selfharm" -> getString(R.string.textreview_cat_selfharm)
+        "violence" -> getString(R.string.textreview_cat_violence)
+        "sexual", "sexual_content" -> getString(R.string.textreview_cat_sexual)
+        "bullying", "harassment" -> getString(R.string.textreview_cat_bullying)
+        "grooming" -> getString(R.string.textreview_cat_grooming)
+        "unknown", "" -> getString(R.string.textreview_cat_unknown)
         else -> category.replace('_', ' ').replaceFirstChar { it.uppercase() }
     }
 }

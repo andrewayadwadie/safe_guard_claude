@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Haris</string>
+    <string name="app_name" translatable="false">Haris</string>
     <string name="app_description">Parental Control System</string>
+
+    <!-- Common / shared -->
+    <string name="common_cancel">Cancel</string>
+    <string name="common_back">Back</string>
+    <string name="common_save">Save</string>
+    <string name="common_ok">OK</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_loading">Loading…</string>
+    <string name="common_continue">Continue</string>
 
     <!-- Authentication -->
     <string name="login_title">Welcome Back</string>
@@ -67,4 +76,725 @@
 
     <!-- Accessibility -->
     <string name="accessibility_service_description">Haris monitors text content to detect potentially harmful or inappropriate content and protect your child online.</string>
+
+    <!-- Settings screen (detailed) -->
+    <string name="settings_language_title">Language</string>
+    <string name="settings_language_dialog_title">Select Language</string>
+    <string name="settings_language_english" translatable="false">English</string>
+    <string name="settings_language_arabic" translatable="false">العربية</string>
+    <string name="settings_content_filtering">Content Filtering</string>
+    <string name="settings_text_monitoring">Text Monitoring</string>
+    <string name="settings_text_monitoring_desc">Configure text analysis and alert categories</string>
+    <string name="settings_custom_word_lists">Custom Word Lists</string>
+    <string name="settings_custom_word_lists_desc">Add words to whitelist or blacklist</string>
+    <string name="settings_device_setup">Device Setup</string>
+    <string name="settings_permissions_setup">Permissions Setup</string>
+    <string name="settings_permissions_setup_desc">Configure required permissions for monitoring</string>
+    <string name="settings_content_filtering_active">Active - Controlled by parent</string>
+    <string name="settings_content_filtering_inactive">Inactive - Controlled by parent</string>
+    <string name="settings_parent_review">Parent Review</string>
+    <string name="settings_review_images">Review Flagged Images</string>
+    <string name="settings_review_images_desc">Parent: Review and approve/reject blurred images</string>
+    <string name="settings_review_text">Review Flagged Text</string>
+    <string name="settings_review_text_desc">Parent: See phrases flagged on this device</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notifications_on">On</string>
+    <string name="settings_notifications_off_tap">Off — tap to enable</string>
+    <string name="settings_notifications_off">Off</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_change_password">Change Password</string>
+    <string name="settings_change_password_desc">Update your account password</string>
+    <string name="settings_logout_item_desc">Sign out of your account</string>
+    <string name="settings_about">About</string>
+    <string name="settings_app_version">App Version</string>
+    <string name="settings_app_version_number" translatable="false">1.0.0</string>
+    <string name="settings_privacy_policy">Privacy Policy</string>
+    <string name="settings_privacy_policy_desc">View our privacy policy</string>
+    <string name="settings_terms">Terms of Service</string>
+    <string name="settings_terms_desc">View our terms of service</string>
+    <string name="settings_profile_parent_account">Parent Account</string>
+    <string name="settings_profile_child_account">Child Account</string>
+    <string name="settings_content_filtering_enabled_snackbar">Content filtering enabled</string>
+    <string name="settings_logout_dialog_title">Log Out?</string>
+
+    <!-- Auth cluster -->
+    <string name="auth_tagline">Parental Control</string>
+    <string name="auth_email_placeholder">Enter your email</string>
+    <string name="auth_password_placeholder">Enter your password</string>
+    <string name="auth_show_password">Show password</string>
+    <string name="auth_hide_password">Hide password</string>
+    <string name="auth_or_divider">OR</string>
+    <string name="auth_i_am_a">I am a</string>
+    <string name="auth_name_placeholder">Enter your name</string>
+    <string name="auth_password_min_placeholder">At least 8 characters</string>
+    <string name="auth_confirm_password_placeholder">Re-enter your password</string>
+    <string name="auth_password_too_short">Password must be at least 8 characters</string>
+    <string name="auth_passwords_mismatch">Passwords do not match</string>
+    <string name="auth_terms_privacy_notice">By creating an account, you agree to our Terms of Service and Privacy Policy</string>
+    <string name="auth_error_email_required">Email is required</string>
+    <string name="auth_error_email_invalid">Invalid email format</string>
+    <string name="auth_error_password_required">Password is required</string>
+    <string name="auth_error_password_min_length">Password must be at least %1$d characters</string>
+    <string name="auth_error_password_uppercase">Password must contain at least one uppercase letter</string>
+    <string name="auth_error_password_lowercase">Password must contain at least one lowercase letter</string>
+    <string name="auth_error_password_digit">Password must contain at least one number</string>
+    <string name="auth_error_confirm_password_required">Please confirm your password</string>
+    <string name="auth_error_fullname_required">Full name is required</string>
+    <string name="auth_error_fullname_min_length">Full name must be at least %1$d characters</string>
+    <string name="auth_error_fullname_max_length">Full name is too long (max %1$d characters)</string>
+    <string name="auth_error_device_name_required">Device name is required</string>
+    <string name="auth_error_device_name_too_short">Device name is too short</string>
+    <string name="auth_error_google_no_accounts">No Google accounts found on this device</string>
+    <string name="auth_error_google_signin_failed">Sign-in failed. Please try again.</string>
+    <string name="auth_error_google_session_expired">Google sign-in session expired. Please try again.</string>
+    <string name="auth_google_continue">Continue with Google</string>
+    <string name="auth_google_cd" translatable="false">Google</string>
+    <string name="auth_role_dialog_title">Choose Your Role</string>
+    <string name="auth_role_dialog_message">Are you a parent managing your child\'s device, or a child using a monitored device?</string>
+    <string name="auth_role_parent_cd">Parent — I manage my child\'s device</string>
+    <string name="auth_role_parent_desc">I manage my child\'s device</string>
+    <string name="auth_role_child_cd">Child — My device is monitored</string>
+    <string name="auth_role_child_desc">My device is monitored</string>
+
+    <!-- Setup: Consent -->
+    <string name="consent_title">Monitoring &amp; Privacy</string>
+    <string name="consent_heading">How Haris protects your child</string>
+    <string name="consent_intro">To keep your child safe, Haris monitors this device. Please review what is collected before you continue. Set up by a parent or guardian.</string>
+    <string name="consent_messages_title">Messages &amp; typed text</string>
+    <string name="consent_messages_detail">Text typed and shown in apps is checked to detect bullying, grooming, and other harmful content.</string>
+    <string name="consent_screentime_title">App &amp; screen-time usage</string>
+    <string name="consent_screentime_detail">Which apps are used and for how long, to enforce daily limits and bedtime.</string>
+    <string name="consent_photos_title">Photos &amp; images</string>
+    <string name="consent_photos_detail">Images are scanned on this device to blur explicit content.</string>
+    <string name="consent_web_title">Web activity</string>
+    <string name="consent_web_detail">Web addresses are filtered to block inappropriate sites. A local VPN does this on-device.</string>
+    <string name="consent_ondevice_notice">Analysis happens on this device. Flagged events and alerts are sent to the parent\'s Haris account so you can review them. Your child is shown a notice that monitoring is active.</string>
+    <string name="consent_privacy_link">Read our Privacy Policy</string>
+    <string name="consent_checkbox_label">I am this child\'s parent or guardian, and I consent to Haris monitoring this device as described above.</string>
+    <string name="consent_accept_button">I Understand &amp; Consent</string>
+
+    <!-- Setup: Permissions -->
+    <string name="permissions_setup_title">Setup Permissions</string>
+    <string name="permissions_heading">Permission Setup</string>
+    <string name="permissions_intro">To protect your child, Haris needs the following permissions. These permissions allow us to monitor activity and enforce screen time limits.</string>
+    <string name="permissions_granted_count">%1$d of %2$d permissions granted</string>
+    <string name="permissions_accessibility_title">Accessibility Service</string>
+    <string name="permissions_accessibility_desc">Required for monitoring text content across apps to detect inappropriate messages, cyberbullying, and potential predatory behavior.</string>
+    <string name="permissions_usage_stats_title">Usage Stats Access</string>
+    <string name="permissions_usage_stats_desc">Required for tracking screen time and app usage to enforce daily limits and bedtime restrictions.</string>
+    <string name="permissions_overlay_title">Display Over Apps</string>
+    <string name="permissions_overlay_desc">Required for displaying the lock screen when screen time limits are exceeded or during bedtime hours.</string>
+    <string name="permissions_battery_title">Battery Optimization</string>
+    <string name="permissions_battery_desc">Required to prevent Android from killing Haris in the background. Without this, text monitoring may stop working unexpectedly.</string>
+    <string name="permissions_vpn_title">VPN Content Filtering</string>
+    <string name="permissions_vpn_desc">Required for content filtering to block inappropriate websites. Haris uses a local VPN to filter web content - no data is sent to external servers.</string>
+    <string name="permissions_phone_title">Phone Calls</string>
+    <string name="permissions_phone_desc">Required to allow phone calls during bedtime and screen time limits. Your child will always be able to make and receive emergency calls.</string>
+    <string name="permissions_media_title">Photos &amp; Media</string>
+    <string name="permissions_media_desc">Required for sexting prevention. Haris needs full storage access to detect and blur inappropriate images, protecting your child from harmful content.</string>
+    <string name="permissions_media_desc_r_plus">Required for sexting prevention. Enable \'All files access\' to allow Haris to detect and blur inappropriate images, protecting your child from harmful content.</string>
+    <string name="permissions_notifications_title">Notifications</string>
+    <string name="permissions_notifications_desc">Required for showing alerts and notifications about your child\'s device activity.</string>
+    <string name="permissions_continue_dashboard">Continue to Dashboard</string>
+    <string name="permissions_skip_for_now">Skip for Now</string>
+    <string name="permissions_incomplete_notice">Some features may not work without all permissions</string>
+    <string name="permissions_required_marker" translatable="false">*</string>
+    <string name="permissions_active">Active</string>
+    <string name="permissions_enable">Enable</string>
+    <string name="common_view">View</string>
+    <string name="common_open_settings">Open Settings</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_role_parent">Parent Dashboard</string>
+    <string name="dashboard_role_child">My Activity</string>
+    <string name="dashboard_cd_refresh">Refresh dashboard</string>
+    <string name="dashboard_refresh">Refresh</string>
+    <string name="dashboard_alert_count_max" translatable="false">99+</string>
+    <string name="dashboard_cd_alerts">View alerts. %1$d unread</string>
+    <string name="dashboard_cd_more_options">More options</string>
+    <string name="dashboard_menu_children">My Children</string>
+    <string name="dashboard_menu_link_parent">Link a parent</string>
+    <string name="dashboard_welcome">Welcome back</string>
+    <string name="dashboard_family_title">Family Dashboard</string>
+    <string name="dashboard_offline_single">%1$s last checked in %2$s. It may be turned off, offline, or monitoring may have stopped.</string>
+    <string name="dashboard_offline_multiple">%1$d devices haven\'t checked in for a while. They may be turned off, offline, or monitoring may have stopped.</string>
+    <string name="dashboard_offline_fallback_time">a while ago</string>
+    <string name="dashboard_select_device">Select Device</string>
+    <string name="dashboard_status_online" translatable="false">online</string>
+    <string name="dashboard_status_offline" translatable="false">offline</string>
+    <string name="dashboard_usage_stats_grant_msg">Grant usage access to track screen time. Tap to open settings.</string>
+    <string name="dashboard_setup_required">Setup Required</string>
+    <string name="dashboard_permissions_needed_one">1 permission needed</string>
+    <string name="dashboard_permissions_needed_other">%1$d permissions needed</string>
+    <string name="dashboard_apps_used_one">1 app used</string>
+    <string name="dashboard_apps_used_other">%1$d apps used</string>
+    <string name="dashboard_unread_count">%1$d unread</string>
+    <string name="dashboard_no_apps_message">No app usage data yet</string>
+    <string name="dashboard_no_alerts_parent">No recent alerts - all good!</string>
+    <string name="dashboard_no_alerts_child">Great job! No recent alerts!</string>
+    <string name="dashboard_block_adult_content">Block Adult Content</string>
+    <string name="dashboard_vpn_active">VPN filtering active</string>
+    <string name="dashboard_filter_disabled">Disabled</string>
+    <string name="dashboard_social_media">Social Media</string>
+    <string name="dashboard_all_platforms_allowed">All platforms allowed</string>
+    <string name="dashboard_platforms_blocked_one">1 platform blocked</string>
+    <string name="dashboard_platforms_blocked_other">%1$d platforms blocked</string>
+    <string name="dashboard_collapse">Collapse</string>
+    <string name="dashboard_expand">Expand</string>
+    <string name="dashboard_block_all">Block All</string>
+    <string name="dashboard_allow_all">Allow All</string>
+    <string name="dashboard_complete_setup">Complete Setup</string>
+    <string name="dashboard_last_active">Last active %1$s</string>
+    <string name="dashboard_no_activity_yet">No activity reported yet</string>
+    <string name="dashboard_limit_reached">Limit reached</string>
+    <string name="dashboard_keep_balanced">Keep it balanced</string>
+    <string name="dashboard_status_over_limit">Over Limit</string>
+    <string name="dashboard_status_warning">Warning</string>
+    <string name="dashboard_status_on_track">On Track</string>
+    <string name="dashboard_of_limit">of %1$s</string>
+    <string name="dashboard_remaining">Remaining</string>
+    <string name="dashboard_manage_time_limits">Manage Time Limits</string>
+    <string name="dashboard_time_limits_label">Time Limits</string>
+    <string name="dashboard_filters_label">Filters</string>
+    <string name="dashboard_rank_format" translatable="false">#%1$d</string>
+    <string name="dashboard_sign_out">Sign Out</string>
+    <string name="dashboard_signout_message">Are you sure you want to sign out? You\'ll need to sign in again to access your account.</string>
+    <string name="dashboard_cd_selected">Selected</string>
+    <string name="dashboard_error_refresh">Failed to refresh: %1$s</string>
+    <string name="dashboard_error_device_not_registered">Device not registered</string>
+    <string name="dashboard_error_update_filter">Failed to update content filter</string>
+    <string name="dashboard_error_update_social">Failed to update social media setting</string>
+    <string name="dashboard_error_block_social">Failed to block social media</string>
+    <string name="dashboard_error_unblock_social">Failed to unblock social media</string>
+    <string name="dashboard_error_create_filter">Failed to create content filter</string>
+
+    <!-- Alerts -->
+    <string name="alerts_cd_mark_all_read">Mark all as read</string>
+    <string name="alerts_cd_refresh">Refresh</string>
+    <string name="alerts_cd_more_options">More options</string>
+    <string name="alerts_filter_all">All</string>
+    <string name="alerts_filter_unread">Unread</string>
+    <string name="alerts_filter_critical">Critical</string>
+    <string name="alerts_filter_high">High</string>
+    <string name="alerts_empty_all">No alerts</string>
+    <string name="alerts_empty_unread">No unread alerts</string>
+    <string name="alerts_empty_critical">No critical alerts</string>
+    <string name="alerts_empty_high">No high priority alerts</string>
+    <string name="alerts_caught_up">You\'re all caught up!</string>
+    <string name="alerts_mark_read">Mark as read</string>
+    <string name="alerts_dismiss">Dismiss</string>
+    <string name="alerts_delete">Delete</string>
+    <string name="alerts_msg_dismissed">Alert dismissed</string>
+    <string name="alerts_msg_all_read">All alerts marked as read</string>
+    <string name="alerts_msg_deleted">Alert deleted</string>
+
+    <!-- Children -->
+    <string name="children_title">My Children</string>
+    <string name="children_add_child">Add Child</string>
+    <string name="children_count_one">1 child linked</string>
+    <string name="children_count_other">%1$d children linked</string>
+    <string name="children_empty_title">No children linked yet</string>
+    <string name="children_empty_subtitle">Add your child\'s account to start monitoring their device activity</string>
+    <string name="children_add_first">Add Your First Child</string>
+    <string name="children_remove_title">Remove %1$s?</string>
+    <string name="children_remove_message">This will unlink %1$s\'s account. You will no longer be able to monitor their devices.</string>
+    <string name="children_remove">Remove</string>
+    <string name="children_linked_when">Linked %1$s</string>
+    <string name="children_view_devices">View Devices</string>
+    <string name="children_add_instructions">On your child\'s device, open Haris and tap "Link a parent" to get a pairing code. Enter that code here.</string>
+    <string name="children_pairing_code">Pairing Code</string>
+    <string name="children_pairing_code_hint" translatable="false">ABCD2345</string>
+    <string name="children_error_enter_code">Enter the code shown on your child\'s device</string>
+    <string name="children_msg_linked">Successfully linked %1$s</string>
+    <string name="children_msg_removed">Removed %1$s from your family</string>
+
+    <!-- Devices -->
+    <string name="devices_title_child">%1$s\'s Devices</string>
+    <string name="devices_count_one">1 device registered</string>
+    <string name="devices_count_other">%1$d devices registered</string>
+    <string name="devices_empty_title">No devices found</string>
+    <string name="devices_empty_subtitle">Your children\'s devices will appear here once they install Haris and link to your account</string>
+    <string name="devices_status_active">Monitoring Active</string>
+    <string name="devices_status_suspended">Suspended</string>
+    <string name="devices_status_inactive">Inactive</string>
+    <string name="devices_status_plain_active">Active</string>
+    <string name="devices_cd_view_details">View details</string>
+    <string name="devices_set_limits">Set Limits</string>
+    <string name="devices_blocked_sites">Blocked Sites</string>
+    <string name="devices_remove_title">Remove %1$s?</string>
+    <string name="devices_remove_message">This will remove the device and all its monitoring data. This action cannot be undone.</string>
+    <string name="devices_remove">Remove</string>
+    <string name="devices_android_version">Android Version</string>
+    <string name="devices_app_version">App Version</string>
+    <string name="devices_status_label">Status</string>
+    <string name="devices_last_sync">Last Sync</string>
+    <string name="devices_registered_label">Registered</string>
+    <string name="devices_unknown">Unknown</string>
+    <string name="devices_content_filtering">Content Filtering</string>
+    <string name="devices_block_adult">Block Adult Content</string>
+    <string name="devices_vpn_active">VPN filtering is active on this device</string>
+    <string name="devices_enable_block">Enable to block inappropriate websites</string>
+    <string name="devices_block_social">Block Social Media</string>
+    <string name="devices_social_blocked">Social media sites are blocked</string>
+    <string name="devices_social_allowed">Social media is allowed</string>
+    <string name="devices_actions">Actions</string>
+    <string name="devices_suspend">Suspend Device</string>
+    <string name="devices_activate">Activate Device</string>
+    <string name="devices_screen_time_limits">Screen Time Limits</string>
+    <string name="devices_manage_blocked">Manage Blocked Sites</string>
+    <string name="devices_remove_device">Remove Device</string>
+    <string name="devices_msg_filter_enabled">Content filtering enabled</string>
+    <string name="devices_msg_filter_disabled">Content filtering disabled</string>
+    <string name="devices_msg_social_blocked">Social media blocked</string>
+    <string name="devices_msg_social_allowed">Social media allowed</string>
+    <string name="devices_msg_suspended">Device suspended</string>
+    <string name="devices_msg_activated">Device activated</string>
+    <string name="devices_error_update_filter">Failed to update content filter: %1$s</string>
+    <string name="devices_error_update_social">Failed to update social media setting: %1$s</string>
+    <string name="devices_error_create_filter">Failed to create content filter: %1$s</string>
+
+    <!-- Device Setup -->
+    <string name="devicesetup_title">Set Up This Device</string>
+    <string name="devicesetup_subtitle">Register this device to enable Haris protection and allow your parent to monitor your online activity.</string>
+    <string name="devicesetup_device_name">Device Name</string>
+    <string name="devicesetup_device_name_hint">e.g., John\'s Phone</string>
+    <string name="devicesetup_name_helper">This name will help your parent identify this device</string>
+    <string name="devicesetup_register">Register Device</string>
+    <string name="devicesetup_what_next">What happens next?</string>
+    <string name="devicesetup_next_steps">• Your parent will be able to see your screen time\n• Content filtering will block inappropriate websites\n• You\'ll need to grant usage access permission</string>
+    <string name="devicesetup_registered">Device Registered!</string>
+    <string name="devicesetup_enable_tracking">Now let\'s enable screen time tracking by granting usage access permission.</string>
+    <string name="devicesetup_usage_required">Usage Access Required</string>
+    <string name="devicesetup_usage_explain">To track your screen time, Haris needs permission to access usage data. Tap the button below, find \'Haris\' in the list, and enable access.</string>
+    <string name="devicesetup_open_usage_settings">Open Usage Access Settings</string>
+    <string name="devicesetup_continue_dashboard">Continue to Dashboard</string>
+    <string name="devicesetup_enable_later">You can enable this permission later from the dashboard</string>
+    <string name="devicesetup_error_empty_name">Please enter a device name</string>
+    <string name="devicesetup_error_short_name">Device name is too short</string>
+
+    <!-- Link Parent -->
+    <string name="linkparent_title">Link a Parent</string>
+    <string name="linkparent_heading">Connect a parent to this device</string>
+    <string name="linkparent_instructions">Generate a code below, then enter it in the parent\'s Haris app under "Add Child". The code works once and expires shortly.</string>
+    <string name="linkparent_expires_at">Expires at %1$s</string>
+    <string name="linkparent_generate">Generate Code</string>
+    <string name="linkparent_generate_new">Generate New Code</string>
+
+    <!-- Lock Screen -->
+    <string name="lock_daily_title">Daily limit reached</string>
+    <string name="lock_daily_desc">You\'ve used all your screen time for today. The device will be available again tomorrow.</string>
+    <string name="lock_daily_meta">Back tomorrow</string>
+    <string name="lock_ask_more_time">Ask for more time</string>
+    <string name="lock_bedtime_title">Time to rest</string>
+    <string name="lock_bedtime_desc">It\'s bedtime. Your device is taking a break until morning so you can sleep.</string>
+    <string name="lock_bedtime_meta">Unlocks in the morning</string>
+    <string name="lock_study_title">Study time</string>
+    <string name="lock_study_desc">It\'s study time. Only educational apps are available right now.</string>
+    <string name="lock_study_meta">Back when study time ends</string>
+    <string name="lock_app_paused_title">%1$s is paused</string>
+    <string name="lock_app_paused_title_generic">This app is paused</string>
+    <string name="lock_app_paused_desc">Your parent has paused this app right now. You can still use your other apps.</string>
+    <string name="lock_okay">Okay</string>
+    <string name="lock_ask_parent">Ask a parent</string>
+    <string name="lock_app_limit_title">%1$s\'s time is up</string>
+    <string name="lock_app_limit_title_generic">App time is up</string>
+    <string name="lock_app_limit_desc">You\'ve reached today\'s limit for %1$s. You can still use your other apps.</string>
+    <string name="lock_this_app">this app</string>
+    <string name="lock_device_locked">Device locked</string>
+    <string name="lock_parent_locked_desc">Your parent has locked this device for now. It will unlock when they choose.</string>
+    <string name="lock_generic_desc">This device is locked right now.</string>
+    <string name="lock_request_sent">Sent. Your parent will see it.</string>
+    <string name="lock_emergency_call">Emergency call</string>
+    <string name="lock_protected_by">Protected by Haris</string>
+    <string name="lock_default_message">Screen time limit reached</string>
+    <string name="lock_request_more_time_title">Asking for more time</string>
+    <string name="lock_request_more_time_body">Your child has reached today\'s screen time limit and is asking for more time.</string>
+    <string name="lock_request_blocked_title">Asking about a blocked app</string>
+    <string name="lock_request_blocked_body">Your child is asking about %1$s.</string>
+    <string name="lock_a_blocked_app">a blocked app</string>
+
+    <!-- Screen Time Limits -->
+    <string name="screentime_cd_delete_rules">Delete rules</string>
+    <string name="screentime_allowed_study">Allowed During Study Time</string>
+    <string name="screentime_add_app">Add App</string>
+    <string name="screentime_no_study_apps">No apps allowed during study time. All apps will be blocked.</string>
+    <string name="screentime_per_app_limits">Per-App Limits</string>
+    <string name="screentime_no_app_limits">No app limits set. Tap \'Add App\' to set time limits for specific apps.</string>
+    <string name="screentime_blocked_apps">Blocked Apps</string>
+    <string name="screentime_block_app">Block App</string>
+    <string name="screentime_no_blocked_apps">No blocked apps. Tap \'Block App\' to completely block specific apps.</string>
+    <string name="screentime_delete_all_title">Delete All Rules?</string>
+    <string name="screentime_delete_all_message">This will remove all screen time limits, bedtime settings, app limits, and blocked apps for this device. This cannot be undone.</string>
+    <string name="screentime_delete">Delete</string>
+    <string name="screentime_rules_active">Rules Active</string>
+    <string name="screentime_rules_disabled">Rules Disabled</string>
+    <string name="screentime_rules_enforced">Screen time limits are being enforced</string>
+    <string name="screentime_no_restrictions">No restrictions applied</string>
+    <string name="screentime_daily_limit">Daily Screen Time Limit</string>
+    <string name="screentime_set_daily_limit">Set daily limit</string>
+    <string name="screentime_bedtime_mode">Bedtime Mode</string>
+    <string name="screentime_bedtime_desc">Block device usage during sleep hours</string>
+    <string name="screentime_start">Start</string>
+    <string name="screentime_end">End</string>
+    <string name="screentime_study_time">Study Time</string>
+    <string name="screentime_study_desc">Block all apps except educational ones</string>
+    <string name="screentime_device_locked">Device Locked</string>
+    <string name="screentime_lock_device">Lock Device</string>
+    <string name="screentime_locked_desc">Device is currently locked</string>
+    <string name="screentime_lock_desc">Instantly lock child\'s device</string>
+    <string name="screentime_message_child">Message to child (optional)</string>
+    <string name="screentime_message_hint">e.g., Time for dinner!</string>
+    <string name="screentime_allowed_during_study">Allowed during study time</string>
+    <string name="screentime_cd_remove">Remove</string>
+    <string name="screentime_add_app_limit">Add App Limit</string>
+    <string name="screentime_cd_remove_selection">Remove selection</string>
+    <string name="screentime_daily_limit_label">Daily Limit</string>
+    <string name="screentime_hours">Hours</string>
+    <string name="screentime_minutes">Minutes</string>
+    <string name="screentime_search_apps">Search apps</string>
+    <string name="screentime_loading_apps">Loading apps from child\'s device…</string>
+    <string name="screentime_no_usage_data">No app usage data yet.\nThe child needs to use the device first.</string>
+    <string name="screentime_no_matching_apps">No matching apps found</string>
+    <string name="screentime_add">Add</string>
+    <string name="screentime_block">Block</string>
+    <string name="screentime_allow_study_title">Allow App During Study Time</string>
+    <string name="screentime_block_explain">This app will be completely blocked on the child\'s device.</string>
+    <string name="screentime_allow_explain">This app will be accessible during study time.</string>
+    <string name="screentime_allow">Allow</string>
+    <string name="screentime_select_time">Select Time</string>
+    <string name="screentime_error_invalid_device">Invalid device ID</string>
+    <string name="screentime_msg_saved">Screen time rules saved successfully</string>
+    <string name="screentime_msg_deleted">Screen time rules deleted</string>
+
+    <!-- Blacklist -->
+    <string name="blacklist_title">Blocked Websites</string>
+    <string name="blacklist_cd_clear_all">Clear all</string>
+    <string name="blacklist_cd_add_website">Add website</string>
+    <string name="blacklist_count_one">1 blocked website</string>
+    <string name="blacklist_count_other">%1$d blocked websites</string>
+    <string name="blacklist_dialog_title">Block Website</string>
+    <string name="blacklist_dialog_desc">Enter the domain to block. Do not include \'http://\' or \'https://\'.</string>
+    <string name="blacklist_domain_label">Domain</string>
+    <string name="blacklist_domain_placeholder" translatable="false">example.com</string>
+    <string name="blacklist_block_button">Block</string>
+    <string name="blacklist_clear_title">Clear Blacklist?</string>
+    <string name="blacklist_clear_message">This will remove all %1$d blocked websites. This action cannot be undone.</string>
+    <string name="blacklist_clear_all_button">Clear All</string>
+    <string name="blacklist_empty_title">No blocked websites</string>
+    <string name="blacklist_empty_message">Tap + to add websites to block</string>
+    <string name="blacklist_error_empty">Domain cannot be empty</string>
+    <string name="blacklist_error_short">Domain is too short</string>
+    <string name="blacklist_error_duplicate">Domain already in blacklist</string>
+    <string name="blacklist_msg_added">Website added to blacklist</string>
+    <string name="blacklist_msg_removed">Website removed from blacklist</string>
+    <string name="blacklist_msg_cleared">Blacklist cleared</string>
+
+    <!-- Word List -->
+    <string name="wordlist_title">Custom Word Lists</string>
+    <string name="wordlist_cd_clear_list">Clear list</string>
+    <string name="wordlist_cd_add_word">Add word</string>
+    <string name="wordlist_tab_blacklist">Blacklist (%1$d)</string>
+    <string name="wordlist_tab_whitelist">Whitelist (%1$d)</string>
+    <string name="wordlist_blacklisted_words_title">Blacklisted Words</string>
+    <string name="wordlist_whitelisted_words_title">Whitelisted Words</string>
+    <string name="wordlist_blacklist_desc">These words will always be flagged as inappropriate, even if they don\'t match the default patterns.</string>
+    <string name="wordlist_whitelist_desc">These words will be allowed and won\'t trigger alerts, even if they match default patterns (except for safety-critical content like self-harm).</string>
+    <string name="wordlist_empty_no_match">No matching words found</string>
+    <string name="wordlist_empty_none_blacklist">No words in blacklist</string>
+    <string name="wordlist_empty_none_whitelist">No words in whitelist</string>
+    <string name="wordlist_empty_try_filters">Try adjusting your search or filters</string>
+    <string name="wordlist_empty_tap_add">Tap + to add words</string>
+    <string name="wordlist_clear_filters">Clear Filters</string>
+    <string name="wordlist_showing_count">Showing %1$d of %2$d words</string>
+    <string name="wordlist_chip_case_sensitive">Case sensitive</string>
+    <string name="wordlist_chip_partial_match">Partial match</string>
+    <string name="wordlist_clear_title_blacklist">Clear Blacklist?</string>
+    <string name="wordlist_clear_title_whitelist">Clear Whitelist?</string>
+    <string name="wordlist_clear_message_blacklist">This will remove all words from the blacklist. This action cannot be undone.</string>
+    <string name="wordlist_clear_message_whitelist">This will remove all words from the whitelist. This action cannot be undone.</string>
+    <string name="wordlist_clear_all_button">Clear All</string>
+    <string name="wordlist_add_dialog_title_blacklist">Add to Blacklist</string>
+    <string name="wordlist_add_dialog_title_whitelist">Add to Whitelist</string>
+    <string name="wordlist_word_label">Word or phrase</string>
+    <string name="wordlist_category_label">Category</string>
+    <string name="wordlist_case_sensitive_label">Case sensitive</string>
+    <string name="wordlist_whole_word_label">Match whole word only</string>
+    <string name="wordlist_add_button">Add</string>
+    <string name="wordlist_search_placeholder">Search words…</string>
+    <string name="wordlist_cd_search">Search</string>
+    <string name="wordlist_cd_clear_search">Clear search</string>
+    <string name="wordlist_all_categories">All categories</string>
+    <string name="wordlist_cd_clear_all_filters">Clear all filters</string>
+    <string name="wordlist_error_word_empty">Word cannot be empty</string>
+    <string name="wordlist_error_whitelist_dup">Word already in whitelist</string>
+    <string name="wordlist_error_blacklist_dup">Word already in blacklist</string>
+    <string name="wordlist_msg_added_whitelist">Word added to whitelist</string>
+    <string name="wordlist_msg_added_blacklist">Word added to blacklist</string>
+    <string name="wordlist_msg_removed">Word removed</string>
+    <string name="wordlist_msg_cleared_whitelist">Whitelist cleared</string>
+    <string name="wordlist_msg_cleared_blacklist">Blacklist cleared</string>
+
+    <!-- Text Monitoring Settings -->
+    <string name="textmon_title">Text Monitoring</string>
+    <string name="textmon_categories_title">Content Categories</string>
+    <string name="textmon_categories_desc">Select which types of content to monitor. Critical categories for child safety cannot be disabled.</string>
+    <string name="textmon_manage_wordlist">Manage Custom Word List</string>
+    <string name="textmon_alert_prefs_title">Alert Preferences</string>
+    <string name="textmon_alert_sound_title">Alert Sound</string>
+    <string name="textmon_alert_sound_desc">Play a sound when alerts are received</string>
+    <string name="textmon_vibration_title">Vibration</string>
+    <string name="textmon_vibration_desc">Vibrate when alerts are received</string>
+    <string name="textmon_privacy_title">Privacy Note</string>
+    <string name="textmon_privacy_desc">Text content is analyzed locally on the device. Only alert notifications (category, app name, timestamp) are sent to your dashboard. Actual text content is never stored or transmitted.</string>
+    <string name="textmon_monitoring_active">Actively monitoring text content</string>
+    <string name="textmon_monitoring_paused">Monitoring is paused</string>
+    <string name="textmon_required_badge">Required</string>
+    <string name="textmon_alerts_today">Alerts today: %1$d/%2$d</string>
+    <string name="textmon_cooldown">Cooldown: %1$ds</string>
+    <string name="textmon_error_load">Failed to load settings</string>
+    <string name="textmon_error_critical_disable">This category cannot be disabled for safety reasons</string>
+    <string name="textmon_cat_selfharm_name">Self-Harm &amp; Suicide</string>
+    <string name="textmon_cat_selfharm_desc">Detects content related to self-harm, suicide, or harmful ideation. This is always enabled for child safety.</string>
+    <string name="textmon_cat_predator_name">Predatory Behavior</string>
+    <string name="textmon_cat_predator_desc">Detects potential grooming patterns and suspicious contact attempts. This is always enabled for child safety.</string>
+    <string name="textmon_cat_sexual_name">Sexual Content</string>
+    <string name="textmon_cat_sexual_desc">Detects sexually explicit or inappropriate content including sexting.</string>
+    <string name="textmon_cat_violence_name">Violence &amp; Threats</string>
+    <string name="textmon_cat_violence_desc">Detects violent content, threats, and aggressive language.</string>
+    <string name="textmon_cat_bullying_name">Cyberbullying</string>
+    <string name="textmon_cat_bullying_desc">Detects bullying, harassment, and mean-spirited content.</string>
+    <string name="textmon_cat_drugs_name">Drugs &amp; Substances</string>
+    <string name="textmon_cat_drugs_desc">Detects references to drugs, alcohol, and substance abuse.</string>
+    <string name="textmon_cat_profanity_name">Profanity &amp; Bad Language</string>
+    <string name="textmon_cat_profanity_desc">Detects profanity, swear words, and inappropriate language.</string>
+    <string name="textmon_cat_custom_name">Custom Blacklist</string>
+    <string name="textmon_cat_custom_desc">Detects words from your custom blacklist.</string>
+
+    <!-- Image Review -->
+    <string name="imagereview_title">Review Flagged Images</string>
+    <string name="imagereview_pending_one">1 image pending review</string>
+    <string name="imagereview_pending_other">%1$d images pending review</string>
+    <string name="imagereview_empty_title">No Images to Review</string>
+    <string name="imagereview_empty_desc">All flagged images have been reviewed.</string>
+    <string name="imagereview_dialog_title">Review Image</string>
+    <string name="imagereview_label_category">Category:</string>
+    <string name="imagereview_label_confidence">Confidence:</string>
+    <string name="imagereview_label_detected">Detected:</string>
+    <string name="imagereview_hide_original">Hide Original</string>
+    <string name="imagereview_view_original">View Original Image</string>
+    <string name="imagereview_cd_original_image">Original image</string>
+    <string name="imagereview_unable_load">Unable to load original image</string>
+    <string name="imagereview_info_text">• Approve: Restore the original (unblurred) image\n• Reject: Permanently delete the image</string>
+    <string name="imagereview_reject_button">Reject</string>
+    <string name="imagereview_approve_button">Approve</string>
+    <string name="imagereview_error_load">Failed to load pending reviews</string>
+    <string name="imagereview_error_restore">Failed to restore image</string>
+    <string name="imagereview_error_delete">Failed to delete image</string>
+    <string name="imagereview_error_generic">Error: %1$s</string>
+    <string name="imagereview_cat_adult">Adult Content</string>
+    <string name="imagereview_cat_suggestive">Suggestive Content</string>
+    <string name="imagereview_cat_animated_adult">Animated Adult Content</string>
+    <string name="imagereview_cat_violent">Violent Content</string>
+    <string name="imagereview_cat_nudity">Nudity</string>
+
+    <!-- Text Review -->
+    <string name="textreview_title">Review Flagged Text</string>
+    <string name="textreview_cd_clear_all">Clear all</string>
+    <string name="textreview_clear_dialog_title">Clear all flagged text?</string>
+    <string name="textreview_clear_dialog_message">This permanently deletes the on-device review log. It cannot be undone.</string>
+    <string name="textreview_clear_all_button">Clear all</string>
+    <string name="textreview_count_one">1 flagged phrase. Kept on this device only.</string>
+    <string name="textreview_count_other">%1$d flagged phrases. Kept on this device only.</string>
+    <string name="textreview_cd_delete">Delete</string>
+    <string name="textreview_no_text_captured">(no readable text captured)</string>
+    <string name="textreview_app_date">%1$s · %2$s</string>
+    <string name="textreview_empty_title">No Flagged Text</string>
+    <string name="textreview_empty_desc">Nothing has been flagged on this device recently.</string>
+    <string name="textreview_cat_profanity">Profanity</string>
+    <string name="textreview_cat_selfharm">Self-harm</string>
+    <string name="textreview_cat_violence">Violence</string>
+    <string name="textreview_cat_sexual">Sexual content</string>
+    <string name="textreview_cat_bullying">Bullying</string>
+    <string name="textreview_cat_grooming">Grooming</string>
+    <string name="textreview_cat_unknown">Flagged</string>
+
+    <!-- Shared Components -->
+    <string name="components_screentime_hero_title">Today\'s Screen Time</string>
+    <string name="components_stat_unlocks">Unlocks</string>
+    <string name="components_stat_remaining">Remaining</string>
+    <string name="components_manage_limits">Manage Limits</string>
+    <string name="components_cd_dismiss">Dismiss</string>
+    <string name="components_cd_more_options">More options</string>
+    <string name="components_device_status_online">Online</string>
+    <string name="components_device_status_suspended">Suspended</string>
+    <string name="components_device_status_offline">Offline</string>
+    <string name="components_last_seen">Last seen: %1$s</string>
+    <string name="components_empty_devices_title">No Devices Yet</string>
+    <string name="components_empty_devices_desc">Add a child\'s device to start monitoring their activity and keeping them safe online.</string>
+    <string name="components_empty_devices_action">Add Device</string>
+    <string name="components_empty_alerts_title_filtered">No Matching Alerts</string>
+    <string name="components_empty_alerts_title_clear">All Clear!</string>
+    <string name="components_empty_alerts_desc_filtered">No alerts match your current filter. Try adjusting the filter or check back later.</string>
+    <string name="components_empty_alerts_desc_clear">There are no alerts to show. Your child\'s online activity looks safe!</string>
+    <string name="components_empty_usage_title_has_perm">No Usage Data</string>
+    <string name="components_empty_usage_title_no_perm">Permission Required</string>
+    <string name="components_empty_usage_desc_has_perm">No app usage data available yet. Check back later to see which apps are being used.</string>
+    <string name="components_empty_usage_desc_no_perm">Grant usage access permission to see app usage statistics.</string>
+    <string name="components_empty_children_title">No Children Linked</string>
+    <string name="components_empty_children_desc">Link your child\'s account to start monitoring their device activity and online safety.</string>
+    <string name="components_empty_children_action">Link Child Account</string>
+    <string name="components_empty_screentime_title">No Screen Time Data</string>
+    <string name="components_empty_screentime_desc">Screen time tracking hasn\'t recorded any data yet. It will update as the device is used.</string>
+    <string name="components_empty_wordlist_title">No Custom %1$s</string>
+    <string name="components_empty_wordlist_desc">Add custom words to monitor for in text messages and content. These help identify concerning content.</string>
+    <string name="components_empty_wordlist_action">Add Word</string>
+    <string name="components_error_title">Something Went Wrong</string>
+    <string name="components_error_desc">We couldn\'t load the data. Please try again.</string>
+    <string name="components_error_try_again">Try Again</string>
+    <string name="components_network_error_title">No Connection</string>
+    <string name="components_network_error_message">Please check your internet connection and try again.</string>
+    <string name="components_permission_required_title">Permission Required</string>
+    <string name="components_permission_required_desc">Haris needs %1$s permission to work properly. Please grant access in settings.</string>
+    <string name="components_open_settings">Open Settings</string>
+    <string name="components_inline_retry">Retry</string>
+    <string name="components_cd_pull_refresh">Pull to refresh</string>
+    <string name="components_child_mood_almost_done">Almost done for today!</string>
+    <string name="components_child_mood_running_low">Time is running low</string>
+    <string name="components_child_mood_lots_of_time">You have lots of time!</string>
+    <string name="components_child_my_screen_time">My Screen Time</string>
+    <string name="components_child_phone_opens">Phone Opens</string>
+    <string name="components_child_time_left">Time Left</string>
+    <string name="components_child_of_limit">of %1$s</string>
+    <string name="components_child_all_set">All Set!</string>
+    <string name="components_child_setup_needed">Setup Needed</string>
+    <string name="components_child_parent_can_see">Your parent can see your activity</string>
+    <string name="components_child_permissions_ready">%1$d of %2$d permissions ready</string>
+    <string name="components_child_cd_setup">Setup</string>
+    <string name="components_time_hm" translatable="false">%1$dh %2$dm</string>
+    <string name="components_time_h" translatable="false">%1$dh</string>
+    <string name="components_time_m" translatable="false">%1$dm</string>
+    <string name="components_time_zero" translatable="false">0m</string>
+    <string name="components_no_limit">No limit</string>
+    <string name="components_pin_enter_title">Enter parent PIN</string>
+    <string name="components_pin_create_title">Create a parent PIN</string>
+    <string name="components_pin_enter_desc">Enter your PIN to review what was flagged on this device.</string>
+    <string name="components_pin_create_desc">Set a %1$d–%2$d digit PIN. You\'ll enter it to review flagged photos and text on this device. Keep it private from your child.</string>
+    <string name="components_pin_label">PIN</string>
+    <string name="components_pin_confirm_label">Confirm PIN</string>
+    <string name="components_pin_error_incorrect">Incorrect PIN</string>
+    <string name="components_pin_error_min_length">PIN must be at least %1$d digits</string>
+    <string name="components_pin_error_mismatch">PINs don\'t match</string>
+    <string name="components_pin_unlock">Unlock</string>
+    <string name="components_pin_set">Set PIN</string>
+    <string name="components_cd_haris_logo">Haris logo</string>
+    <string name="changepw_title">Change Password</string>
+    <string name="changepw_current_label">Current Password</string>
+    <string name="changepw_current_placeholder">Enter your current password</string>
+    <string name="changepw_new_label">New Password</string>
+    <string name="changepw_new_placeholder">Enter your new password</string>
+    <string name="changepw_error_required">Both fields are required</string>
+    <string name="changepw_error_too_short">New password must be at least 8 characters</string>
+    <string name="changepw_error_same_password">New password must be different from current password</string>
+    <string name="legal_terms_title">Terms of Service</string>
+    <string name="legal_privacy_title">Privacy Policy</string>
+    <string name="components_refreshing">Refreshing…</string>
+
+    <!-- Tamper Alerts (background worker) -->
+    <string name="tamper_unknown_attempt">Unknown tamper attempt</string>
+    <string name="tamper_data_cleared_title">App Data Cleared</string>
+    <string name="tamper_data_cleared_msg">Haris data was cleared on %1$s. All monitoring settings and history have been lost. The child may be attempting to bypass parental controls.</string>
+    <string name="tamper_app_disabled_title">Haris Disabled</string>
+    <string name="tamper_app_disabled_msg">Haris was disabled on %1$s. Monitoring is no longer active. Please re-enable the app.</string>
+    <string name="tamper_force_stopped_title">Haris Force Stopped</string>
+    <string name="tamper_force_stopped_msg">Haris was force stopped on %1$s. Monitoring has been interrupted.</string>
+    <string name="tamper_vpn_disconnected_title">VPN Content Filter Disabled</string>
+    <string name="tamper_vpn_disconnected_msg">The VPN content filter was disconnected on %1$s. Web content filtering is no longer protecting this device. Please reconnect the VPN in the Haris app.</string>
+    <string name="tamper_foreign_vpn_title">Another VPN App Detected</string>
+    <string name="tamper_foreign_vpn_msg">A third-party VPN app is active on %1$s. Android allows only one VPN at a time, so Haris\'s content filter cannot run while it is on and web filtering is bypassed. Check the device for a VPN app (e.g. ProtonVPN) and remove it or turn it off.</string>
+    <string name="tamper_service_stopped_title">Monitoring Service Stopped</string>
+    <string name="tamper_service_stopped_msg">The Haris monitoring service was stopped on %1$s. Screen time tracking and app monitoring are interrupted.</string>
+    <string name="tamper_generic_title">Tamper Attempt Detected</string>
+    <string name="tamper_generic_msg">A tamper attempt was detected on %1$s: %2$s</string>
+
+    <!-- Protection Monitor Worker alerts -->
+    <string name="protection_bypass_tool_title">Automation Tool Detected</string>
+    <string name="protection_bypass_tool_msg">An automation or auto-clicker app with accessibility access was found on %1$s. These tools can be used to bypass the lock screen and screen-time limits.\n\nDetected: %2$s</string>
+    <string name="protection_monitoring_off_title">Monitoring Is Turned Off</string>
+    <string name="protection_monitoring_off_msg">Haris\'s text-monitoring service is turned off on %1$s, so your child\'s messages are not being checked for inappropriate content. Re-enable Haris in the device\'s Accessibility settings.</string>
+
+    <!-- Notification channels -->
+    <string name="notif_monitoring_channel_name">Monitoring Service</string>
+    <string name="notif_monitoring_channel_desc">Shows when Haris is actively monitoring</string>
+    <string name="notif_alerts_channel_name">Security Alerts</string>
+    <string name="notif_alerts_channel_desc">Important security and monitoring alerts</string>
+    <string name="notif_screentime_channel_name">Screen Time</string>
+    <string name="notif_screentime_channel_desc">Screen time limit notifications</string>
+    <string name="notif_sync_channel_name">Data Sync</string>
+    <string name="notif_sync_channel_desc">Background data synchronization</string>
+    <string name="notif_lockscreen_channel_name">Lock Screen</string>
+    <string name="notif_lockscreen_channel_desc">Screen time limit enforcement</string>
+
+    <!-- Monitoring service persistent notification -->
+    <string name="notif_monitoring_title">Haris Active</string>
+    <string name="notif_monitoring_text">Monitoring device activity</string>
+    <string name="notif_monitoring_bigtext">Monitoring device activity and enforcing parental controls</string>
+    <string name="notif_monitoring_sync_now">Sync Now</string>
+
+    <!-- Lock screen notification (shown outside the app when device is locked) -->
+    <string name="notif_lock_daily_limit_title">Daily Screen Time Limit Reached</string>
+    <string name="notif_lock_daily_limit_msg">Daily screen time limit has been reached.</string>
+    <string name="notif_lock_bedtime_title">Bedtime Mode Active</string>
+    <string name="notif_lock_bedtime_msg">It\'s bedtime. Device usage is restricted.</string>
+    <string name="notif_lock_app_blocked_title">App Blocked</string>
+    <string name="notif_lock_app_blocked_msg">This app has been blocked.</string>
+    <string name="notif_lock_app_limit_title">App Time Limit Reached</string>
+    <string name="notif_lock_app_limit_msg">Time limit for this app has been reached.</string>
+    <string name="notif_lock_study_time_title">Study Time Active</string>
+    <string name="notif_lock_study_time_msg">It\'s study time. Only educational apps are allowed.</string>
+    <string name="notif_lock_parent_locked_title">Device Locked by Parent</string>
+    <string name="notif_lock_parent_locked_msg">Your parent has locked this device.</string>
+    <string name="notif_lock_default_title">Device Locked</string>
+
+    <!-- Alert content (AlertRepository, generated on child device) -->
+    <string name="alert_content_blocked_title">Content Blocked</string>
+    <string name="alert_content_blocked_msg">Blocked access to %1$s</string>
+    <string name="alert_screentime_limit_title">Screen Time Limit Reached</string>
+    <string name="alert_screentime_limit_msg">Daily screen time limit of %1$d hours has been reached</string>
+    <string name="alert_inappropriate_image_title">Inappropriate Image Detected</string>
+    <string name="alert_inappropriate_image_msg">NSFW content detected with %1$d%% confidence</string>
+    <string name="alert_app_blocked_title">App Blocked</string>
+    <string name="alert_app_blocked_msg">%1$s was blocked</string>
+    <string name="alert_cat_selfharm_title">Self-Harm Content Detected</string>
+    <string name="alert_cat_selfharm_msg">Content related to self-harm or suicide was detected in %1$s. Please check on your child and consider having a supportive conversation.</string>
+    <string name="alert_cat_grooming_title">Suspicious Contact Pattern Detected</string>
+    <string name="alert_cat_grooming_msg">Potentially concerning communication patterns were detected in %1$s. This may indicate inappropriate contact attempts.</string>
+    <string name="alert_cat_violence_title">Violent Content Detected</string>
+    <string name="alert_cat_violence_msg">Content containing violence or threats was detected in %1$s.</string>
+    <string name="alert_cat_sexual_title">Sexual Content Detected</string>
+    <string name="alert_cat_sexual_msg">Sexually explicit or inappropriate content was detected in %1$s.</string>
+    <string name="alert_cat_bullying_title">Cyberbullying Detected</string>
+    <string name="alert_cat_bullying_msg">Content related to bullying or harassment was detected in %1$s.</string>
+    <string name="alert_cat_drugs_title">Drug-Related Content Detected</string>
+    <string name="alert_cat_drugs_msg">Content related to drugs or substance abuse was detected in %1$s.</string>
+    <string name="alert_cat_profanity_title">Inappropriate Language Detected</string>
+    <string name="alert_cat_profanity_msg">Profane or inappropriate language was detected in %1$s.</string>
+    <string name="alert_cat_custom_title">Blacklisted Word Detected</string>
+    <string name="alert_cat_custom_msg">A word from your custom blacklist was detected in %1$s.</string>
+    <string name="alert_cat_default_title">Inappropriate Text Detected</string>
+    <string name="alert_cat_default_msg">Potentially inappropriate content was detected in %1$s.</string>
+
+    <!-- VPN content filter service notification -->
+    <string name="notif_vpn_channel_name">Content Filter</string>
+    <string name="notif_vpn_channel_desc">Haris content filtering is active</string>
+    <string name="notif_vpn_title">Haris VPN Active</string>
+    <string name="notif_vpn_text">Content filtering is protecting this device</string>
+    <string name="notif_vpn_bigtext">Content filtering is actively protecting this device from harmful content</string>
+
+    <!-- Sync worker screen time notifications -->
+    <string name="notif_sync_limit_reached_title">Screen Time Limit Reached</string>
+    <string name="notif_sync_limit_reached_msg">Daily screen time limit has been reached.</string>
+    <string name="notif_sync_limit_warning_title">Screen Time Warning</string>
+    <string name="notif_sync_limit_warning_msg">Only %1$d minutes of screen time remaining today.</string>
+    <string name="notif_sync_bedtime_title">Bedtime Mode Active</string>
+    <string name="notif_sync_bedtime_msg">Device usage is restricted during bedtime hours.</string>
 </resources>

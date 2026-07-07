@@ -7,9 +7,11 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.safeguard.parentalcontrol.data.model.AlertSeverity
 import com.safeguard.parentalcontrol.data.model.AlertType
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.AlertRepository
 import com.safeguard.parentalcontrol.receiver.TamperDetectionReceiver
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -37,6 +39,9 @@ class TamperAlertWorker @AssistedInject constructor(
         private const val TAG = "TamperAlertWorker"
     }
 
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(applicationContext).getString(resId, *args)
+
     override suspend fun doWork(): Result {
         Timber.d("$TAG: Starting tamper alert work")
 
@@ -44,7 +49,7 @@ class TamperAlertWorker @AssistedInject constructor(
         val tamperType = inputData.getString(TamperDetectionReceiver.KEY_TAMPER_TYPE)
             ?: return Result.failure()
         val tamperDetails = inputData.getString(TamperDetectionReceiver.KEY_TAMPER_DETAILS)
-            ?: "Unknown tamper attempt"
+            ?: getString(R.string.tamper_unknown_attempt)
 
         // Skip if not a child device
         if (preferencesManager.isParent) {
@@ -59,50 +64,41 @@ class TamperAlertWorker @AssistedInject constructor(
         }
 
         // Create alert based on tamper type
+        val deviceLabel = preferencesManager.deviceName ?: Build.MODEL
         val (title, message, severity) = when (tamperType) {
             TamperDetectionReceiver.TAMPER_TYPE_DATA_CLEARED -> Triple(
-                "App Data Cleared",
-                "Haris data was cleared on ${preferencesManager.deviceName ?: Build.MODEL}. " +
-                    "All monitoring settings and history have been lost. " +
-                    "The child may be attempting to bypass parental controls.",
+                getString(R.string.tamper_data_cleared_title),
+                getString(R.string.tamper_data_cleared_msg, deviceLabel),
                 AlertSeverity.CRITICAL
             )
             TamperDetectionReceiver.TAMPER_TYPE_APP_DISABLED -> Triple(
-                "Haris Disabled",
-                "Haris was disabled on ${preferencesManager.deviceName ?: Build.MODEL}. " +
-                    "Monitoring is no longer active. Please re-enable the app.",
+                getString(R.string.tamper_app_disabled_title),
+                getString(R.string.tamper_app_disabled_msg, deviceLabel),
                 AlertSeverity.CRITICAL
             )
             TamperDetectionReceiver.TAMPER_TYPE_FORCE_STOPPED -> Triple(
-                "Haris Force Stopped",
-                "Haris was force stopped on ${preferencesManager.deviceName ?: Build.MODEL}. " +
-                    "Monitoring has been interrupted.",
+                getString(R.string.tamper_force_stopped_title),
+                getString(R.string.tamper_force_stopped_msg, deviceLabel),
                 AlertSeverity.HIGH
             )
             "vpn_disconnected" -> Triple(
-                "VPN Content Filter Disabled",
-                "The VPN content filter was disconnected on ${preferencesManager.deviceName ?: Build.MODEL}. " +
-                    "Web content filtering is no longer protecting this device. " +
-                    "Please reconnect the VPN in the Haris app.",
+                getString(R.string.tamper_vpn_disconnected_title),
+                getString(R.string.tamper_vpn_disconnected_msg, deviceLabel),
                 AlertSeverity.HIGH
             )
             "foreign_vpn" -> Triple(
-                "Another VPN App Detected",
-                "A third-party VPN app is active on ${preferencesManager.deviceName ?: Build.MODEL}. " +
-                    "Android allows only one VPN at a time, so SafeGuard's content filter cannot run " +
-                    "while it is on and web filtering is bypassed. Check the device for a VPN app " +
-                    "(e.g. ProtonVPN) and remove it or turn it off.",
+                getString(R.string.tamper_foreign_vpn_title),
+                getString(R.string.tamper_foreign_vpn_msg, deviceLabel),
                 AlertSeverity.HIGH
             )
             "service_stopped" -> Triple(
-                "Monitoring Service Stopped",
-                "The Haris monitoring service was stopped on ${preferencesManager.deviceName ?: Build.MODEL}. " +
-                    "Screen time tracking and app monitoring are interrupted.",
+                getString(R.string.tamper_service_stopped_title),
+                getString(R.string.tamper_service_stopped_msg, deviceLabel),
                 AlertSeverity.HIGH
             )
             else -> Triple(
-                "Tamper Attempt Detected",
-                "A tamper attempt was detected on ${preferencesManager.deviceName ?: Build.MODEL}: $tamperDetails",
+                getString(R.string.tamper_generic_title),
+                getString(R.string.tamper_generic_msg, deviceLabel, tamperDetails),
                 AlertSeverity.HIGH
             )
         }

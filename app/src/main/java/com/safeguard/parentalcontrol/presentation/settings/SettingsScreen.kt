@@ -5,11 +5,12 @@ import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
 import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
@@ -22,13 +23,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.UserRole
-import com.safeguard.parentalcontrol.util.Constants
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import kotlinx.coroutines.flow.collectLatest
 import timber.log.Timber
 
@@ -44,28 +49,26 @@ fun SettingsScreen(
     onNavigateToPermissionsSetup: () -> Unit = {},
     onNavigateToImageReview: () -> Unit = {},
     onNavigateToTextReview: () -> Unit = {},
+    onNavigateToChangePassword: () -> Unit = {},
+    onNavigateToPrivacyPolicy: () -> Unit = {},
+    onNavigateToTerms: () -> Unit = {},
     onLogout: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
-
-    fun openUrl(url: String) {
-        try {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to open URL: %s", url)
-        }
-    }
+    val contentFilteringEnabledMessage = stringResource(R.string.settings_content_filtering_enabled_snackbar)
 
     // Refresh VPN state when returning to this screen
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshContentFilteringState()
+                viewModel.refreshNotificationStatus()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -90,7 +93,7 @@ fun SettingsScreen(
                 }
                 is SettingsEvent.VpnPermissionGranted -> {
                     snackbarHostState.showSnackbar(
-                        message = "Content filtering enabled",
+                        message = contentFilteringEnabledMessage,
                         duration = SnackbarDuration.Short
                     )
                 }
@@ -121,8 +124,8 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             icon = { Icon(Icons.Default.Logout, contentDescription = null) },
-            title = { Text("Log Out?") },
-            text = { Text("Are you sure you want to log out of your account?") },
+            title = { Text(stringResource(R.string.settings_logout_dialog_title)) },
+            text = { Text(stringResource(R.string.logout_confirmation)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -133,12 +136,59 @@ fun SettingsScreen(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Log Out")
+                    Text(stringResource(R.string.logout))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
+    // Language selection dialog
+    if (showLanguageDialog) {
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text(stringResource(R.string.settings_language_dialog_title)) },
+            text = {
+                Column(Modifier.selectableGroup()) {
+                    val options = listOf(
+                        LocaleHelper.LANGUAGE_ENGLISH to stringResource(R.string.settings_language_english),
+                        LocaleHelper.LANGUAGE_ARABIC to stringResource(R.string.settings_language_arabic)
+                    )
+                    options.forEach { (code, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .selectable(
+                                    selected = uiState.currentLanguage == code,
+                                    onClick = {
+                                        showLanguageDialog = false
+                                        if (uiState.currentLanguage != code) {
+                                            viewModel.setLanguage(code)
+                                            (context as? Activity)?.recreate()
+                                        }
+                                    },
+                                    role = Role.RadioButton
+                                )
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = uiState.currentLanguage == code,
+                                onClick = null
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(stringResource(R.string.common_ok))
                 }
             }
         )
@@ -147,10 +197,14 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            modifier = Modifier.mirrorInRtl()
+                        )
                     }
                 }
             )
@@ -176,12 +230,12 @@ fun SettingsScreen(
 
             // Content Filtering section (parent only - child's content filtering is controlled by parent)
             if (uiState.userRole == UserRole.PARENT) {
-                SettingsSection(title = "Content Filtering") {
+                SettingsSection(title = stringResource(R.string.settings_content_filtering)) {
                     // Text Monitoring Settings
                     SettingsItem(
                         icon = Icons.Default.Message,
-                        title = "Text Monitoring",
-                        subtitle = "Configure text analysis and alert categories",
+                        title = stringResource(R.string.settings_text_monitoring),
+                        subtitle = stringResource(R.string.settings_text_monitoring_desc),
                         onClick = onNavigateToTextMonitoringSettings
                     )
 
@@ -189,8 +243,8 @@ fun SettingsScreen(
                     Divider(modifier = Modifier.padding(horizontal = 16.dp))
                     SettingsItem(
                         icon = Icons.Default.TextFields,
-                        title = "Custom Word Lists",
-                        subtitle = "Add words to whitelist or blacklist",
+                        title = stringResource(R.string.settings_custom_word_lists),
+                        subtitle = stringResource(R.string.settings_custom_word_lists_desc),
                         onClick = onNavigateToWordList
                     )
                 }
@@ -198,12 +252,12 @@ fun SettingsScreen(
 
             // Child-specific section
             if (uiState.userRole == UserRole.CHILD) {
-                SettingsSection(title = "Device Setup") {
+                SettingsSection(title = stringResource(R.string.settings_device_setup)) {
                     // Permissions Setup (child only)
                     SettingsItem(
                         icon = Icons.Default.Settings,
-                        title = "Permissions Setup",
-                        subtitle = "Configure required permissions for monitoring",
+                        title = stringResource(R.string.settings_permissions_setup),
+                        subtitle = stringResource(R.string.settings_permissions_setup_desc),
                         onClick = onNavigateToPermissionsSetup
                     )
 
@@ -211,11 +265,11 @@ fun SettingsScreen(
                     Divider(modifier = Modifier.padding(horizontal = 16.dp))
                     SettingsItem(
                         icon = Icons.Default.Shield,
-                        title = "Content Filtering",
+                        title = stringResource(R.string.settings_content_filtering),
                         subtitle = if (uiState.isContentFilteringEnabled) {
-                            "Active - Controlled by parent"
+                            stringResource(R.string.settings_content_filtering_active)
                         } else {
-                            "Inactive - Controlled by parent"
+                            stringResource(R.string.settings_content_filtering_inactive)
                         },
                         onClick = { },
                         trailing = {
@@ -235,61 +289,104 @@ fun SettingsScreen(
                 // Parent Review section (parent, on the child's device, behind a PIN).
                 // Flagged photos and text never leave the device; the PIN keeps the child
                 // from opening these surfaces.
-                SettingsSection(title = "Parent Review") {
+                SettingsSection(title = stringResource(R.string.settings_parent_review)) {
                     SettingsItem(
                         icon = Icons.Default.Image,
-                        title = "Review Flagged Images",
-                        subtitle = "Parent: Review and approve/reject blurred images",
+                        title = stringResource(R.string.settings_review_images),
+                        subtitle = stringResource(R.string.settings_review_images_desc),
                         onClick = onNavigateToImageReview
                     )
 
                     Divider(modifier = Modifier.padding(horizontal = 16.dp))
                     SettingsItem(
                         icon = Icons.Default.Message,
-                        title = "Review Flagged Text",
-                        subtitle = "Parent: See phrases flagged on this device",
+                        title = stringResource(R.string.settings_review_text),
+                        subtitle = stringResource(R.string.settings_review_text_desc),
                         onClick = onNavigateToTextReview
                     )
                 }
             }
 
-            // Notifications section
-            SettingsSection(title = "Notifications") {
+            // Language section
+            SettingsSection(title = stringResource(R.string.settings_language_title)) {
                 SettingsItem(
-                    icon = Icons.Default.Notifications,
-                    title = "Push Notifications",
-                    subtitle = "Manage notification preferences",
-                    onClick = { /* TODO */ },
-                    trailing = {
-                        Text(
-                            text = "Coming soon",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    icon = Icons.Default.Language,
+                    title = stringResource(R.string.settings_language_title),
+                    subtitle = if (uiState.currentLanguage == LocaleHelper.LANGUAGE_ARABIC) {
+                        stringResource(R.string.settings_language_arabic)
+                    } else {
+                        stringResource(R.string.settings_language_english)
+                    },
+                    onClick = { showLanguageDialog = true }
                 )
             }
 
-            // Account section
-            SettingsSection(title = "Account") {
+            // Notifications section
+            SettingsSection(title = stringResource(R.string.settings_notifications)) {
                 SettingsItem(
-                    icon = Icons.Default.Security,
-                    title = "Change Password",
-                    subtitle = "Update your account password",
-                    onClick = { /* TODO */ },
+                    icon = Icons.Default.Notifications,
+                    title = stringResource(R.string.settings_notifications),
+                    subtitle = if (uiState.notificationsEnabled) {
+                        stringResource(R.string.settings_notifications_on)
+                    } else {
+                        stringResource(R.string.settings_notifications_off_tap)
+                    },
+                    onClick = {
+                        try {
+                            context.startActivity(
+                                Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                    putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                }
+                            )
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to open notification settings")
+                        }
+                    },
                     trailing = {
                         Text(
-                            text = "Coming soon",
+                            text = if (uiState.notificationsEnabled) {
+                                stringResource(R.string.settings_notifications_on)
+                            } else {
+                                stringResource(R.string.settings_notifications_off)
+                            },
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (uiState.notificationsEnabled) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            }
                         )
                     }
+                )
+                // Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                // SettingsItem(
+                //     icon = Icons.Default.Notifications,
+                //     title = "Push Notifications",
+                //     subtitle = "Manage notification preferences",
+                //     onClick = { /* TODO */ },
+                //     trailing = {
+                //         Text(
+                //             text = "Coming soon",
+                //             style = MaterialTheme.typography.bodySmall,
+                //             color = MaterialTheme.colorScheme.onSurfaceVariant
+                //         )
+                //     }
+                // )
+            }
+
+            // Account section
+            SettingsSection(title = stringResource(R.string.settings_account)) {
+                SettingsItem(
+                    icon = Icons.Default.Security,
+                    title = stringResource(R.string.settings_change_password),
+                    subtitle = stringResource(R.string.settings_change_password_desc),
+                    onClick = onNavigateToChangePassword
                 )
                 Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 SettingsItem(
                     icon = Icons.Default.Logout,
-                    title = "Log Out",
-                    subtitle = "Sign out of your account",
+                    title = stringResource(R.string.logout),
+                    subtitle = stringResource(R.string.settings_logout_item_desc),
                     onClick = { showLogoutDialog = true },
                     iconTint = MaterialTheme.colorScheme.error,
                     titleColor = MaterialTheme.colorScheme.error
@@ -297,26 +394,26 @@ fun SettingsScreen(
             }
 
             // About section
-            SettingsSection(title = "About") {
+            SettingsSection(title = stringResource(R.string.settings_about)) {
                 SettingsItem(
                     icon = Icons.Default.Info,
-                    title = "App Version",
-                    subtitle = "1.0.0",
+                    title = stringResource(R.string.settings_app_version),
+                    subtitle = stringResource(R.string.settings_app_version_number),
                     onClick = { }
                 )
                 Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 SettingsItem(
                     icon = Icons.Default.Policy,
-                    title = "Privacy Policy",
-                    subtitle = "View our privacy policy",
-                    onClick = { openUrl(Constants.PRIVACY_POLICY_URL) }
+                    title = stringResource(R.string.settings_privacy_policy),
+                    subtitle = stringResource(R.string.settings_privacy_policy_desc),
+                    onClick = onNavigateToPrivacyPolicy
                 )
                 Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 SettingsItem(
                     icon = Icons.Default.Description,
-                    title = "Terms of Service",
-                    subtitle = "View our terms of service",
-                    onClick = { openUrl(Constants.TERMS_OF_SERVICE_URL) }
+                    title = stringResource(R.string.settings_terms),
+                    subtitle = stringResource(R.string.settings_terms_desc),
+                    onClick = onNavigateToTerms
                 )
             }
 
@@ -382,7 +479,11 @@ private fun ProfileSection(
                     onClick = { },
                     label = {
                         Text(
-                            text = if (userRole == UserRole.PARENT) "Parent Account" else "Child Account"
+                            text = if (userRole == UserRole.PARENT) {
+                                stringResource(R.string.settings_profile_parent_account)
+                            } else {
+                                stringResource(R.string.settings_profile_child_account)
+                            }
                         )
                     },
                     leadingIcon = {

@@ -1,11 +1,15 @@
 package com.safeguard.parentalcontrol.presentation.children
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.FamilyLink
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.FamilyRepository
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,11 +29,15 @@ data class ChildrenUiState(
 
 @HiltViewModel
 class ChildrenViewModel @Inject constructor(
-    private val familyRepository: FamilyRepository
+    private val familyRepository: FamilyRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChildrenUiState())
     val uiState: StateFlow<ChildrenUiState> = _uiState.asStateFlow()
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(context).getString(resId, *args)
 
     init {
         loadChildren()
@@ -84,7 +92,7 @@ class ChildrenViewModel @Inject constructor(
     fun addChild(pairingCode: String) {
         val code = pairingCode.trim()
         if (code.isBlank()) {
-            _uiState.update { it.copy(addChildError = "Enter the code shown on your child's device") }
+            _uiState.update { it.copy(addChildError = getString(R.string.children_error_enter_code)) }
             return
         }
 
@@ -98,7 +106,7 @@ class ChildrenViewModel @Inject constructor(
                             children = it.children + result.data,
                             isAddingChild = false,
                             showAddDialog = false,
-                            successMessage = "Successfully linked ${result.data.childName}"
+                            successMessage = getString(R.string.children_msg_linked, result.data.childName)
                         )
                     }
                 }
@@ -128,7 +136,7 @@ class ChildrenViewModel @Inject constructor(
                         it.copy(
                             children = it.children.filter { child -> child.childId != childId },
                             isLoading = false,
-                            successMessage = "Removed $childName from your family"
+                            successMessage = getString(R.string.children_msg_removed, childName)
                         )
                     }
                 }

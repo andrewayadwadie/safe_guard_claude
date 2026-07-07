@@ -12,8 +12,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.theme.SafeGuardDimens
 import com.safeguard.parentalcontrol.presentation.theme.SemanticColors
 
@@ -112,9 +114,9 @@ fun EmptyDevicesState(
 ) {
     EmptyState(
         icon = Icons.Outlined.Devices,
-        title = "No Devices Yet",
-        description = "Add a child's device to start monitoring their activity and keeping them safe online.",
-        actionLabel = if (onAddDevice != null) "Add Device" else null,
+        title = stringResource(R.string.components_empty_devices_title),
+        description = stringResource(R.string.components_empty_devices_desc),
+        actionLabel = if (onAddDevice != null) stringResource(R.string.components_empty_devices_action) else null,
         onAction = onAddDevice,
         modifier = modifier
     )
@@ -130,11 +132,11 @@ fun EmptyAlertsState(
 ) {
     EmptyState(
         icon = Icons.Outlined.NotificationsNone,
-        title = if (filterApplied) "No Matching Alerts" else "All Clear!",
+        title = if (filterApplied) stringResource(R.string.components_empty_alerts_title_filtered) else stringResource(R.string.components_empty_alerts_title_clear),
         description = if (filterApplied) {
-            "No alerts match your current filter. Try adjusting the filter or check back later."
+            stringResource(R.string.components_empty_alerts_desc_filtered)
         } else {
-            "There are no alerts to show. Your child's online activity looks safe!"
+            stringResource(R.string.components_empty_alerts_desc_clear)
         },
         modifier = modifier
     )
@@ -150,11 +152,11 @@ fun EmptyAppUsageState(
 ) {
     EmptyState(
         icon = Icons.Outlined.Apps,
-        title = if (hasPermission) "No Usage Data" else "Permission Required",
+        title = if (hasPermission) stringResource(R.string.components_empty_usage_title_has_perm) else stringResource(R.string.components_empty_usage_title_no_perm),
         description = if (hasPermission) {
-            "No app usage data available yet. Check back later to see which apps are being used."
+            stringResource(R.string.components_empty_usage_desc_has_perm)
         } else {
-            "Grant usage access permission to see app usage statistics."
+            stringResource(R.string.components_empty_usage_desc_no_perm)
         },
         modifier = modifier
     )
@@ -170,9 +172,9 @@ fun EmptyChildrenState(
 ) {
     EmptyState(
         icon = Icons.Outlined.FamilyRestroom,
-        title = "No Children Linked",
-        description = "Link your child's account to start monitoring their device activity and online safety.",
-        actionLabel = if (onLinkChild != null) "Link Child Account" else null,
+        title = stringResource(R.string.components_empty_children_title),
+        description = stringResource(R.string.components_empty_children_desc),
+        actionLabel = if (onLinkChild != null) stringResource(R.string.components_empty_children_action) else null,
         onAction = onLinkChild,
         modifier = modifier
     )
@@ -187,8 +189,8 @@ fun EmptyScreenTimeState(
 ) {
     EmptyState(
         icon = Icons.Outlined.Timer,
-        title = "No Screen Time Data",
-        description = "Screen time tracking hasn't recorded any data yet. It will update as the device is used.",
+        title = stringResource(R.string.components_empty_screentime_title),
+        description = stringResource(R.string.components_empty_screentime_desc),
         modifier = modifier
     )
 }
@@ -204,9 +206,9 @@ fun EmptyWordListState(
 ) {
     EmptyState(
         icon = Icons.Outlined.TextFields,
-        title = "No Custom ${listType.replaceFirstChar { it.uppercase() }}",
-        description = "Add custom words to monitor for in text messages and content. These help identify concerning content.",
-        actionLabel = if (onAddWord != null) "Add Word" else null,
+        title = stringResource(R.string.components_empty_wordlist_title, listType.replaceFirstChar { it.uppercase() }),
+        description = stringResource(R.string.components_empty_wordlist_desc),
+        actionLabel = if (onAddWord != null) stringResource(R.string.components_empty_wordlist_action) else null,
         onAction = onAddWord,
         modifier = modifier
     )
@@ -221,8 +223,8 @@ fun EmptyWordListState(
  */
 @Composable
 fun ErrorState(
-    title: String = "Something Went Wrong",
-    message: String = "We couldn't load the data. Please try again.",
+    title: String = stringResource(R.string.components_error_title),
+    message: String = stringResource(R.string.components_error_desc),
     modifier: Modifier = Modifier,
     onRetry: (() -> Unit)? = null
 ) {
@@ -273,7 +275,7 @@ fun ErrorState(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(SafeGuardDimens.spacingSm))
-                Text("Try Again")
+                Text(stringResource(R.string.components_error_try_again))
             }
         }
     }
@@ -288,8 +290,8 @@ fun NetworkErrorState(
     onRetry: (() -> Unit)? = null
 ) {
     ErrorState(
-        title = "No Connection",
-        message = "Please check your internet connection and try again.",
+        title = stringResource(R.string.components_network_error_title),
+        message = stringResource(R.string.components_network_error_message),
         modifier = modifier,
         onRetry = onRetry
     )
@@ -321,7 +323,7 @@ fun PermissionDeniedState(
         Spacer(modifier = Modifier.height(SafeGuardDimens.spacingXl))
 
         Text(
-            text = "Permission Required",
+            text = stringResource(R.string.components_permission_required_title),
             style = MaterialTheme.typography.titleLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurface
@@ -330,7 +332,7 @@ fun PermissionDeniedState(
         Spacer(modifier = Modifier.height(SafeGuardDimens.spacingSm))
 
         Text(
-            text = "Haris needs $permissionName permission to work properly. Please grant access in settings.",
+            text = stringResource(R.string.components_permission_required_desc, permissionName),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -351,7 +353,7 @@ fun PermissionDeniedState(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(SafeGuardDimens.spacingSm))
-                Text("Open Settings")
+                Text(stringResource(R.string.components_open_settings))
             }
         }
     }
@@ -435,7 +437,7 @@ fun InlineErrorState(
             )
             if (onRetry != null) {
                 TextButton(onClick = onRetry) {
-                    Text("Retry")
+                    Text(stringResource(R.string.components_inline_retry))
                 }
             }
         }

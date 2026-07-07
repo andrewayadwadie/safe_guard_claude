@@ -1,12 +1,16 @@
 package com.safeguard.parentalcontrol.presentation.wordlist
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.CustomWordResponse
 import com.safeguard.parentalcontrol.data.model.WordListType
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.CustomWordRepository
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -82,11 +86,15 @@ val WORD_CATEGORIES = listOf(
  */
 @HiltViewModel
 class WordListViewModel @Inject constructor(
-    private val customWordRepository: CustomWordRepository
+    private val customWordRepository: CustomWordRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WordListUiState())
     val uiState: StateFlow<WordListUiState> = _uiState.asStateFlow()
+
+    private fun getString(resId: Int, vararg args: Any): String =
+        LocaleHelper.localizedContext(context).getString(resId, *args)
 
     init {
         loadWordLists()
@@ -128,13 +136,13 @@ class WordListViewModel @Inject constructor(
         val trimmedWord = word.trim()
 
         if (trimmedWord.isBlank()) {
-            _uiState.update { it.copy(error = "Word cannot be empty") }
+            _uiState.update { it.copy(error = getString(R.string.wordlist_error_word_empty)) }
             return
         }
 
         // Check if already exists
         if (_uiState.value.whitelist.any { it.word.equals(trimmedWord, ignoreCase = true) }) {
-            _uiState.update { it.copy(error = "Word already in whitelist") }
+            _uiState.update { it.copy(error = getString(R.string.wordlist_error_whitelist_dup)) }
             return
         }
 
@@ -150,7 +158,7 @@ class WordListViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             whitelist = it.whitelist + result.data,
-                            successMessage = "Word added to whitelist"
+                            successMessage = getString(R.string.wordlist_msg_added_whitelist)
                         )
                     }
                 }
@@ -176,13 +184,13 @@ class WordListViewModel @Inject constructor(
         val trimmedWord = word.trim()
 
         if (trimmedWord.isBlank()) {
-            _uiState.update { it.copy(error = "Word cannot be empty") }
+            _uiState.update { it.copy(error = getString(R.string.wordlist_error_word_empty)) }
             return
         }
 
         // Check if already exists
         if (_uiState.value.blacklist.any { it.word.equals(trimmedWord, ignoreCase = true) }) {
-            _uiState.update { it.copy(error = "Word already in blacklist") }
+            _uiState.update { it.copy(error = getString(R.string.wordlist_error_blacklist_dup)) }
             return
         }
 
@@ -201,7 +209,7 @@ class WordListViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             blacklist = it.blacklist + result.data,
-                            successMessage = "Word added to blacklist"
+                            successMessage = getString(R.string.wordlist_msg_added_blacklist)
                         )
                     }
                 }
@@ -229,7 +237,7 @@ class WordListViewModel @Inject constructor(
                             isLoading = false,
                             whitelist = it.whitelist.filter { w -> w.id != wordId },
                             blacklist = it.blacklist.filter { w -> w.id != wordId },
-                            successMessage = "Word removed"
+                            successMessage = getString(R.string.wordlist_msg_removed)
                         )
                     }
                 }
@@ -257,13 +265,13 @@ class WordListViewModel @Inject constructor(
                             it.copy(
                                 isLoading = false,
                                 whitelist = emptyList(),
-                                successMessage = "Whitelist cleared"
+                                successMessage = getString(R.string.wordlist_msg_cleared_whitelist)
                             )
                         } else {
                             it.copy(
                                 isLoading = false,
                                 blacklist = emptyList(),
-                                successMessage = "Blacklist cleared"
+                                successMessage = getString(R.string.wordlist_msg_cleared_blacklist)
                             )
                         }
                     }

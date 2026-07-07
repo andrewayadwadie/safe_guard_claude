@@ -18,11 +18,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.CustomWordResponse
 import com.safeguard.parentalcontrol.data.model.WordListType
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 
 /**
  * Screen for parents to manage custom word lists (whitelist/blacklist)
@@ -54,18 +57,18 @@ fun WordListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Custom Word Lists") },
+                title = { Text(stringResource(R.string.wordlist_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.common_back), modifier = Modifier.mirrorInRtl())
                     }
                 },
                 actions = {
                     IconButton(onClick = { showClearConfirmDialog = true }) {
-                        Icon(Icons.Default.DeleteSweep, contentDescription = "Clear list")
+                        Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.wordlist_cd_clear_list))
                     }
                     IconButton(onClick = { viewModel.loadWordLists() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.alerts_cd_refresh))
                     }
                 }
             )
@@ -74,7 +77,7 @@ fun WordListScreen(
             FloatingActionButton(
                 onClick = { showAddDialog = true }
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add word")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.wordlist_cd_add_word))
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -91,13 +94,13 @@ fun WordListScreen(
                 Tab(
                     selected = uiState.selectedTab == WordListTab.BLACKLIST,
                     onClick = { viewModel.selectTab(WordListTab.BLACKLIST) },
-                    text = { Text("Blacklist (${uiState.blacklist.size})") },
+                    text = { Text(stringResource(R.string.wordlist_tab_blacklist, uiState.blacklist.size)) },
                     icon = { Icon(Icons.Default.Block, contentDescription = null) }
                 )
                 Tab(
                     selected = uiState.selectedTab == WordListTab.WHITELIST,
                     onClick = { viewModel.selectTab(WordListTab.WHITELIST) },
-                    text = { Text("Whitelist (${uiState.whitelist.size})") },
+                    text = { Text(stringResource(R.string.wordlist_tab_whitelist, uiState.whitelist.size)) },
                     icon = { Icon(Icons.Default.Check, contentDescription = null) }
                 )
             }
@@ -123,18 +126,18 @@ fun WordListScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = if (uiState.selectedTab == WordListTab.BLACKLIST)
-                            "Blacklisted Words"
+                            stringResource(R.string.wordlist_blacklisted_words_title)
                         else
-                            "Whitelisted Words",
+                            stringResource(R.string.wordlist_whitelisted_words_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = if (uiState.selectedTab == WordListTab.BLACKLIST)
-                            "These words will always be flagged as inappropriate, even if they don't match the default patterns."
+                            stringResource(R.string.wordlist_blacklist_desc)
                         else
-                            "These words will be allowed and won't trigger alerts, even if they match default patterns (except for safety-critical content like self-harm).",
+                            stringResource(R.string.wordlist_whitelist_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -178,18 +181,20 @@ fun WordListScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = if (hasActiveFilters)
-                                "No matching words found"
+                                stringResource(R.string.wordlist_empty_no_match)
+                            else if (uiState.selectedTab == WordListTab.BLACKLIST)
+                                stringResource(R.string.wordlist_empty_none_blacklist)
                             else
-                                "No words in ${if (uiState.selectedTab == WordListTab.BLACKLIST) "blacklist" else "whitelist"}",
+                                stringResource(R.string.wordlist_empty_none_whitelist),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = if (hasActiveFilters)
-                                "Try adjusting your search or filters"
+                                stringResource(R.string.wordlist_empty_try_filters)
                             else
-                                "Tap + to add words",
+                                stringResource(R.string.wordlist_empty_tap_add),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -198,7 +203,7 @@ fun WordListScreen(
                             TextButton(onClick = { viewModel.clearFilters() }) {
                                 Icon(Icons.Default.Clear, contentDescription = null)
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Clear Filters")
+                                Text(stringResource(R.string.wordlist_clear_filters))
                             }
                         }
                     }
@@ -207,7 +212,7 @@ fun WordListScreen(
                 // Show filter results count if filters are active
                 if (hasActiveFilters && filteredList.isNotEmpty()) {
                     Text(
-                        text = "Showing ${filteredList.size} of $totalCount words",
+                        text = stringResource(R.string.wordlist_showing_count, filteredList.size, totalCount),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -250,9 +255,21 @@ fun WordListScreen(
     if (showClearConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
-            title = { Text("Clear ${if (uiState.selectedTab == WordListTab.BLACKLIST) "Blacklist" else "Whitelist"}?") },
+            title = {
+                Text(
+                    if (uiState.selectedTab == WordListTab.BLACKLIST)
+                        stringResource(R.string.wordlist_clear_title_blacklist)
+                    else
+                        stringResource(R.string.wordlist_clear_title_whitelist)
+                )
+            },
             text = {
-                Text("This will remove all words from the ${if (uiState.selectedTab == WordListTab.BLACKLIST) "blacklist" else "whitelist"}. This action cannot be undone.")
+                Text(
+                    if (uiState.selectedTab == WordListTab.BLACKLIST)
+                        stringResource(R.string.wordlist_clear_message_blacklist)
+                    else
+                        stringResource(R.string.wordlist_clear_message_whitelist)
+                )
             },
             confirmButton = {
                 TextButton(
@@ -265,12 +282,12 @@ fun WordListScreen(
                         showClearConfirmDialog = false
                     }
                 ) {
-                    Text("Clear All", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.wordlist_clear_all_button), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirmDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -310,14 +327,14 @@ private fun WordListItem(
                         if (word.caseSensitive) {
                             AssistChip(
                                 onClick = { },
-                                label = { Text("Case sensitive", style = MaterialTheme.typography.labelSmall) },
+                                label = { Text(stringResource(R.string.wordlist_chip_case_sensitive), style = MaterialTheme.typography.labelSmall) },
                                 modifier = Modifier.height(24.dp)
                             )
                         }
                         if (!word.wholeWordOnly) {
                             AssistChip(
                                 onClick = { },
-                                label = { Text("Partial match", style = MaterialTheme.typography.labelSmall) },
+                                label = { Text(stringResource(R.string.wordlist_chip_partial_match), style = MaterialTheme.typography.labelSmall) },
                                 modifier = Modifier.height(24.dp)
                             )
                         }
@@ -327,7 +344,7 @@ private fun WordListItem(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Remove",
+                    contentDescription = stringResource(R.string.screentime_cd_remove),
                     tint = MaterialTheme.colorScheme.error
                 )
             }
@@ -351,14 +368,19 @@ private fun AddWordDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(if (isBlacklist) "Add to Blacklist" else "Add to Whitelist")
+            Text(
+                if (isBlacklist)
+                    stringResource(R.string.wordlist_add_dialog_title_blacklist)
+                else
+                    stringResource(R.string.wordlist_add_dialog_title_whitelist)
+            )
         },
         text = {
             Column {
                 OutlinedTextField(
                     value = word,
                     onValueChange = { word = it },
-                    label = { Text("Word or phrase") },
+                    label = { Text(stringResource(R.string.wordlist_word_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -375,7 +397,7 @@ private fun AddWordDialog(
                             value = selectedCategory,
                             onValueChange = { },
                             readOnly = true,
-                            label = { Text("Category") },
+                            label = { Text(stringResource(R.string.wordlist_category_label)) },
                             trailingIcon = {
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded)
                             },
@@ -409,7 +431,7 @@ private fun AddWordDialog(
                             checked = caseSensitive,
                             onCheckedChange = { caseSensitive = it }
                         )
-                        Text("Case sensitive")
+                        Text(stringResource(R.string.wordlist_case_sensitive_label))
                     }
 
                     Row(
@@ -419,7 +441,7 @@ private fun AddWordDialog(
                             checked = wholeWordOnly,
                             onCheckedChange = { wholeWordOnly = it }
                         )
-                        Text("Match whole word only")
+                        Text(stringResource(R.string.wordlist_whole_word_label))
                     }
                 }
             }
@@ -433,12 +455,12 @@ private fun AddWordDialog(
                 },
                 enabled = word.isNotBlank()
             ) {
-                Text("Add")
+                Text(stringResource(R.string.wordlist_add_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -472,14 +494,14 @@ private fun SearchAndFilterSection(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search words...") },
+            placeholder = { Text(stringResource(R.string.wordlist_search_placeholder)) },
             leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = "Search")
+                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.wordlist_cd_search))
             },
             trailingIcon = {
                 if (searchQuery.isNotBlank()) {
                     IconButton(onClick = { onSearchQueryChange("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                        Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.wordlist_cd_clear_search))
                     }
                 }
             },
@@ -505,13 +527,13 @@ private fun SearchAndFilterSection(
                     modifier = Modifier.weight(1f)
                 ) {
                     OutlinedTextField(
-                        value = selectedCategory?.let { formatCategoryName(it) } ?: "All categories",
+                        value = selectedCategory?.let { formatCategoryName(it) } ?: stringResource(R.string.wordlist_all_categories),
                         onValueChange = { },
                         readOnly = true,
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(),
-                        label = { Text("Category") },
+                        label = { Text(stringResource(R.string.wordlist_category_label)) },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded)
                         },
@@ -528,7 +550,7 @@ private fun SearchAndFilterSection(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    "All categories",
+                                    stringResource(R.string.wordlist_all_categories),
                                     fontWeight = if (selectedCategory == null) FontWeight.Bold else FontWeight.Normal
                                 )
                             },
@@ -584,7 +606,7 @@ private fun SearchAndFilterSection(
                             contentColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Icon(Icons.Default.FilterListOff, contentDescription = "Clear all filters")
+                        Icon(Icons.Default.FilterListOff, contentDescription = stringResource(R.string.wordlist_cd_clear_all_filters))
                     }
                 }
             }

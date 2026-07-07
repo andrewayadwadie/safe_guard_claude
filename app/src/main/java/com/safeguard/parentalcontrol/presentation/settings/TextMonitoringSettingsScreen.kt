@@ -15,9 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 
 /**
  * Screen for configuring text monitoring settings.
@@ -49,15 +52,15 @@ fun TextMonitoringSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Text Monitoring") },
+                title = { Text(stringResource(R.string.textmon_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.common_back), modifier = Modifier.mirrorInRtl())
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.refreshStats() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.alerts_cd_refresh))
                     }
                 }
             )
@@ -89,7 +92,7 @@ fun TextMonitoringSettingsScreen(
 
                 // Categories section
                 Text(
-                    text = "Content Categories",
+                    text = stringResource(R.string.textmon_categories_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -97,7 +100,7 @@ fun TextMonitoringSettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Select which types of content to monitor. Critical categories for child safety cannot be disabled.",
+                    text = stringResource(R.string.textmon_categories_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -124,14 +127,14 @@ fun TextMonitoringSettingsScreen(
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Manage Custom Word List")
+                    Text(stringResource(R.string.textmon_manage_wordlist))
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Alert preferences section
                 Text(
-                    text = "Alert Preferences",
+                    text = stringResource(R.string.textmon_alert_prefs_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -139,8 +142,8 @@ fun TextMonitoringSettingsScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 PreferenceToggle(
-                    title = "Alert Sound",
-                    description = "Play a sound when alerts are received",
+                    title = stringResource(R.string.textmon_alert_sound_title),
+                    description = stringResource(R.string.textmon_alert_sound_desc),
                     icon = Icons.Default.VolumeUp,
                     isEnabled = uiState.alertSoundEnabled,
                     onToggle = { viewModel.setAlertSoundEnabled(it) }
@@ -149,8 +152,8 @@ fun TextMonitoringSettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 PreferenceToggle(
-                    title = "Vibration",
-                    description = "Vibrate when alerts are received",
+                    title = stringResource(R.string.textmon_vibration_title),
+                    description = stringResource(R.string.textmon_vibration_desc),
                     icon = Icons.Default.Vibration,
                     isEnabled = uiState.vibrationEnabled,
                     onToggle = { viewModel.setVibrationEnabled(it) }
@@ -201,15 +204,15 @@ private fun MainToggleCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Text Monitoring",
+                    text = stringResource(R.string.textmon_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = if (isEnabled) {
-                        "Actively monitoring text content"
+                        stringResource(R.string.textmon_monitoring_active)
                     } else {
-                        "Monitoring is paused"
+                        stringResource(R.string.textmon_monitoring_paused)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -259,7 +262,7 @@ private fun CategoryCard(
                                 color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
                             ) {
                                 Text(
-                                    text = "Required",
+                                    text = stringResource(R.string.textmon_required_badge),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -295,13 +298,13 @@ private fun CategoryCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Alerts today: ${stats.alertsToday}/${stats.dailyLimit}",
+                            text = stringResource(R.string.textmon_alerts_today, stats.alertsToday, stats.dailyLimit),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         if (!stats.isCooldownPassed()) {
                             Text(
-                                text = "Cooldown: ${stats.getRemainingCooldownSeconds()}s",
+                                text = stringResource(R.string.textmon_cooldown, stats.getRemainingCooldownSeconds()),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.tertiary
                             )
@@ -386,16 +389,14 @@ private fun InfoCard() {
 
             Column {
                 Text(
-                    text = "Privacy Note",
+                    text = stringResource(R.string.textmon_privacy_title),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.tertiary
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Text content is analyzed locally on the device. Only alert " +
-                            "notifications (category, app name, timestamp) are sent to your " +
-                            "dashboard. Actual text content is never stored or transmitted.",
+                    text = stringResource(R.string.textmon_privacy_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )

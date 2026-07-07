@@ -23,10 +23,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 import com.safeguard.parentalcontrol.util.AccessibilityServiceHelper
 import kotlinx.coroutines.flow.collectLatest
 import timber.log.Timber
@@ -133,10 +136,14 @@ fun PermissionsSetupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Setup Permissions") },
+                title = { Text(stringResource(R.string.permissions_setup_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            modifier = Modifier.mirrorInRtl()
+                        )
                     }
                 }
             )
@@ -161,7 +168,7 @@ fun PermissionsSetupScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Permission Setup",
+                text = stringResource(R.string.permissions_heading),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -169,8 +176,7 @@ fun PermissionsSetupScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "To protect your child, Haris needs the following permissions. " +
-                        "These permissions allow us to monitor activity and enforce screen time limits.",
+                text = stringResource(R.string.permissions_intro),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -201,7 +207,7 @@ fun PermissionsSetupScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "$grantedCount of 7 permissions granted",
+                    text = stringResource(R.string.permissions_granted_count, grantedCount, 7),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -211,7 +217,7 @@ fun PermissionsSetupScreen(
 
             // Permission cards
             PermissionCard(
-                title = "Accessibility Service",
+                title = stringResource(R.string.permissions_accessibility_title),
                 description = viewModel.getAccessibilityDescription(),
                 icon = Icons.Default.Accessibility,
                 isGranted = uiState.accessibilityEnabled,
@@ -224,7 +230,7 @@ fun PermissionsSetupScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             PermissionCard(
-                title = "Usage Stats Access",
+                title = stringResource(R.string.permissions_usage_stats_title),
                 description = viewModel.getUsageStatsDescription(),
                 icon = Icons.Default.BarChart,
                 isGranted = uiState.usageStatsEnabled,
@@ -245,7 +251,7 @@ fun PermissionsSetupScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             PermissionCard(
-                title = "Display Over Apps",
+                title = stringResource(R.string.permissions_overlay_title),
                 description = viewModel.getOverlayDescription(),
                 icon = Icons.Default.Layers,
                 isGranted = uiState.overlayEnabled,
@@ -270,7 +276,7 @@ fun PermissionsSetupScreen(
 
             // Battery optimization (required to prevent service being killed)
             PermissionCard(
-                title = "Battery Optimization",
+                title = stringResource(R.string.permissions_battery_title),
                 description = viewModel.getBatteryOptimizationDescription(),
                 icon = Icons.Default.BatteryChargingFull,
                 isGranted = uiState.batteryOptimizationDisabled,
@@ -305,7 +311,7 @@ fun PermissionsSetupScreen(
 
             // VPN permission (required for content filtering)
             PermissionCard(
-                title = "VPN Content Filtering",
+                title = stringResource(R.string.permissions_vpn_title),
                 description = viewModel.getVpnDescription(),
                 icon = Icons.Default.VpnKey,
                 isGranted = uiState.vpnPermissionGranted,
@@ -319,7 +325,7 @@ fun PermissionsSetupScreen(
 
             // Phone state permission (required for allowing calls during bedtime)
             PermissionCard(
-                title = "Phone Calls",
+                title = stringResource(R.string.permissions_phone_title),
                 description = viewModel.getPhoneStateDescription(),
                 icon = Icons.Default.Phone,
                 isGranted = uiState.phoneStatePermissionGranted,
@@ -334,10 +340,9 @@ fun PermissionsSetupScreen(
             // Media permission (for sexting prevention)
             // On Android 11+ this requires "All files access" permission from Settings
             PermissionCard(
-                title = "Photos & Media",
+                title = stringResource(R.string.permissions_media_title),
                 description = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                    "Required for sexting prevention. Enable 'All files access' to allow Haris " +
-                    "to detect and blur inappropriate images, protecting your child from harmful content."
+                    stringResource(R.string.permissions_media_desc_r_plus)
                 } else {
                     viewModel.getMediaDescription()
                 },
@@ -353,7 +358,7 @@ fun PermissionsSetupScreen(
 
             // Optional notification permission
             PermissionCard(
-                title = "Notifications",
+                title = stringResource(R.string.permissions_notifications_title),
                 description = viewModel.getNotificationDescription(),
                 icon = Icons.Default.Notifications,
                 isGranted = uiState.notificationsEnabled,
@@ -382,20 +387,20 @@ fun PermissionsSetupScreen(
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Continue to Dashboard")
+                    Text(stringResource(R.string.permissions_continue_dashboard))
                 }
             } else {
                 OutlinedButton(
                     onClick = onAllPermissionsGranted,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Skip for Now")
+                    Text(stringResource(R.string.permissions_skip_for_now))
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Some features may not work without all permissions",
+                    text = stringResource(R.string.permissions_incomplete_notice),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center
@@ -473,7 +478,7 @@ private fun PermissionCard(
                     if (isRequired) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "*",
+                            text = stringResource(R.string.permissions_required_marker),
                             color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.Bold
                         )
@@ -505,14 +510,14 @@ private fun PermissionCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Active", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.permissions_active), style = MaterialTheme.typography.labelMedium)
                 }
             } else {
                 FilledTonalButton(
                     onClick = onRequestPermission,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Text("Enable", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.permissions_enable), style = MaterialTheme.typography.labelMedium)
                 }
             }
         }

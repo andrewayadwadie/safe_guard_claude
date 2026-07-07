@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.ProtectionStatusHelper
 import com.safeguard.parentalcontrol.worker.ProtectionMonitorWorker
@@ -26,6 +27,9 @@ class SafeGuardApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var preferencesManager: PreferencesManager
+
+    private fun localizedString(resId: Int): String =
+        LocaleHelper.localizedContext(this).getString(resId)
 
     override fun onCreate() {
         super.onCreate()
@@ -83,10 +87,10 @@ class SafeGuardApplication : Application(), Configuration.Provider {
             // Monitoring Service Channel (low importance - persistent notification)
             val monitoringChannel = NotificationChannel(
                 CHANNEL_MONITORING_SERVICE,
-                "Monitoring Service",
+                localizedString(R.string.notif_monitoring_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows when Haris is actively monitoring"
+                description = localizedString(R.string.notif_monitoring_channel_desc)
                 setShowBadge(false)
             }
             notificationManager.createNotificationChannel(monitoringChannel)
@@ -94,10 +98,10 @@ class SafeGuardApplication : Application(), Configuration.Provider {
             // Alerts Channel (high importance)
             val alertsChannel = NotificationChannel(
                 CHANNEL_ALERTS,
-                "Security Alerts",
+                localizedString(R.string.notif_alerts_channel_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Important security and monitoring alerts"
+                description = localizedString(R.string.notif_alerts_channel_desc)
                 enableVibration(true)
                 enableLights(true)
             }
@@ -106,20 +110,20 @@ class SafeGuardApplication : Application(), Configuration.Provider {
             // Screen Time Channel (default importance)
             val screenTimeChannel = NotificationChannel(
                 CHANNEL_SCREEN_TIME,
-                "Screen Time",
+                localizedString(R.string.notif_screentime_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Screen time limit notifications"
+                description = localizedString(R.string.notif_screentime_channel_desc)
             }
             notificationManager.createNotificationChannel(screenTimeChannel)
 
             // Sync Channel (low importance)
             val syncChannel = NotificationChannel(
                 CHANNEL_SYNC,
-                "Data Sync",
+                localizedString(R.string.notif_sync_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Background data synchronization"
+                description = localizedString(R.string.notif_sync_channel_desc)
                 setShowBadge(false)
             }
             notificationManager.createNotificationChannel(syncChannel)
@@ -127,10 +131,10 @@ class SafeGuardApplication : Application(), Configuration.Provider {
             // Lock Screen Channel (max importance for full-screen intent)
             val lockScreenChannel = NotificationChannel(
                 CHANNEL_LOCK_SCREEN,
-                "Lock Screen",
+                localizedString(R.string.notif_lockscreen_channel_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Screen time limit enforcement"
+                description = localizedString(R.string.notif_lockscreen_channel_desc)
                 enableVibration(true)
                 enableLights(true)
                 setBypassDnd(true) // Bypass Do Not Disturb

@@ -64,3 +64,4 @@ Thumbs.db
 *.temp
 *.bak
 *~
+tools/legal-sites/out/

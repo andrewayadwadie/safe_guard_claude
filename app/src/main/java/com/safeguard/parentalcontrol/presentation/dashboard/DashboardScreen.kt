@@ -33,6 +33,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -43,10 +44,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.*
 import com.safeguard.parentalcontrol.presentation.components.*
 import com.safeguard.parentalcontrol.presentation.theme.*
 import com.safeguard.parentalcontrol.presentation.designsystem.HarisGradientHeader
+import com.safeguard.parentalcontrol.presentation.designsystem.HarisLogo
 import androidx.compose.ui.tooling.preview.Preview
 import com.safeguard.parentalcontrol.util.formatAsHoursMinutes
 import com.safeguard.parentalcontrol.util.formatAsRelative
@@ -212,34 +215,17 @@ private fun DashboardTopBar(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // App logo/icon
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            Brush.linearGradient(
-                                colors = SemanticColors.gradientPrimary
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Shield,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                // App logo/icon — Haris brand mark, shown as-is (no box, no tint)
+                HarisLogo(size = 36.dp)
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Haris",
+                        text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (isParent) "Parent Dashboard" else "My Activity",
+                        text = if (isParent) stringResource(R.string.dashboard_role_parent) else stringResource(R.string.dashboard_role_child),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -248,11 +234,12 @@ private fun DashboardTopBar(
         },
         actions = {
             // Refresh button with animation
+            val refreshCd = stringResource(R.string.dashboard_cd_refresh)
             IconButton(
                 onClick = onRefresh,
                 enabled = !isRefreshing,
                 modifier = Modifier.semantics {
-                    contentDescription = "Refresh dashboard"
+                    contentDescription = refreshCd
                 }
             ) {
                 if (isRefreshing) {
@@ -263,7 +250,7 @@ private fun DashboardTopBar(
                 } else {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh"
+                        contentDescription = stringResource(R.string.dashboard_refresh)
                     )
                 }
             }
@@ -276,22 +263,23 @@ private fun DashboardTopBar(
                             containerColor = SemanticColors.error
                         ) {
                             Text(
-                                text = if (unreadAlertCount > 99) "99+" else unreadAlertCount.toString(),
+                                text = if (unreadAlertCount > 99) stringResource(R.string.dashboard_alert_count_max) else unreadAlertCount.toString(),
                                 style = MaterialTheme.typography.labelSmall
                             )
                         }
                     }
                 }
             ) {
+                val alertsCd = stringResource(R.string.dashboard_cd_alerts, unreadAlertCount)
                 IconButton(
                     onClick = onNavigateToAlerts,
                     modifier = Modifier.semantics {
-                        contentDescription = "View alerts. $unreadAlertCount unread"
+                        contentDescription = alertsCd
                     }
                 ) {
                     Icon(
                         imageVector = if (unreadAlertCount > 0) Icons.Filled.Notifications else Icons.Outlined.Notifications,
-                        contentDescription = "Alerts"
+                        contentDescription = stringResource(R.string.alerts_title)
                     )
                 }
             }
@@ -299,7 +287,7 @@ private fun DashboardTopBar(
             // Overflow menu
             Box {
                 IconButton(onClick = { onMenuToggle(true) }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.dashboard_cd_more_options))
                 }
                 DropdownMenu(
                     expanded = showMenu,
@@ -307,7 +295,7 @@ private fun DashboardTopBar(
                 ) {
                     if (isParent) {
                         DropdownMenuItem(
-                            text = { Text("My Children") },
+                            text = { Text(stringResource(R.string.dashboard_menu_children)) },
                             onClick = {
                                 onMenuToggle(false)
                                 onNavigateToChildren()
@@ -317,7 +305,7 @@ private fun DashboardTopBar(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Devices") },
+                            text = { Text(stringResource(R.string.devices_title)) },
                             onClick = {
                                 onMenuToggle(false)
                                 onNavigateToDevices()
@@ -330,7 +318,7 @@ private fun DashboardTopBar(
                     }
                     if (!isParent) {
                         DropdownMenuItem(
-                            text = { Text("Link a parent") },
+                            text = { Text(stringResource(R.string.dashboard_menu_link_parent)) },
                             onClick = {
                                 onMenuToggle(false)
                                 onNavigateToLinkParent()
@@ -342,7 +330,7 @@ private fun DashboardTopBar(
                         Divider()
                     }
                     DropdownMenuItem(
-                        text = { Text("Settings") },
+                        text = { Text(stringResource(R.string.settings_title)) },
                         onClick = {
                             onMenuToggle(false)
                             onNavigateToSettings()
@@ -353,7 +341,7 @@ private fun DashboardTopBar(
                     )
                     Divider()
                     DropdownMenuItem(
-                        text = { Text("Logout", color = SemanticColors.error) },
+                        text = { Text(stringResource(R.string.logout), color = SemanticColors.error) },
                         onClick = {
                             onMenuToggle(false)
                             onLogoutClick()
@@ -439,12 +427,12 @@ private fun DashboardContent(
             HarisGradientHeader(modifier = Modifier.fadeScaleIn { showContent }) {
                 Column {
                     Text(
-                        text = "Welcome back",
+                        text = stringResource(R.string.dashboard_welcome),
                         style = MaterialTheme.typography.labelMedium,
                         color = Color.White
                     )
                     Text(
-                        text = "Family Dashboard",
+                        text = stringResource(R.string.dashboard_family_title),
                         style = MaterialTheme.typography.headlineMedium,
                         color = Color.White
                     )
@@ -468,18 +456,21 @@ private fun DashboardContent(
                 item(key = "monitoring_offline_banner") {
                     AnimatedCard(visible = showContent) {
                         val first = offlineDevices.first()
+                        val fallbackTime = stringResource(R.string.dashboard_offline_fallback_time)
                         val message = if (offlineDevices.size == 1) {
-                            "${first.deviceName} last checked in ${first.lastSync?.formatAsRelative() ?: "a while ago"}. " +
-                                "It may be turned off, offline, or monitoring may have stopped."
+                            stringResource(
+                                R.string.dashboard_offline_single,
+                                first.deviceName,
+                                first.lastSync?.formatAsRelative() ?: fallbackTime
+                            )
                         } else {
-                            "${offlineDevices.size} devices haven't checked in for a while. " +
-                                "They may be turned off, offline, or monitoring may have stopped."
+                            stringResource(R.string.dashboard_offline_multiple, offlineDevices.size)
                         }
                         InfoBanner(
                             message = message,
                             type = BannerType.WARNING,
                             icon = Icons.Default.CloudOff,
-                            actionLabel = "View",
+                            actionLabel = stringResource(R.string.common_view),
                             onAction = { onDeviceSelected(first.id) }
                         )
                     }
@@ -597,8 +588,12 @@ private fun DashboardContent(
             item(key = "top_apps_header") {
                 AnimatedCard(visible = showContent) {
                     SectionHeader(
-                        title = "Top Apps Today",
-                        subtitle = "${uiState.topApps.size} apps used",
+                        title = stringResource(R.string.top_apps),
+                        subtitle = if (uiState.topApps.size == 1) {
+                            stringResource(R.string.dashboard_apps_used_one)
+                        } else {
+                            stringResource(R.string.dashboard_apps_used_other, uiState.topApps.size)
+                        },
                         modifier = Modifier.semantics { heading() }
                     )
                 }
@@ -634,7 +629,7 @@ private fun DashboardContent(
                 AnimatedCard(visible = showContent) {
                     InlineEmptyState(
                         icon = Icons.Outlined.Apps,
-                        message = "No app usage data yet"
+                        message = stringResource(R.string.dashboard_no_apps_message)
                     )
                 }
             }
@@ -645,9 +640,9 @@ private fun DashboardContent(
             item(key = "alerts_header") {
                 AnimatedCard(visible = showContent) {
                     SectionHeader(
-                        title = "Recent Alerts",
-                        subtitle = "${uiState.unreadAlertCount} unread",
-                        actionLabel = "See All",
+                        title = stringResource(R.string.recent_alerts),
+                        subtitle = stringResource(R.string.dashboard_unread_count, uiState.unreadAlertCount),
+                        actionLabel = stringResource(R.string.see_all),
                         onAction = onNavigateToAlerts,
                         modifier = Modifier.semantics { heading() }
                     )
@@ -687,11 +682,11 @@ private fun DashboardContent(
                     if (isParent) {
                         InlineEmptyState(
                             icon = Icons.Outlined.NotificationsNone,
-                            message = "No recent alerts - all good!"
+                            message = stringResource(R.string.dashboard_no_alerts_parent)
                         )
                     } else {
                         EncouragementBanner(
-                            message = "Great job! No recent alerts!",
+                            message = stringResource(R.string.dashboard_no_alerts_child),
                             icon = Icons.Default.EmojiEvents
                         )
                     }
@@ -718,7 +713,7 @@ private fun DeviceSelectorSection(
 ) {
     Column {
         Text(
-            text = "Select Device",
+            text = stringResource(R.string.dashboard_select_device),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = SafeGuardDimens.spacingSm)
@@ -734,7 +729,7 @@ private fun DeviceSelectorSection(
                 val isSelected = device.id == selectedDeviceId
                 // Use isOnline for connectivity status (based on lastSync time threshold)
                 val connectivityColor = if (device.isOnline) SemanticColors.statusOnline else SemanticColors.statusOffline
-                val connectivityText = if (device.isOnline) "online" else "offline"
+                val connectivityText = if (device.isOnline) stringResource(R.string.dashboard_status_online) else stringResource(R.string.dashboard_status_offline)
 
                 FilterChip(
                     selected = isSelected,
@@ -784,10 +779,10 @@ private fun UsageStatsPermissionCard(
     onRequestPermission: () -> Unit
 ) {
     InfoBanner(
-        message = "Grant usage access to track screen time. Tap to open settings.",
+        message = stringResource(R.string.dashboard_usage_stats_grant_msg),
         type = BannerType.WARNING,
         icon = Icons.Default.Timer,
-        actionLabel = "Open Settings",
+        actionLabel = stringResource(R.string.common_open_settings),
         onAction = onRequestPermission
     )
 }
@@ -837,12 +832,16 @@ private fun PermissionSetupBanner(
                 Spacer(modifier = Modifier.width(SafeGuardDimens.spacingMd))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Setup Required",
+                        text = stringResource(R.string.dashboard_setup_required),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "$missingCount permission${if (missingCount > 1) "s" else ""} needed",
+                        text = if (missingCount == 1) {
+                            stringResource(R.string.dashboard_permissions_needed_one)
+                        } else {
+                            stringResource(R.string.dashboard_permissions_needed_other, missingCount)
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -855,16 +854,16 @@ private fun PermissionSetupBanner(
             Column(
                 verticalArrangement = Arrangement.spacedBy(SafeGuardDimens.spacingXs)
             ) {
-                PermissionStatusItem("Accessibility Service", hasAccessibility)
-                PermissionStatusItem("Usage Stats Access", hasUsageStats)
-                PermissionStatusItem("Display Over Apps", hasOverlay)
-                PermissionStatusItem("Battery Optimization", hasBatteryOptimization)
+                PermissionStatusItem(stringResource(R.string.permissions_accessibility_title), hasAccessibility)
+                PermissionStatusItem(stringResource(R.string.permissions_usage_stats_title), hasUsageStats)
+                PermissionStatusItem(stringResource(R.string.permissions_overlay_title), hasOverlay)
+                PermissionStatusItem(stringResource(R.string.permissions_battery_title), hasBatteryOptimization)
             }
 
             Spacer(modifier = Modifier.height(SafeGuardDimens.spacingMd))
 
             SafeGuardButton(
-                text = "Complete Setup",
+                text = stringResource(R.string.dashboard_complete_setup),
                 onClick = onSetupClick,
                 icon = Icons.Default.ArrowForward,
                 iconPosition = IconPosition.END,
@@ -948,7 +947,7 @@ private fun ContentFilteringSection(
                 }
                 Spacer(modifier = Modifier.width(SafeGuardDimens.spacingMd))
                 Text(
-                    text = "Content Filtering",
+                    text = stringResource(R.string.settings_content_filtering),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -958,8 +957,8 @@ private fun ContentFilteringSection(
 
             // Adult Content Toggle
             StatusCard(
-                title = "Block Adult Content",
-                status = if (contentFilterEnabled) "VPN filtering active" else "Disabled",
+                title = stringResource(R.string.dashboard_block_adult_content),
+                status = if (contentFilterEnabled) stringResource(R.string.dashboard_vpn_active) else stringResource(R.string.dashboard_filter_disabled),
                 isActive = contentFilterEnabled,
                 icon = Icons.Default.Shield,
                 showToggle = true,
@@ -993,15 +992,17 @@ private fun ContentFilteringSection(
                         Spacer(modifier = Modifier.width(SafeGuardDimens.spacingMd))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Social Media",
+                                text = stringResource(R.string.dashboard_social_media),
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
                                 text = if (blockedPlatforms.isEmpty()) {
-                                    "All platforms allowed"
+                                    stringResource(R.string.dashboard_all_platforms_allowed)
+                                } else if (blockedPlatforms.size == 1) {
+                                    stringResource(R.string.dashboard_platforms_blocked_one)
                                 } else {
-                                    "${blockedPlatforms.size} platform${if (blockedPlatforms.size > 1) "s" else ""} blocked"
+                                    stringResource(R.string.dashboard_platforms_blocked_other, blockedPlatforms.size)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1009,7 +1010,7 @@ private fun ContentFilteringSection(
                         }
                         Icon(
                             imageVector = if (showSubMenu) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = if (showSubMenu) "Collapse" else "Expand",
+                            contentDescription = if (showSubMenu) stringResource(R.string.dashboard_collapse) else stringResource(R.string.dashboard_expand),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -1034,14 +1035,14 @@ private fun ContentFilteringSection(
                                 horizontalArrangement = Arrangement.spacedBy(SafeGuardDimens.spacingSm)
                             ) {
                                 SafeGuardOutlinedButton(
-                                    text = "Block All",
+                                    text = stringResource(R.string.dashboard_block_all),
                                     onClick = onBlockAll,
                                     enabled = !isLoading,
                                     modifier = Modifier.weight(1f),
                                     size = ButtonSize.SMALL
                                 )
                                 SafeGuardOutlinedButton(
-                                    text = "Allow All",
+                                    text = stringResource(R.string.dashboard_allow_all),
                                     onClick = onUnblockAll,
                                     enabled = !isLoading,
                                     modifier = Modifier.weight(1f),
@@ -1101,7 +1102,7 @@ private fun EnhancedDeviceSelectorSection(
 ) {
     Column {
         Text(
-            text = "Select Device",
+            text = stringResource(R.string.dashboard_select_device),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
@@ -1119,7 +1120,7 @@ private fun EnhancedDeviceSelectorSection(
                 val isSelected = device.id == selectedDeviceId
                 // Use isOnline for connectivity status (based on lastSync time threshold)
                 val connectivityColor = if (device.isOnline) SemanticColors.statusOnline else SemanticColors.statusOffline
-                val connectivityText = if (device.isOnline) "online" else "offline"
+                val connectivityText = if (device.isOnline) stringResource(R.string.dashboard_status_online) else stringResource(R.string.dashboard_status_offline)
 
                 // Animated selection
                 val scale by animateFloatAsState(
@@ -1196,7 +1197,7 @@ private fun EnhancedDeviceSelectorSection(
                             Spacer(modifier = Modifier.width(SafeGuardDimens.spacingXs))
                             Icon(
                                 imageVector = Icons.Default.Check,
-                                contentDescription = "Selected",
+                                contentDescription = stringResource(R.string.dashboard_cd_selected),
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -1256,7 +1257,7 @@ private fun EnhancedScreenTimeHeroCard(
             ) {
                 Column {
                     Text(
-                        text = "Today's Screen Time",
+                        text = stringResource(R.string.screen_time_today),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -1271,19 +1272,22 @@ private fun EnhancedScreenTimeHeroCard(
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = lastSync?.let {
-                                    "Last active ${DateUtils.getRelativeTimeSpanString(
-                                        it.time,
-                                        System.currentTimeMillis(),
-                                        DateUtils.MINUTE_IN_MILLIS
-                                    )}"
-                                } ?: "No activity reported yet",
+                                    stringResource(
+                                        R.string.dashboard_last_active,
+                                        DateUtils.getRelativeTimeSpanString(
+                                            it.time,
+                                            System.currentTimeMillis(),
+                                            DateUtils.MINUTE_IN_MILLIS
+                                        )
+                                    )
+                                } ?: stringResource(R.string.dashboard_no_activity_yet),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     } else {
                         Text(
-                            text = if (progress >= 1f) "Limit reached" else "Keep it balanced",
+                            text = if (progress >= 1f) stringResource(R.string.dashboard_limit_reached) else stringResource(R.string.dashboard_keep_balanced),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1301,9 +1305,9 @@ private fun EnhancedScreenTimeHeroCard(
                 ) {
                     Text(
                         text = when {
-                            progress >= 1f -> "Over Limit"
-                            progress >= 0.8f -> "Warning"
-                            else -> "On Track"
+                            progress >= 1f -> stringResource(R.string.dashboard_status_over_limit)
+                            progress >= 0.8f -> stringResource(R.string.dashboard_status_warning)
+                            else -> stringResource(R.string.dashboard_status_on_track)
                         },
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
@@ -1333,7 +1337,7 @@ private fun EnhancedScreenTimeHeroCard(
                     )
                     limitMinutes?.let {
                         Text(
-                            text = "of ${formatMinutesToTime(it)}",
+                            text = stringResource(R.string.dashboard_of_limit, formatMinutesToTime(it)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1350,7 +1354,7 @@ private fun EnhancedScreenTimeHeroCard(
             ) {
                 AnimatedStatDisplay(
                     value = unlockCount,
-                    label = "Unlocks",
+                    label = stringResource(R.string.unlocks),
                     icon = Icons.Default.LockOpen,
                     iconColor = MaterialTheme.colorScheme.primary
                 )
@@ -1359,7 +1363,7 @@ private fun EnhancedScreenTimeHeroCard(
                     val remaining = (it - usedMinutes).coerceAtLeast(0)
                     AnimatedStatDisplay(
                         value = remaining,
-                        label = "Remaining",
+                        label = stringResource(R.string.dashboard_remaining),
                         icon = Icons.Default.Timer,
                         iconColor = gradientColors.first(),
                         formatValue = { mins -> formatMinutesToTime(mins) }
@@ -1372,7 +1376,7 @@ private fun EnhancedScreenTimeHeroCard(
                 Spacer(modifier = Modifier.height(SafeGuardDimens.spacingLg))
 
                 SafeGuardOutlinedButton(
-                    text = "Manage Time Limits",
+                    text = stringResource(R.string.dashboard_manage_time_limits),
                     onClick = onManageLimits,
                     icon = Icons.Default.Settings,
                     modifier = Modifier.fillMaxWidth()
@@ -1397,14 +1401,14 @@ private fun QuickActionsRow(
     ) {
         QuickActionButton(
             icon = Icons.Default.Timer,
-            label = "Time Limits",
+            label = stringResource(R.string.dashboard_time_limits_label),
             onClick = onManageLimits,
             containerColor = MaterialTheme.colorScheme.primaryContainer
         )
 
         QuickActionButton(
             icon = if (unreadAlertCount > 0) Icons.Filled.Notifications else Icons.Outlined.Notifications,
-            label = "Alerts",
+            label = stringResource(R.string.alerts_title),
             onClick = onViewAlerts,
             containerColor = if (unreadAlertCount > 0) {
                 SemanticColors.errorContainer
@@ -1420,7 +1424,7 @@ private fun QuickActionsRow(
 
         QuickActionButton(
             icon = Icons.Default.FilterList,
-            label = "Filters",
+            label = stringResource(R.string.dashboard_filters_label),
             onClick = { /* Scroll to filters */ },
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer
@@ -1685,26 +1689,26 @@ private fun LogoutConfirmationDialog(
         },
         title = {
             Text(
-                text = "Sign Out",
+                text = stringResource(R.string.dashboard_sign_out),
                 style = MaterialTheme.typography.headlineSmall
             )
         },
         text = {
             Text(
-                text = "Are you sure you want to sign out? You'll need to sign in again to access your account.",
+                text = stringResource(R.string.dashboard_signout_message),
                 style = MaterialTheme.typography.bodyMedium
             )
         },
         confirmButton = {
             DangerButton(
-                text = "Sign Out",
+                text = stringResource(R.string.dashboard_sign_out),
                 onClick = onConfirm,
                 size = ButtonSize.SMALL
             )
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         },
         shape = RoundedCornerShape(20.dp)
