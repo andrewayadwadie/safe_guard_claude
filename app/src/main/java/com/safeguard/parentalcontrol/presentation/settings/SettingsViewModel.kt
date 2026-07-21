@@ -13,11 +13,13 @@ import com.safeguard.parentalcontrol.data.model.UserRole
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.AuthRepository
 import com.safeguard.parentalcontrol.service.ContentFilterVpnService
+import com.safeguard.parentalcontrol.util.ImageBlurManager
 import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.ProtectionStatusHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -34,6 +36,7 @@ data class SettingsUiState(
     val userEmail: String = "",
     val userRole: UserRole = UserRole.CHILD,
     val isContentFilteringEnabled: Boolean = false,
+    val isMaximumProtectionEnabled: Boolean = false,
     val notificationsEnabled: Boolean = false,
     val isLoading: Boolean = false,
     val logoutSuccess: Boolean = false,
@@ -53,6 +56,7 @@ sealed class SettingsEvent {
 class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val preferencesManager: PreferencesManager,
+    private val imageBlurManager: ImageBlurManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -86,9 +90,39 @@ class SettingsViewModel @Inject constructor(
     init {
         loadUserInfo()
         loadContentFilteringState()
+        refreshMaximumProtectionState()
         refreshNotificationStatus()
         registerVpnStateReceiver()
         _uiState.update { it.copy(currentLanguage = LocaleHelper.getLanguage(context)) }
+    }
+
+    /**
+     * Load the Maximum Protection flag into UI state. Called on init and on resume so the
+     * toggle always reflects the stored value.
+     */
+    fun refreshMaximumProtectionState() {
+        _uiState.update {
+            it.copy(isMaximumProtectionEnabled = preferencesManager.isMaximumProtectionEnabled)
+        }
+    }
+
+    /**
+     * Persist a PIN-approved Maximum Protection value. MUST be called only after successful
+     * parent-PIN verification (the screen gates this behind [ParentPinDialog]).
+     *
+     * When enabling, kick off a retroactive blur pass so images flagged copy-only while the
+     * setting was OFF get blurred now. The pass is idempotent and runs off the main thread.
+     */
+    fun setMaximumProtection(enabled: Boolean) {
+        preferencesManager.isMaximumProtectionEnabled = enabled
+        _uiState.update { it.copy(isMaximumProtectionEnabled = enabled) }
+
+        if (enabled) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val count = imageBlurManager.applyBlurToUnblurredBackups()
+                Timber.d("Maximum Protection enabled; retroactively blurred $count image(s)")
+            }
+        }
     }
 
     /** Persists the chosen language. Caller (SettingsScreen) is responsible for `Activity.recreate()`. */

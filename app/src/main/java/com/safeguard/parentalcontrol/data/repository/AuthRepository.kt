@@ -178,6 +178,33 @@ class AuthRepository @Inject constructor(
     }
 
     /**
+     * Request a password reset code for the given email.
+     * Backend returns a neutral message regardless of whether the account exists.
+     */
+    suspend fun forgotPassword(email: String): NetworkResult<MessageResponse> = withContext(Dispatchers.IO) {
+        val request = ForgotPasswordRequest(email = email)
+        // Do not log email (PII); do not log the code/response body.
+        safeApiCall { apiService.forgotPassword(request) }
+    }
+
+    /**
+     * Redeem a reset code and set a new password.
+     * Neither the code nor the new password is logged.
+     */
+    suspend fun resetPassword(
+        email: String,
+        code: String,
+        newPassword: String
+    ): NetworkResult<MessageResponse> = withContext(Dispatchers.IO) {
+        val request = ResetPasswordRequest(
+            email = email,
+            code = code,
+            newPassword = newPassword
+        )
+        safeApiCall { apiService.resetPassword(request) }
+    }
+
+    /**
      * Check if user is logged in
      */
     fun isLoggedIn(): Boolean {

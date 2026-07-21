@@ -94,6 +94,8 @@
     <string name="settings_review_images_desc">ولي الأمر: راجع الصور المموهة ووافق عليها أو ارفضها</string>
     <string name="settings_review_text">مراجعة النصوص المُبلّغ عنها</string>
     <string name="settings_review_text_desc">ولي الأمر: اطّلع على العبارات المُبلّغ عنها في هذا الجهاز</string>
+    <string name="settings_maximum_protection">الحماية القصوى</string>
+    <string name="settings_maximum_protection_desc">عند التفعيل، تُموَّه الصور المُبلّغ عنها في المعرض. عند الإيقاف، تُنسخ فقط لمراجعة ولي الأمر.</string>
     <string name="settings_notifications">الإشعارات</string>
     <string name="settings_notifications_on">تشغيل</string>
     <string name="settings_notifications_off_tap">إيقاف — اضغط للتفعيل</string>
@@ -680,6 +682,33 @@
     <string name="changepw_error_required">كلا الحقلين مطلوبان</string>
     <string name="changepw_error_too_short">يجب أن تتكون كلمة المرور الجديدة من 8 أحرف على الأقل</string>
     <string name="changepw_error_same_password">يجب أن تختلف كلمة المرور الجديدة عن كلمة المرور الحالية</string>
+
+    <!-- Forgot Password / Reset Password flow -->
+    <string name="login_forgot_password">هل نسيت كلمة المرور؟</string>
+    <string name="forgotpw_title">نسيت كلمة المرور</string>
+    <string name="forgotpw_subtitle">أدخل بريدك الإلكتروني وسنرسل لك رمز إعادة التعيين.</string>
+    <string name="forgotpw_email_label">البريد الإلكتروني</string>
+    <string name="forgotpw_email_placeholder">أدخل بريدك الإلكتروني</string>
+    <string name="forgotpw_send_code">إرسال الرمز</string>
+    <string name="forgotpw_code_sent_confirmation">إذا كان هناك حساب مرتبط بهذا البريد الإلكتروني، فقد تم إرسال رمز إعادة تعيين كلمة المرور.</string>
+    <string name="forgotpw_reset_title">إعادة تعيين كلمة المرور</string>
+    <string name="forgotpw_reset_subtitle">أدخل الرمز المكوّن من 6 أرقام المرسل إلى بريدك الإلكتروني واختر كلمة مرور جديدة.</string>
+    <string name="forgotpw_code_label">رمز إعادة التعيين</string>
+    <string name="forgotpw_new_password_label">كلمة المرور الجديدة</string>
+    <string name="forgotpw_new_password_placeholder">أدخل كلمة المرور الجديدة</string>
+    <string name="forgotpw_confirm_password_label">تأكيد كلمة المرور</string>
+    <string name="forgotpw_confirm_password_placeholder">أعد إدخال كلمة المرور الجديدة</string>
+    <string name="forgotpw_reset_button">إعادة تعيين كلمة المرور</string>
+    <string name="forgotpw_resend">إعادة إرسال الرمز</string>
+    <string name="forgotpw_resend_countdown">إعادة إرسال الرمز (%1$d)</string>
+    <string name="forgotpw_success">تمت إعادة تعيين كلمة المرور بنجاح</string>
+    <string name="forgotpw_error_email_invalid">يرجى إدخال عنوان بريد إلكتروني صالح</string>
+    <string name="forgotpw_error_code_incomplete">يرجى إدخال الرمز المكوّن من 6 أرقام</string>
+    <string name="forgotpw_error_password_too_short">يجب أن تتكون كلمة المرور من 8 أحرف على الأقل</string>
+    <string name="forgotpw_error_password_mismatch">كلمتا المرور غير متطابقتين</string>
+    <string name="forgotpw_error_code_invalid">رمز إعادة التعيين غير صالح أو منتهي الصلاحية</string>
+    <string name="forgotpw_error_rate_limited">محاولات كثيرة جدًا. يرجى المحاولة لاحقًا.</string>
+
     <string name="legal_terms_title">شروط الخدمة</string>
     <string name="legal_privacy_title">سياسة الخصوصية</string>
     <string name="components_refreshing">جارٍ التحديث…</string>

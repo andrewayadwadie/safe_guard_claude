@@ -32,6 +32,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.model.UserRole
+import com.safeguard.parentalcontrol.presentation.components.ParentPinDialog
+import com.safeguard.parentalcontrol.presentation.components.ParentPinViewModel
 import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 import com.safeguard.parentalcontrol.util.LocaleHelper
 import kotlinx.coroutines.flow.collectLatest
@@ -59,6 +61,11 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    // Desired Maximum Protection value awaiting parent-PIN verification (null = no pending
+    // change). Deliberately transient: a process death mid-dialog abandons the change, which
+    // is the safe direction (no change without a correct PIN).
+    var pendingMaxProtectionChange by remember { mutableStateOf<Boolean?>(null) }
+    val pinViewModel: ParentPinViewModel = hiltViewModel()
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
     val contentFilteringEnabledMessage = stringResource(R.string.settings_content_filtering_enabled_snackbar)
@@ -68,6 +75,7 @@ fun SettingsScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshContentFilteringState()
+                viewModel.refreshMaximumProtectionState()
                 viewModel.refreshNotificationStatus()
             }
         }
@@ -194,6 +202,22 @@ fun SettingsScreen(
         )
     }
 
+    // Parent-PIN gate for the Maximum Protection toggle. Shown while a change is pending;
+    // applies it only on a correct PIN (or first-time PIN creation via the dialog's create
+    // mode). Dismiss/wrong PIN clears the pending value and leaves the switch untouched.
+    pendingMaxProtectionChange?.let { desired ->
+        ParentPinDialog(
+            hasPin = pinViewModel.hasParentPin,
+            onVerify = pinViewModel::verifyParentPin,
+            onCreate = pinViewModel::setParentPin,
+            onSuccess = {
+                viewModel.setMaximumProtection(desired)
+                pendingMaxProtectionChange = null
+            },
+            onDismiss = { pendingMaxProtectionChange = null }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -303,6 +327,19 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_review_text),
                         subtitle = stringResource(R.string.settings_review_text_desc),
                         onClick = onNavigateToTextReview
+                    )
+
+                    // Maximum Protection toggle. Tapping does NOT flip the switch directly:
+                    // it records the desired value and opens the parent-PIN dialog. Only a
+                    // correct PIN applies the change (via viewModel.setMaximumProtection). The
+                    // Switch binds solely to uiState, so a wrong/cancelled PIN leaves it as-is.
+                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                    SettingsToggleItem(
+                        icon = Icons.Default.Security,
+                        title = stringResource(R.string.settings_maximum_protection),
+                        subtitle = stringResource(R.string.settings_maximum_protection_desc),
+                        checked = uiState.isMaximumProtectionEnabled,
+                        onCheckedChange = { desired -> pendingMaxProtectionChange = desired }
                     )
                 }
             }

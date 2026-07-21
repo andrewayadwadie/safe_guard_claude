@@ -116,7 +116,8 @@ class ImageBlurManager @Inject constructor(
                 confidence = confidence,
                 timestamp = System.currentTimeMillis(),
                 originalSize = originalFile.length(),
-                originalName = originalFile.name
+                originalName = originalFile.name,
+                blurApplied = true
             )
             saveMetadata(metadataFile, metadata)
 
@@ -152,6 +153,117 @@ class ImageBlurManager @Inject constructor(
             Timber.e(e, "$TAG: Error blurring image: $imagePath")
             return BlurResult.Error(e.message ?: "Unknown error")
         }
+    }
+
+    /**
+     * Back up the original WITHOUT altering the gallery image (Maximum Protection OFF).
+     *
+     * Performs the same first steps as [blurImage] — reserve a backup id, copy the original
+     * into app-private storage, and write metadata — but records blurApplied=false and does
+     * NOT blur, replace, or touch MediaStore. The gallery image the child sees is left exactly
+     * as it was. Shares [blurImage]'s "backup already exists" guard so re-detections of the
+     * same image never create duplicate copies.
+     *
+     * @return BlurResult with status and backup info (same sealed type as [blurImage]).
+     */
+    fun backupOnly(imagePath: String, category: String, confidence: Float): BlurResult {
+        Timber.i("$TAG: Backing up (copy-only) image: $imagePath (category=$category, confidence=$confidence)")
+
+        val originalFile = File(imagePath)
+        if (!originalFile.exists() || !originalFile.canRead()) {
+            Timber.e("$TAG: Cannot read original file: $imagePath")
+            return BlurResult.Error("Cannot read original file")
+        }
+
+        try {
+            val backupId = generateBackupId(imagePath)
+            val backupFile = File(backupDir, "$backupId.jpg")
+            val metadataFile = File(backupDir, "$backupId$METADATA_EXT")
+
+            // A backup already exists (from either mode) — do not duplicate.
+            if (backupFile.exists()) {
+                Timber.w("$TAG: Image already backed up: $backupId")
+                return BlurResult.AlreadyBlurred(backupId)
+            }
+
+            // Backup original to app-private storage.
+            originalFile.copyTo(backupFile, overwrite = true)
+            Timber.d("$TAG: Original backed up (copy-only) to: ${backupFile.absolutePath}")
+
+            // Save metadata marking that no blur was applied.
+            val metadata = ImageMetadata(
+                backupId = backupId,
+                originalPath = imagePath,
+                category = category,
+                confidence = confidence,
+                timestamp = System.currentTimeMillis(),
+                originalSize = originalFile.length(),
+                originalName = originalFile.name,
+                blurApplied = false
+            )
+            saveMetadata(metadataFile, metadata)
+
+            Timber.i("$TAG: Copy-only backup complete. Backup ID: $backupId")
+            return BlurResult.Success(backupId, metadata)
+
+        } catch (e: Exception) {
+            Timber.e(e, "$TAG: Error backing up image: $imagePath")
+            return BlurResult.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    /**
+     * Retroactively blur every backup that was recorded copy-only (blurApplied=false).
+     *
+     * Called when Maximum Protection is turned ON: images flagged while it was OFF still have
+     * their untouched original in the gallery, so blur them now. Idempotent — only entries with
+     * blurApplied=false are touched, so it is safe to call from multiple triggers. Reuses the
+     * existing backup (never creates a new copy) and sends no alerts. If an original was deleted
+     * or moved in the meantime, that entry is skipped without error.
+     *
+     * @return the number of images newly blurred.
+     */
+    fun applyBlurToUnblurredBackups(): Int {
+        var blurredCount = 0
+
+        for (metadata in getPendingReviews()) {
+            if (metadata.blurApplied) continue
+
+            val originalFile = File(metadata.originalPath)
+            if (!originalFile.exists() || !originalFile.canRead()) {
+                Timber.w("$TAG: Retro-blur skip (original missing/unreadable): ${metadata.originalPath}")
+                continue
+            }
+
+            try {
+                val blurredBitmap = createBlurredBitmap(metadata.originalPath)
+                if (blurredBitmap == null) {
+                    Timber.e("$TAG: Retro-blur failed to create bitmap: ${metadata.originalPath}")
+                    continue
+                }
+
+                val replaced = replaceWithBlurred(originalFile, blurredBitmap)
+                blurredBitmap.recycle()
+                if (!replaced) {
+                    Timber.e("$TAG: Retro-blur failed to replace original: ${metadata.originalPath}")
+                    continue
+                }
+
+                refreshMediaStore(metadata.originalPath)
+
+                // Mark this backup as now-blurred so it is not processed again.
+                val metadataFile = File(backupDir, "${metadata.backupId}$METADATA_EXT")
+                saveMetadata(metadataFile, metadata.copy(blurApplied = true))
+
+                blurredCount++
+                Timber.i("$TAG: Retroactively blurred: ${metadata.originalPath}")
+            } catch (e: Exception) {
+                Timber.e(e, "$TAG: Error retro-blurring: ${metadata.originalPath}")
+            }
+        }
+
+        if (blurredCount > 0) Timber.i("$TAG: Retroactive blur complete. Blurred $blurredCount image(s)")
+        return blurredCount
     }
 
     /**
@@ -256,7 +368,11 @@ class ImageBlurManager @Inject constructor(
     }
 
     /**
-     * Check if an image is currently blurred (has backup).
+     * Check if an image has already been handled as a violation (i.e. a backup exists).
+     *
+     * Note: since copy-only mode was introduced this means "a backup exists" — it no longer
+     * implies the gallery file itself is blurred. Callers use it as an "already processed"
+     * guard, which remains correct.
      */
     fun isImageBlurred(imagePath: String): Boolean {
         val backupId = generateBackupId(imagePath)
@@ -683,7 +799,8 @@ class ImageBlurManager @Inject constructor(
     /**
      * Save metadata to file.
      */
-    private fun saveMetadata(file: File, metadata: ImageMetadata) {
+    @androidx.annotation.VisibleForTesting
+    internal fun saveMetadata(file: File, metadata: ImageMetadata) {
         file.writeText(buildString {
             appendLine("backupId=${metadata.backupId}")
             appendLine("originalPath=${metadata.originalPath}")
@@ -692,13 +809,15 @@ class ImageBlurManager @Inject constructor(
             appendLine("timestamp=${metadata.timestamp}")
             appendLine("originalSize=${metadata.originalSize}")
             appendLine("originalName=${metadata.originalName}")
+            appendLine("blurApplied=${metadata.blurApplied}")
         })
     }
 
     /**
      * Load metadata from file.
      */
-    private fun loadMetadata(file: File): ImageMetadata? {
+    @androidx.annotation.VisibleForTesting
+    internal fun loadMetadata(file: File): ImageMetadata? {
         if (!file.exists()) return null
 
         return try {
@@ -715,7 +834,9 @@ class ImageBlurManager @Inject constructor(
                 confidence = map["confidence"]?.toFloatOrNull() ?: 0f,
                 timestamp = map["timestamp"]?.toLongOrNull() ?: 0L,
                 originalSize = map["originalSize"]?.toLongOrNull() ?: 0L,
-                originalName = map["originalName"] ?: ""
+                originalName = map["originalName"] ?: "",
+                // Missing key ⇒ legacy file from the always-blur era ⇒ treat as blurred.
+                blurApplied = map["blurApplied"]?.toBooleanStrictOrNull() ?: true
             )
         } catch (e: Exception) {
             Timber.e(e, "$TAG: Error loading metadata")
@@ -724,7 +845,12 @@ class ImageBlurManager @Inject constructor(
     }
 
     /**
-     * Metadata for a blurred image.
+     * Metadata for a backed-up violation image.
+     *
+     * [blurApplied] distinguishes the two protection modes: true = the gallery original was
+     * replaced with a blurred version (Maximum Protection ON); false = copy-only, the gallery
+     * original is untouched (Maximum Protection OFF). Legacy metadata files (written before
+     * copy-only existed) have no such field and are parsed as true — they were always blurred.
      */
     data class ImageMetadata(
         val backupId: String,
@@ -733,14 +859,16 @@ class ImageBlurManager @Inject constructor(
         val confidence: Float,
         val timestamp: Long,
         val originalSize: Long,
-        val originalName: String
+        val originalName: String,
+        val blurApplied: Boolean = true
     )
 
     /**
-     * Result of blur operation.
+     * Result of a violation-processing operation ([blurImage] or [backupOnly]).
      */
     sealed class BlurResult {
         data class Success(val backupId: String, val metadata: ImageMetadata) : BlurResult()
+        /** A backup already exists for this image (from either mode); nothing was written. */
         data class AlreadyBlurred(val backupId: String) : BlurResult()
         data class Error(val message: String) : BlurResult()
     }

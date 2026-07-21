@@ -97,6 +97,8 @@
     <string name="settings_review_images_desc">Parent: Review and approve/reject blurred images</string>
     <string name="settings_review_text">Review Flagged Text</string>
     <string name="settings_review_text_desc">Parent: See phrases flagged on this device</string>
+    <string name="settings_maximum_protection">Maximum Protection</string>
+    <string name="settings_maximum_protection_desc">When on, flagged photos are blurred in the gallery. When off, they are only copied for parent review.</string>
     <string name="settings_notifications">Notifications</string>
     <string name="settings_notifications_on">On</string>
     <string name="settings_notifications_off_tap">Off — tap to enable</string>
@@ -695,6 +697,33 @@
     <string name="changepw_error_required">Both fields are required</string>
     <string name="changepw_error_too_short">New password must be at least 8 characters</string>
     <string name="changepw_error_same_password">New password must be different from current password</string>
+
+    <!-- Forgot Password / Reset Password flow -->
+    <string name="login_forgot_password">Forgot Password?</string>
+    <string name="forgotpw_title">Forgot Password</string>
+    <string name="forgotpw_subtitle">Enter your email and we\'ll send you a reset code.</string>
+    <string name="forgotpw_email_label">Email</string>
+    <string name="forgotpw_email_placeholder">Enter your email</string>
+    <string name="forgotpw_send_code">Send Code</string>
+    <string name="forgotpw_code_sent_confirmation">If an account exists for that email, a password reset code has been sent.</string>
+    <string name="forgotpw_reset_title">Reset Password</string>
+    <string name="forgotpw_reset_subtitle">Enter the 6-digit code sent to your email and choose a new password.</string>
+    <string name="forgotpw_code_label">Reset Code</string>
+    <string name="forgotpw_new_password_label">New Password</string>
+    <string name="forgotpw_new_password_placeholder">Enter your new password</string>
+    <string name="forgotpw_confirm_password_label">Confirm Password</string>
+    <string name="forgotpw_confirm_password_placeholder">Re-enter your new password</string>
+    <string name="forgotpw_reset_button">Reset Password</string>
+    <string name="forgotpw_resend">Resend Code</string>
+    <string name="forgotpw_resend_countdown">Resend Code (%1$d)</string>
+    <string name="forgotpw_success">Password has been reset successfully</string>
+    <string name="forgotpw_error_email_invalid">Please enter a valid email address</string>
+    <string name="forgotpw_error_code_incomplete">Please enter the 6-digit code</string>
+    <string name="forgotpw_error_password_too_short">Password must be at least 8 characters</string>
+    <string name="forgotpw_error_password_mismatch">Passwords do not match</string>
+    <string name="forgotpw_error_code_invalid">Invalid or expired reset code</string>
+    <string name="forgotpw_error_rate_limited">Too many attempts. Please try again later.</string>
+
     <string name="legal_terms_title">Terms of Service</string>
     <string name="legal_privacy_title">Privacy Policy</string>
     <string name="components_refreshing">Refreshing…</string>

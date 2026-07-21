@@ -44,9 +44,12 @@ captures/
 *.iml
 .idea/
 
-# Keystore files (uncomment if you don't want to track)
-#*.jks
-#*.keystore
+# Keystore files & signing secrets (MUST NOT commit)
+*.jks
+*.keystore
+*.p12
+*.pfx
+keystore.properties
 
 # External native build folder
 .externalNativeBuild

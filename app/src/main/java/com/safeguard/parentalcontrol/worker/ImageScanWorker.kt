@@ -109,6 +109,14 @@ class ImageScanWorker @AssistedInject constructor(
         }
 
         try {
+            // Safety net: if Maximum Protection is ON, blur any images that were flagged
+            // copy-only while it was OFF but not yet retro-blurred (e.g. process died right
+            // after the toggle). Idempotent — only unblurred backups are touched.
+            if (preferencesManager.isMaximumProtectionEnabled) {
+                val retroBlurred = imageBlurManager.applyBlurToUnblurredBackups()
+                if (retroBlurred > 0) Timber.i("$TAG: Retroactively blurred $retroBlurred image(s)")
+            }
+
             val lastScanTime = preferencesManager.lastImageScanTime
             val scanStartTime = System.currentTimeMillis()
 
@@ -141,12 +149,22 @@ class ImageScanWorker @AssistedInject constructor(
                         if (imageHasher.shouldSendAlert(imageInfo.path)) {
                             val primaryCategory = result.categories.firstOrNull() ?: "nsfw"
 
-                            // Blur the image (backup original, replace with blurred)
-                            val blurResult = imageBlurManager.blurImage(
-                                imagePath = imageInfo.path,
-                                category = primaryCategory,
-                                confidence = result.confidence
-                            )
+                            // Read Maximum Protection fresh for THIS violation, then either
+                            // blur (backup + replace gallery) or back up copy-only.
+                            val maximumProtection = preferencesManager.isMaximumProtectionEnabled
+                            val blurResult = if (maximumProtection) {
+                                imageBlurManager.blurImage(
+                                    imagePath = imageInfo.path,
+                                    category = primaryCategory,
+                                    confidence = result.confidence
+                                )
+                            } else {
+                                imageBlurManager.backupOnly(
+                                    imagePath = imageInfo.path,
+                                    category = primaryCategory,
+                                    confidence = result.confidence
+                                )
+                            }
 
                             when (blurResult) {
                                 is ImageBlurManager.BlurResult.Success -> {

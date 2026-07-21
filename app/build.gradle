@@ -1,16 +1,33 @@
 plugins {
-    id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
-    id 'dagger.hilt.android.plugin'
-    id 'com.google.devtools.ksp'
-    id 'org.jetbrains.kotlin.plugin.compose'
-    id 'com.google.gms.google-services'
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.hilt.android)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
     id 'kotlin-parcelize'
+}
+
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
 android {
     namespace 'com.safeguard.parentalcontrol'
     compileSdk 34
+
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
 
     defaultConfig {
         applicationId "com.safeguard.parentalcontrol"
@@ -30,12 +47,15 @@ android {
         buildConfigField "String", "API_BASE_URL", "\"https://bw.noor.net:8090/api/v1/\""
         buildConfigField "String", "API_VERSION", "\"1.0\""
 
-        // Google OAuth - Web Client ID from Google Cloud Console
-        buildConfigField "String", "GOOGLE_WEB_CLIENT_ID", "\"216776621097-p63ekcnr94bfcuoufehgpsvnl6b2g990.apps.googleusercontent.com\""
+        // Google OAuth - Web Client ID (client_type 3) from google-services.json.
+        // Must belong to the same Firebase project as google-services.json (814941014353 / haris-db7b0),
+        // otherwise Google Sign-In fails with DEVELOPER_ERROR.
+        buildConfigField "String", "GOOGLE_WEB_CLIENT_ID", "\"814941014353-8ccdjaes5thocovg3l6qu6rrmobknssh.apps.googleusercontent.com\""
     }
 
     buildTypes {
         release {
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : null
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -92,96 +112,96 @@ hilt {
 
 dependencies {
     // AndroidX Core
-    implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.core:core-splashscreen:1.0.1'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0'
-    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.7.0'
-    
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.core.splashscreen
+    implementation libs.androidx.lifecycle.runtime.ktx
+    implementation libs.androidx.lifecycle.viewmodel.compose
+    implementation libs.androidx.lifecycle.runtime.compose
+
     // Compose
-    implementation platform('androidx.compose:compose-bom:2023.10.01')
-    implementation 'androidx.compose.ui:ui'
-    implementation 'androidx.compose.ui:ui-graphics'
-    implementation 'androidx.compose.ui:ui-tooling-preview'
-    implementation 'androidx.compose.material3:material3:1.1.2'
-    implementation 'androidx.compose.material3:material3-window-size-class:1.1.2'
-    implementation 'androidx.compose.material:material-icons-extended:1.5.4'
-    implementation 'androidx.compose.ui:ui-text-google-fonts'
-    implementation 'androidx.activity:activity-compose:1.8.2'
-    implementation 'androidx.navigation:navigation-compose:2.7.6'
-    
+    implementation platform(libs.compose.bom)
+    implementation libs.androidx.compose.ui
+    implementation libs.androidx.compose.ui.graphics
+    implementation libs.androidx.compose.ui.tooling.preview
+    implementation libs.androidx.compose.material3
+    implementation libs.androidx.compose.material3.windowSizeClass
+    implementation libs.androidx.compose.material.icons.extended
+    implementation libs.androidx.compose.ui.text.google.fonts
+    implementation libs.androidx.activity.compose
+    implementation libs.androidx.navigation.compose
+
     // Accompanist
-    implementation 'com.google.accompanist:accompanist-permissions:0.32.0'
-    implementation 'com.google.accompanist:accompanist-systemuicontroller:0.32.0'
-    
+    implementation libs.accompanist.permissions
+    implementation libs.accompanist.systemuicontroller
+
     // Hilt Dependency Injection
-    implementation 'com.google.dagger:hilt-android:2.51.1'
-    ksp 'com.google.dagger:hilt-compiler:2.51.1'
-    implementation 'androidx.hilt:hilt-navigation-compose:1.1.0'
-    
+    implementation libs.hilt.android
+    ksp libs.hilt.compiler
+    implementation libs.androidx.hilt.navigation.compose
+
     // Retrofit & OkHttp
-    implementation 'com.squareup.retrofit2:retrofit:2.11.0'
-    implementation 'com.squareup.retrofit2:converter-gson:2.11.0'
-    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
-    
+    implementation libs.retrofit.core
+    implementation libs.retrofit.converter.gson
+    implementation libs.okhttp.core
+    implementation libs.okhttp.logging.interceptor
+
     // Certificate Pinning
-    implementation 'com.squareup.okhttp3:okhttp-tls:4.12.0'
-    
+    implementation libs.okhttp.tls
+
     // Coroutines
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3'
-    
+    implementation libs.kotlinx.coroutines.android
+    implementation libs.kotlinx.coroutines.play.services
+
     // DataStore
-    implementation 'androidx.datastore:datastore-preferences:1.0.0'
-    
+    implementation libs.androidx.datastore.preferences
+
     // WorkManager
-    implementation 'androidx.work:work-runtime-ktx:2.9.0'
-    implementation 'androidx.hilt:hilt-work:1.1.0'
-    ksp 'androidx.hilt:hilt-compiler:1.1.0'
-    
+    implementation libs.androidx.work.runtime.ktx
+    implementation libs.androidx.hilt.work
+    ksp libs.androidx.hilt.compiler
+
     // Room Database
-    implementation 'androidx.room:room-runtime:2.6.1'
-    implementation 'androidx.room:room-ktx:2.6.1'
-    ksp 'androidx.room:room-compiler:2.6.1'
-    
+    implementation libs.androidx.room.runtime
+    implementation libs.androidx.room.ktx
+    ksp libs.androidx.room.compiler
+
     // Firebase
-    implementation platform('com.google.firebase:firebase-bom:33.10.0')
-    implementation 'com.google.firebase:firebase-messaging'
-    implementation 'com.google.firebase:firebase-analytics'
+    implementation platform(libs.firebase.bom)
+    implementation libs.firebase.messaging
+    implementation libs.firebase.analytics
 
     // Google Sign-In (Credential Manager API)
-    implementation 'androidx.credentials:credentials:1.3.0'
-    implementation 'androidx.credentials:credentials-play-services-auth:1.3.0'
-    implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
+    implementation libs.androidx.credentials
+    implementation libs.androidx.credentials.play.services.auth
+    implementation libs.google.identity.googleid
 
     // Image Analysis - TensorFlow Lite (2.16.1+ supports 16KB page alignment for Android 15+)
-    implementation 'org.tensorflow:tensorflow-lite:2.16.1'
-    implementation 'org.tensorflow:tensorflow-lite-support:0.4.4'
-    implementation 'org.tensorflow:tensorflow-lite-gpu:2.16.1'
-    
+    implementation libs.tensorflow.lite
+    implementation libs.tensorflow.lite.support
+    implementation libs.tensorflow.lite.gpu
+
     // Coil for image loading
-    implementation 'io.coil-kt:coil-compose:2.5.0'
-    
+    implementation libs.coil.compose
+
     // Timber for logging
-    implementation 'com.jakewharton.timber:timber:5.0.1'
-    
+    implementation libs.timber
+
     // Gson
-    implementation 'com.google.code.gson:gson:2.10.1'
-    
+    implementation libs.gson
+
     // Encrypted SharedPreferences
-    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
-    
+    implementation libs.androidx.security.crypto
+
     // Testing
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
-    testImplementation 'app.cash.turbine:turbine:1.0.0'
-    testImplementation 'io.mockk:mockk:1.13.10'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'io.mockk:mockk-android:1.13.10'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-    androidTestImplementation platform('androidx.compose:compose-bom:2023.10.01')
-    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
-    debugImplementation 'androidx.compose.ui:ui-tooling'
-    debugImplementation 'androidx.compose.ui:ui-test-manifest'
+    testImplementation libs.junit
+    testImplementation libs.kotlinx.coroutines.test
+    testImplementation libs.turbine
+    testImplementation libs.mockk
+    androidTestImplementation libs.androidx.test.ext.junit
+    androidTestImplementation libs.mockk.android
+    androidTestImplementation libs.androidx.test.espresso.core
+    androidTestImplementation platform(libs.compose.bom)
+    androidTestImplementation libs.androidx.compose.ui.test.junit4
+    debugImplementation libs.androidx.compose.ui.tooling
+    debugImplementation libs.androidx.compose.ui.test.manifest
 }

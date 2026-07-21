@@ -162,6 +162,8 @@ class AuthInterceptor @Inject constructor(
         return path.contains("/auth/login") ||
                 path.contains("/auth/register") ||
                 path.contains("/auth/refresh") ||
+                path.contains("/auth/forgot-password") ||
+                path.contains("/auth/reset-password") ||
                 path.contains("/oauth/google/status") ||
                 path.contains("/oauth/google") ||
                 path.contains("/health")

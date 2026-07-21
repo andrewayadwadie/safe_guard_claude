@@ -121,6 +121,17 @@ data class ChangePasswordRequest(
     val newPassword: String
 )
 
+data class ForgotPasswordRequest(
+    val email: String
+)
+
+data class ResetPasswordRequest(
+    val email: String,
+    val code: String,
+    @SerializedName("new_password")
+    val newPassword: String
+)
+
 data class DeviceRegisterRequest(
     @SerializedName("device_id")
     val deviceId: String,

@@ -14,6 +14,7 @@ import com.safeguard.parentalcontrol.data.repository.AlertRepository
 import com.safeguard.parentalcontrol.ml.ContentClassifier
 import com.safeguard.parentalcontrol.util.ImageBlurManager
 import com.safeguard.parentalcontrol.util.ImageHasher
+import com.safeguard.parentalcontrol.util.PreferencesManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +49,8 @@ class MediaFileObserver @Inject constructor(
     private val contentClassifier: ContentClassifier,
     private val alertRepository: AlertRepository,
     private val imageHasher: ImageHasher,
-    private val imageBlurManager: ImageBlurManager
+    private val imageBlurManager: ImageBlurManager,
+    private val preferencesManager: PreferencesManager
 ) {
     companion object {
         private const val TAG = "MediaFileObserver"
@@ -433,12 +435,22 @@ class MediaFileObserver @Inject constructor(
                 if (imageHasher.shouldSendAlert(filePath)) {
                     val primaryCategory = result.categories.firstOrNull() ?: "nsfw"
 
-                    // Step 1: Blur the image (backup original, replace with blurred)
-                    val blurResult = imageBlurManager.blurImage(
-                        imagePath = filePath,
-                        category = primaryCategory,
-                        confidence = result.confidence
-                    )
+                    // Step 1: Read Maximum Protection fresh for THIS violation, then either
+                    // blur (backup + replace gallery) or back up copy-only (gallery untouched).
+                    val maximumProtection = preferencesManager.isMaximumProtectionEnabled
+                    val blurResult = if (maximumProtection) {
+                        imageBlurManager.blurImage(
+                            imagePath = filePath,
+                            category = primaryCategory,
+                            confidence = result.confidence
+                        )
+                    } else {
+                        imageBlurManager.backupOnly(
+                            imagePath = filePath,
+                            category = primaryCategory,
+                            confidence = result.confidence
+                        )
+                    }
 
                     when (blurResult) {
                         is ImageBlurManager.BlurResult.Success -> {

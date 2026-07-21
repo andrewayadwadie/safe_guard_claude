@@ -120,6 +120,15 @@ class PreferencesManager @Inject constructor(
         get() = encryptedPrefs.getBoolean(Constants.KEY_CONTENT_FILTERING_ENABLED, false)
         set(value) = encryptedPrefs.edit().putBoolean(Constants.KEY_CONTENT_FILTERING_ENABLED, value).apply()
 
+    // Maximum Protection: when true, detected image violations are blurred in the gallery in
+    // addition to being backed up for parent review. Default false = copy-only mode. Changeable
+    // only after parent-PIN verification (enforced at the UI layer). Read fresh on every
+    // violation so a change takes effect on the next image processed. Cleared on logout by
+    // clearAll(), so a fresh login defaults back to OFF.
+    var isMaximumProtectionEnabled: Boolean
+        get() = encryptedPrefs.getBoolean(Constants.KEY_MAXIMUM_PROTECTION_ENABLED, false)
+        set(value) = encryptedPrefs.edit().putBoolean(Constants.KEY_MAXIMUM_PROTECTION_ENABLED, value).apply()
+
     /**
      * Store user information after login
      */

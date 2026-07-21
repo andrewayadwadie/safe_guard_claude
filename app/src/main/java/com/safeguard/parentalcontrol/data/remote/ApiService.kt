@@ -38,6 +38,12 @@ interface ApiService {
     @POST("auth/change-password")
     suspend fun changePassword(@Body request: ChangePasswordRequest): Response<MessageResponse>
 
+    @POST("auth/forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequest): Response<MessageResponse>
+
+    @POST("auth/reset-password")
+    suspend fun resetPassword(@Body request: ResetPasswordRequest): Response<MessageResponse>
+
     // ==================== OAuth Endpoints ====================
 
     // NOTE: GET oauth/google/status removed in Edit 2 â€” the Google button is always shown

@@ -42,6 +42,9 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit,
     onLoginSuccess: () -> Unit,
     onNeedDeviceSetup: () -> Unit = {},
+    onNavigateToForgotPassword: () -> Unit = {},
+    passwordResetSuccess: Boolean = false,
+    onPasswordResetSuccessShown: () -> Unit = {},
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -69,6 +72,15 @@ fun LoginScreen(
         }
     }
 
+    // Confirm a successful password reset (user returned here from the reset flow).
+    val resetSuccessMessage = stringResource(R.string.forgotpw_success)
+    LaunchedEffect(passwordResetSuccess) {
+        if (passwordResetSuccess) {
+            snackbarHostState.showSnackbar(message = resetSuccessMessage, duration = SnackbarDuration.Short)
+            onPasswordResetSuccessShown()
+        }
+    }
+
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
         LoginContent(
             modifier = Modifier.padding(padding),
@@ -82,7 +94,8 @@ fun LoginScreen(
             isGoogleLoading = uiState.isGoogleSignInLoading,
             onLogin = { viewModel.login(email, password) },
             onGoogleSignIn = { viewModel.signInWithGoogle(context) },
-            onNavigateToRegister = onNavigateToRegister
+            onNavigateToRegister = onNavigateToRegister,
+            onNavigateToForgotPassword = onNavigateToForgotPassword
         )
     }
 
@@ -108,6 +121,7 @@ private fun LoginContent(
     onLogin: () -> Unit,
     onGoogleSignIn: () -> Unit,
     onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
@@ -195,7 +209,13 @@ private fun LoginContent(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(SafeGuardDimens.stackLg))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onNavigateToForgotPassword) {
+                Text(stringResource(R.string.login_forgot_password))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
 
         HarisPrimaryButton(
             text = stringResource(R.string.sign_in),

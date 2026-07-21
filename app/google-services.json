@@ -1,35 +1,52 @@
 {
   "project_info": {
-    "project_number": "123456789012",
-    "firebase_url": "https://dummy-project.firebaseio.com",
-    "project_id": "dummy-project-id",
-    "storage_bucket": "dummy-project-id.appspot.com"
+    "project_number": "814941014353",
+    "project_id": "haris-db7b0",
+    "storage_bucket": "haris-db7b0.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:123456789012:android:dummyappid",
+        "mobilesdk_app_id": "1:814941014353:android:c7850807482950f31b2b70",
         "android_client_info": {
           "package_name": "com.safeguard.parentalcontrol"
         }
       },
       "oauth_client": [
         {
-          "client_id": "dummy-client-id.apps.googleusercontent.com",
+          "client_id": "814941014353-o0ook3du3se8087pvbdb806ln2verk34.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.safeguard.parentalcontrol",
+            "certificate_hash": "a2d2411bfb599b4e8aee212b08b17eacc5535a20"
+          }
+        },
+        {
+          "client_id": "814941014353-vjma0sduq68h69j8vdn36ou5e8qlqig8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.safeguard.parentalcontrol",
+            "certificate_hash": "595ad2ddadee6322aea9a30674ed774c639734f4"
+          }
+        },
+        {
+          "client_id": "814941014353-8ccdjaes5thocovg3l6qu6rrmobknssh.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "dummy-api-key"
+          "current_key": "AIzaSyCA96CH0wqb8ewd0G5F07dpfGYQz49h6kY"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
-        },
-        "ads_service": {
-          "status": 1
+          "other_platform_oauth_client": [
+            {
+              "client_id": "814941014353-8ccdjaes5thocovg3l6qu6rrmobknssh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

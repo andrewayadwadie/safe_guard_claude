@@ -135,9 +135,17 @@ private fun <T> parseErrorMessage(response: retrofit2.Response<T>): String {
     return try {
         val errorBody = response.errorBody()?.string()
         if (errorBody != null) {
-            // Try to parse as JSON with "detail" field
             val json = org.json.JSONObject(errorBody)
-            json.optString("detail", "Request failed")
+            // FastAPI validation errors (422) return "detail" as an array of
+            // {type, loc, msg} objects — surface the first entry's message.
+            // Other errors (400/429/etc.) return "detail" as a plain string.
+            val detailArray = json.optJSONArray("detail")
+            if (detailArray != null && detailArray.length() > 0) {
+                detailArray.optJSONObject(0)?.optString("msg")?.takeIf { it.isNotBlank() }
+                    ?: "Request failed with code ${response.code()}"
+            } else {
+                json.optString("detail", "Request failed")
+            }
         } else {
             "Request failed with code ${response.code()}"
         }

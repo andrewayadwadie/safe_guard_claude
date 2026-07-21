@@ -1,17 +1,25 @@
 package com.safeguard.parentalcontrol.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.alerts.AlertsScreen
 import com.safeguard.parentalcontrol.presentation.auth.LoginScreen
 import com.safeguard.parentalcontrol.presentation.auth.RegisterScreen
+import com.safeguard.parentalcontrol.presentation.forgotpassword.ForgotPasswordScreen
+import com.safeguard.parentalcontrol.presentation.forgotpassword.ForgotPasswordViewModel
+import com.safeguard.parentalcontrol.presentation.forgotpassword.ResetPasswordScreen
 import com.safeguard.parentalcontrol.presentation.blacklist.BlacklistScreen
 import com.safeguard.parentalcontrol.presentation.children.ChildrenScreen
 import com.safeguard.parentalcontrol.presentation.dashboard.DashboardScreen
@@ -33,6 +41,12 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
+/** Route of the nested graph that hosts the two forgot-password steps. */
+private const val FORGOT_PASSWORD_FLOW_ROUTE = "forgot_password_flow"
+
+/** Result key set on the Login entry when a password reset completes. */
+private const val PASSWORD_RESET_SUCCESS_KEY = "password_reset_success"
+
 /**
  * Navigation routes
  */
@@ -48,6 +62,13 @@ sealed class Screen(val route: String) {
     }
     data object Settings : Screen("settings")
     data object ChangePassword : Screen("change_password")
+
+    /**
+     * Forgot-password recovery flow. Both steps live in a nested graph
+     * ([FORGOT_PASSWORD_FLOW_ROUTE]) so they share one graph-scoped ViewModel.
+     */
+    data object ForgotPassword : Screen("forgot_password_email")
+    data object ResetPassword : Screen("forgot_password_reset")
 
     /**
      * In-app legal document viewer. `doc` selects which bundled HTML to show
@@ -148,7 +169,11 @@ fun SafeGuardNavGraph(
         }
 
         // Login Screen
-        composable(Screen.Login.route) {
+        composable(Screen.Login.route) { backStackEntry ->
+            val passwordResetSuccess by backStackEntry.savedStateHandle
+                .getStateFlow(PASSWORD_RESET_SUCCESS_KEY, false)
+                .collectAsStateWithLifecycle()
+
             LoginScreen(
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
@@ -162,8 +187,44 @@ fun SafeGuardNavGraph(
                     navController.navigate(Screen.DeviceSetup.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
+                },
+                onNavigateToForgotPassword = {
+                    navController.navigate(FORGOT_PASSWORD_FLOW_ROUTE)
+                },
+                passwordResetSuccess = passwordResetSuccess,
+                onPasswordResetSuccessShown = {
+                    backStackEntry.savedStateHandle[PASSWORD_RESET_SUCCESS_KEY] = false
                 }
             )
+        }
+
+        // Forgot-password recovery flow (nested graph — shared graph-scoped ViewModel)
+        navigation(
+            route = FORGOT_PASSWORD_FLOW_ROUTE,
+            startDestination = Screen.ForgotPassword.route
+        ) {
+            composable(Screen.ForgotPassword.route) { entry ->
+                val parentEntry = remember(entry) { navController.getBackStackEntry(FORGOT_PASSWORD_FLOW_ROUTE) }
+                val viewModel: ForgotPasswordViewModel = hiltViewModel(parentEntry)
+                ForgotPasswordScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onCodeSent = { navController.navigate(Screen.ResetPassword.route) }
+                )
+            }
+            composable(Screen.ResetPassword.route) { entry ->
+                val parentEntry = remember(entry) { navController.getBackStackEntry(FORGOT_PASSWORD_FLOW_ROUTE) }
+                val viewModel: ForgotPasswordViewModel = hiltViewModel(parentEntry)
+                ResetPasswordScreen(
+                    viewModel = viewModel,
+                    onBackToEmail = { navController.popBackStack() },
+                    onResetSuccess = {
+                        navController.getBackStackEntry(Screen.Login.route)
+                            .savedStateHandle[PASSWORD_RESET_SUCCESS_KEY] = true
+                        navController.popBackStack(Screen.Login.route, inclusive = false)
+                    }
+                )
+            }
         }
 
         // Register Screen

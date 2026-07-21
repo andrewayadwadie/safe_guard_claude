@@ -34,6 +34,11 @@ object Constants {
     const val KEY_LAST_SYNC_TIME = "last_sync_time"
     const val KEY_LAST_IMAGE_SCAN_TIME = "last_image_scan_time"
     const val KEY_CONTENT_FILTERING_ENABLED = "content_filtering_enabled"
+    // Maximum Protection: when true, detected image violations are blurred in the gallery
+    // in addition to being backed up for parent review; when false (default) violations are
+    // only backed up (copy-only). Written only after parent-PIN verification (enforced at the
+    // UI layer). Read fresh on every violation. Cleared on logout by clearAll().
+    const val KEY_MAXIMUM_PROTECTION_ENABLED = "maximum_protection_enabled"
 
     // Sync Intervals (milliseconds)
     const val SYNC_INTERVAL_MINUTES = 5L // Reduced for testing (production: 15L)
