@@ -19,7 +19,8 @@ import javax.inject.Singleton
 class AuthRepository @Inject constructor(
     private val apiService: ApiService,
     private val tokenManager: TokenManager,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val alertRepository: AlertRepository
 ) {
     /**
      * Register a new user
@@ -47,7 +48,10 @@ class AuthRepository @Inject constructor(
             preferencesManager.saveUserInfo(
                 userId = response.user.id,
                 email = response.user.email,
-                role = response.user.role.name.lowercase()
+                role = response.user.role.name.lowercase(),
+                // Captured here so a child device can name whose violation it is, offline
+                // and without an extra request on the detection path.
+                fullName = response.user.fullName
             )
 
             // Don't log email (PII) - just log success
@@ -76,7 +80,10 @@ class AuthRepository @Inject constructor(
             preferencesManager.saveUserInfo(
                 userId = response.user.id,
                 email = response.user.email,
-                role = response.user.role.name.lowercase()
+                role = response.user.role.name.lowercase(),
+                // Captured here so a child device can name whose violation it is, offline
+                // and without an extra request on the detection path.
+                fullName = response.user.fullName
             )
 
             // Don't log email (PII) - just log success
@@ -111,7 +118,10 @@ class AuthRepository @Inject constructor(
             preferencesManager.saveUserInfo(
                 userId = response.user.id,
                 email = response.user.email,
-                role = response.user.role.name.lowercase()
+                role = response.user.role.name.lowercase(),
+                // Captured here so a child device can name whose violation it is, offline
+                // and without an extra request on the detection path.
+                fullName = response.user.fullName
             )
 
             // Don't log email (PII) - just log success
@@ -145,11 +155,22 @@ class AuthRepository @Inject constructor(
      * Logout user
      */
     suspend fun logout(): NetworkResult<Unit> = withContext(Dispatchers.IO) {
+        // Clear the push registration FIRST, while the session is still valid. This is an
+        // authenticated call: running it after the tokens are gone would 401 and leave a live
+        // token registered against the account on a device nobody is signed in on — meaning
+        // family violation alerts would keep arriving there. Best-effort: a failure here must
+        // never prevent the user from signing out.
+        clearFcmToken()
+
         val result = safeApiCall { apiService.logout() }
 
         // Clear local data regardless of API result
         tokenManager.clearTokens()
         preferencesManager.clearAll()
+
+        // Alerts held for later delivery belong to the account that produced them. Drop them
+        // so they can never be sent under whoever signs in on this device next.
+        alertRepository.clearPendingAlerts()
 
         Timber.d("User logged out")
 
@@ -161,6 +182,35 @@ class AuthRepository @Inject constructor(
      */
     suspend fun getCurrentUser(): NetworkResult<User> = withContext(Dispatchers.IO) {
         safeApiCall { apiService.getCurrentUser() }
+    }
+
+    // ==================== Push token registration ====================
+
+    /**
+     * Publish this device's push token so the backend can reach the signed-in user.
+     *
+     * The token value is never logged and never persisted locally — it is fetched fresh from
+     * Firebase each time it is published.
+     */
+    suspend fun publishFcmToken(token: String): NetworkResult<MessageResponse> = withContext(Dispatchers.IO) {
+        val result = safeApiCall { apiService.updateMyFcmToken(FcmTokenUpdateRequest(token)) }
+
+        result.onSuccess { Timber.d("Push token published") }
+        result.onError { message, code -> Timber.w("Failed to publish push token (code=$code): $message") }
+
+        result
+    }
+
+    /**
+     * Clear this device's registered push token. Must run while the session is still valid.
+     */
+    suspend fun clearFcmToken(): NetworkResult<MessageResponse> = withContext(Dispatchers.IO) {
+        val result = safeApiCall { apiService.updateMyFcmToken(FcmTokenUpdateRequest(null)) }
+
+        result.onSuccess { Timber.d("Push token cleared") }
+        result.onError { message, code -> Timber.w("Failed to clear push token (code=$code): $message") }
+
+        result
     }
 
     /**

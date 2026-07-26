@@ -1,8 +1,13 @@
 package com.safeguard.parentalcontrol.presentation.dashboard
 
+import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.text.format.DateUtils
 import java.util.Date
 import com.safeguard.parentalcontrol.service.MonitoringService
@@ -75,6 +80,28 @@ fun DashboardScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
+
+    // Notification permission for parents. POST_NOTIFICATIONS is an ordinary runtime
+    // permission (not one of the four special ones that must be granted through system
+    // settings), so the standard request contract is correct here.
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { viewModel.refreshNotificationState() }
+
+    var notificationPermissionRequested by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.isParent, uiState.notificationsEnabled) {
+        val needsRequest = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            uiState.isParent &&
+            !uiState.notificationsEnabled &&
+            !notificationPermissionRequested
+        if (needsRequest) {
+            // Ask once per screen instance; if the parent declines, the dismissible banner
+            // explains the consequence rather than re-prompting.
+            notificationPermissionRequested = true
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     // Re-check permissions and start service when returning from settings or first showing
     DisposableEffect(lifecycleOwner) {
@@ -183,7 +210,9 @@ fun DashboardScreen(
                     onTogglePlatform = { platform, blocked -> viewModel.toggleSocialMediaPlatform(platform, blocked) },
                     onBlockAllSocialMedia = { viewModel.blockAllSocialMedia() },
                     onUnblockAllSocialMedia = { viewModel.unblockAllSocialMedia() },
-                    onMarkAlertAsRead = { viewModel.markAlertAsRead(it) }
+                    onMarkAlertAsRead = { viewModel.markAlertAsRead(it) },
+                    onOpenNotificationSettings = { openAppNotificationSettings(context) },
+                    onDismissNotificationBanner = { viewModel.dismissNotificationBanner() }
                 )
             }
         }
@@ -367,6 +396,31 @@ private fun DashboardTopBar(
 // DASHBOARD CONTENT
 // ============================================================================
 
+/**
+ * Open this app's notification settings so the parent can re-enable alerts.
+ *
+ * Once notifications have been turned off at the app level (or the permission permanently
+ * denied), only the system settings screen can turn them back on.
+ */
+private fun openAppNotificationSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    }
+    try {
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        // Fall back to the app's details page if the OEM has no notification settings screen.
+        Timber.w(e, "Notification settings unavailable; opening app details")
+        context.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = android.net.Uri.fromParts("package", context.packageName, null)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+        )
+    }
+}
+
 @Composable
 private fun DashboardContent(
     uiState: DashboardUiState,
@@ -381,7 +435,9 @@ private fun DashboardContent(
     onTogglePlatform: (SocialMediaPlatform, Boolean) -> Unit,
     onBlockAllSocialMedia: () -> Unit,
     onUnblockAllSocialMedia: () -> Unit,
-    onMarkAlertAsRead: (Int) -> Unit
+    onMarkAlertAsRead: (Int) -> Unit,
+    onOpenNotificationSettings: () -> Unit,
+    onDismissNotificationBanner: () -> Unit
 ) {
     val listState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
@@ -474,6 +530,24 @@ private fun DashboardContent(
                             onAction = { onDeviceSelected(first.id) }
                         )
                     }
+                }
+            }
+        }
+
+        // Violation alerts cannot reach this parent while notifications are off. Informational
+        // and dismissible — nothing else on the dashboard is affected either way, and alerts
+        // still appear in the app.
+        if (uiState.showNotificationBanner) {
+            item(key = "notifications_disabled_banner") {
+                AnimatedCard(visible = showContent) {
+                    InfoBanner(
+                        message = stringResource(R.string.notif_disabled_banner_msg),
+                        type = BannerType.WARNING,
+                        icon = Icons.Default.NotificationsOff,
+                        actionLabel = stringResource(R.string.notif_disabled_banner_action),
+                        onAction = onOpenNotificationSettings,
+                        onDismiss = onDismissNotificationBanner
+                    )
                 }
             }
         }

@@ -811,4 +811,22 @@
     <string name="notif_sync_limit_warning_msg">تبقّى %1$d دقيقة فقط من وقت الشاشة اليوم.</string>
     <string name="notif_sync_bedtime_title">وضع وقت النوم نشط</string>
     <string name="notif_sync_bedtime_msg">استخدام الجهاز مقيّد خلال ساعات النوم.</string>
+
+    <!-- Violation notification shown on the parent device -->
+    <string name="violation_notification_title">تم اكتشاف مخالفة</string>
+    <string name="violation_identity_separator"> — </string>
+    <string name="violation_segment_separator"> · </string>
+    <string name="violation_type_inappropriate_text">نص غير لائق</string>
+    <string name="violation_type_inappropriate_image">صورة غير لائقة</string>
+    <string name="violation_type_content_block">محتوى محظور</string>
+    <string name="violation_type_screen_time_limit">حد وقت الشاشة</string>
+    <string name="violation_type_app_blocked">تطبيق محظور</string>
+    <string name="violation_type_device_admin_disabled">تم تعطيل الحماية</string>
+    <string name="violation_type_unknown">مخالفة</string>
+
+    <!-- Parent reachability banner (notifications disabled) -->
+    <string name="notif_disabled_banner_title">تنبيهات المخالفات معطّلة</string>
+    <string name="notif_disabled_banner_msg">الإشعارات معطّلة، لذلك لن يتم إعلامك عند حدوث مخالفة. ما زالت التنبيهات تظهر عند فتح التطبيق.</string>
+    <string name="notif_disabled_banner_action">تفعيل</string>
+    <string name="notif_disabled_banner_dismiss">تجاهل</string>
 </resources>

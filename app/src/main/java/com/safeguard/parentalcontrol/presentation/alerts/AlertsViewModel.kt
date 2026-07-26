@@ -9,6 +9,7 @@ import com.safeguard.parentalcontrol.data.model.AlertSeverity
 import com.safeguard.parentalcontrol.data.model.AlertType
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.AlertRepository
+import com.safeguard.parentalcontrol.data.repository.DeviceRepository
 import com.safeguard.parentalcontrol.util.LocaleHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 data class AlertsUiState(
@@ -36,6 +38,7 @@ enum class AlertFilter {
 @HiltViewModel
 class AlertsViewModel @Inject constructor(
     private val alertRepository: AlertRepository,
+    private val deviceRepository: DeviceRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -50,13 +53,50 @@ class AlertsViewModel @Inject constructor(
     }
 
     /**
-     * Set the device to filter alerts by
-     * Call this when navigating from device details to alerts screen
+     * Set the device to filter alerts by.
+     * Call this when navigating from device details to alerts screen.
+     *
+     * A device that has since been unlinked or removed from the family would otherwise leave
+     * the parent staring at a permanently empty list with no explanation — most likely after
+     * tapping an older violation notification. In that case fall back to the unfiltered list
+     * rather than a broken target.
      */
     fun setDevice(deviceId: Int?, deviceName: String?) {
         _uiState.update { it.copy(deviceId = deviceId, deviceName = deviceName) }
+
+        if (deviceId == null) {
+            loadAlerts()
+            return
+        }
+
+        viewModelScope.launch {
+            if (!deviceStillExists(deviceId)) {
+                Timber.d("Alerts target device $deviceId is no longer linked; showing all alerts")
+                _uiState.update { it.copy(deviceId = null, deviceName = null) }
+            }
+            loadAlerts()
+        }
+    }
+
+    /**
+     * Refresh whenever the screen resumes, so the list is current after arriving from a
+     * notification and after returning from any other screen.
+     */
+    fun onResume() {
         loadAlerts()
     }
+
+    /**
+     * @return false only when the backend positively reports the device is gone. A network
+     *   failure leaves the filter in place — losing connectivity is not evidence that the
+     *   device was unlinked.
+     */
+    private suspend fun deviceStillExists(deviceId: Int): Boolean =
+        when (val result = deviceRepository.getDevice(deviceId)) {
+            is NetworkResult.Success -> true
+            is NetworkResult.Error -> result.code != 404
+            else -> true
+        }
 
     /**
      * Load alerts from the server

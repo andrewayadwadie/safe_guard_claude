@@ -1,6 +1,7 @@
 package com.safeguard.parentalcontrol.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
@@ -37,6 +38,8 @@ import com.safeguard.parentalcontrol.presentation.setup.ConsentScreen
 import com.safeguard.parentalcontrol.presentation.setup.PermissionsSetupScreen
 import com.safeguard.parentalcontrol.presentation.splash.SplashScreen
 import com.safeguard.parentalcontrol.presentation.wordlist.WordListScreen
+import com.safeguard.parentalcontrol.util.DeepLinkHolder
+import com.safeguard.parentalcontrol.util.PendingDeepLink
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -46,6 +49,18 @@ private const val FORGOT_PASSWORD_FLOW_ROUTE = "forgot_password_flow"
 
 /** Result key set on the Login entry when a password reset completes. */
 private const val PASSWORD_RESET_SUCCESS_KEY = "password_reset_success"
+
+/**
+ * Navigate to the existing Alerts route for a pending notification deep link.
+ *
+ * Reuses [Screen.Alerts] rather than introducing a destination: launchSingleTop keeps a
+ * second tap from stacking another copy when the parent is already looking at the screen.
+ */
+private fun NavHostController.navigateToAlerts(link: PendingDeepLink) {
+    navigate(Screen.Alerts.createRoute(link.deviceId, link.deviceName)) {
+        launchSingleTop = true
+    }
+}
 
 /**
  * Navigation routes
@@ -79,11 +94,15 @@ sealed class Screen(val route: String) {
     }
     data object Alerts : Screen("alerts?deviceId={deviceId}&deviceName={deviceName}") {
         fun createRoute(deviceId: Int? = null, deviceName: String? = null): String {
-            return if (deviceId != null && deviceName != null) {
+            // No device means the unfiltered list. A device without a name still filters —
+            // a violation push may identify the device without carrying its display name.
+            if (deviceId == null) return "alerts"
+            val base = "alerts?deviceId=$deviceId"
+            return if (deviceName != null) {
                 val encodedName = URLEncoder.encode(deviceName, StandardCharsets.UTF_8.toString())
-                "alerts?deviceId=$deviceId&deviceName=$encodedName"
+                "$base&deviceName=$encodedName"
             } else {
-                "alerts"
+                base
             }
         }
     }
@@ -150,8 +169,21 @@ sealed class Screen(val route: String) {
 fun SafeGuardNavGraph(
     navController: NavHostController = rememberNavController(),
     isLoggedIn: Boolean = false,
-    startDestination: String = Screen.Splash.route
+    startDestination: String = Screen.Splash.route,
+    deepLinkHolder: DeepLinkHolder
 ) {
+    val pendingDeepLink by deepLinkHolder.pending.collectAsStateWithLifecycle()
+
+    // A violation notification was tapped while a session is live: go straight to the alert.
+    // Consumed in the same effect, so screen recreation (rotation) finds nothing pending and
+    // does not navigate a second time.
+    LaunchedEffect(pendingDeepLink, isLoggedIn) {
+        val link = pendingDeepLink ?: return@LaunchedEffect
+        if (!isLoggedIn) return@LaunchedEffect  // resumed after login instead - see below
+        navController.navigateToAlerts(link)
+        deepLinkHolder.consume()
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -181,6 +213,14 @@ fun SafeGuardNavGraph(
                 onLoginSuccess = {
                     navController.navigate(Screen.Dashboard.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                    // The parent got here by tapping a violation notification with an
+                    // expired session. Now that they are authenticated, continue to the
+                    // alert they were trying to reach instead of dropping it. Dashboard
+                    // stays underneath so Back behaves normally.
+                    deepLinkHolder.pending.value?.let { link ->
+                        navController.navigateToAlerts(link)
+                        deepLinkHolder.consume()
                     }
                 },
                 onNeedDeviceSetup = {

@@ -32,6 +32,7 @@ import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.getAppName
 import com.safeguard.parentalcontrol.worker.ImageScanWorker
+import com.safeguard.parentalcontrol.worker.PendingAlertWorker
 import com.safeguard.parentalcontrol.worker.SyncWorker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -162,6 +163,9 @@ class MonitoringService : Service() {
         super.onCreate()
         serviceJob = SupervisorJob()
         registerNetworkCallback()
+        // Anything held from a previous run (offline detection, backend outage, process
+        // death) gets a delivery attempt as soon as monitoring comes up.
+        PendingAlertWorker.enqueueImmediate(this)
         Timber.d("MonitoringService created")
     }
 

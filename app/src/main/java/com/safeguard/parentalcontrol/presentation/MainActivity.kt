@@ -23,9 +23,13 @@ import com.safeguard.parentalcontrol.presentation.navigation.Screen
 import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
 import com.safeguard.parentalcontrol.service.MonitoringService
 import com.safeguard.parentalcontrol.util.AuthEvent
+import com.safeguard.parentalcontrol.util.Constants
+import com.safeguard.parentalcontrol.util.DeepLinkHolder
 import com.safeguard.parentalcontrol.util.LocaleHelper
+import com.safeguard.parentalcontrol.util.PendingDeepLink
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.TokenManager
+import com.safeguard.parentalcontrol.worker.PushTokenSyncScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import timber.log.Timber
@@ -43,6 +47,12 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var preferencesManager: PreferencesManager
 
+    @Inject
+    lateinit var deepLinkHolder: DeepLinkHolder
+
+    @Inject
+    lateinit var pushTokenSyncScheduler: PushTokenSyncScheduler
+
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleHelper.wrap(newBase))
     }
@@ -57,6 +67,16 @@ class MainActivity : ComponentActivity() {
         // This ensures enforcement works even if the service wasn't started on boot
         startMonitoringServiceIfNeeded()
 
+        // Publish this device's push token on every start with a live session. Registering
+        // only at sign-in would leave anyone already signed in before this shipped
+        // permanently unreachable, since they never sign in again.
+        if (tokenManager.isLoggedIn()) {
+            pushTokenSyncScheduler.schedule()
+        }
+
+        // Cold start from a notification tap.
+        handleDeepLinkIntent(intent)
+
         setContent {
             SafeGuardTheme {
                 Surface(
@@ -65,18 +85,44 @@ class MainActivity : ComponentActivity() {
                 ) {
                     SafeGuardApp(
                         isLoggedIn = tokenManager.isLoggedIn(),
-                        tokenManager = tokenManager
+                        tokenManager = tokenManager,
+                        deepLinkHolder = deepLinkHolder
                     )
                 }
             }
         }
+    }
+
+    /**
+     * The activity is declared singleTop, so a tap while the app is already running arrives
+     * here instead of through a fresh onCreate. Replacing the stored intent keeps
+     * getIntent() consistent for anything that reads it later.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleDeepLinkIntent(intent)
+    }
+
+    /**
+     * Record where a violation notification wants to go. The navigation itself happens in the
+     * nav graph, which consumes the value exactly once.
+     */
+    private fun handleDeepLinkIntent(intent: Intent?) {
+        if (intent?.getStringExtra(Constants.EXTRA_NAV_TARGET) != Constants.NAV_TARGET_ALERTS) return
+
+        val deviceId = intent.getIntExtra(Constants.EXTRA_DEVICE_ID, -1).takeIf { it != -1 }
+        val deviceName = intent.getStringExtra(Constants.EXTRA_DEVICE_NAME)
+        deepLinkHolder.post(PendingDeepLink(deviceId = deviceId, deviceName = deviceName))
+        Timber.d("Violation notification tapped; alerts deep link pending")
     }
 }
 
 @Composable
 fun SafeGuardApp(
     isLoggedIn: Boolean,
-    tokenManager: TokenManager
+    tokenManager: TokenManager,
+    deepLinkHolder: DeepLinkHolder
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
@@ -106,7 +152,8 @@ fun SafeGuardApp(
     SafeGuardNavGraph(
         navController = navController,
         isLoggedIn = isLoggedIn,
-        startDestination = Screen.Splash.route
+        startDestination = Screen.Splash.route,
+        deepLinkHolder = deepLinkHolder
     )
 }
 

@@ -8,56 +8,47 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.SafeGuardApplication
-import com.safeguard.parentalcontrol.data.repository.DeviceRepository
 import com.safeguard.parentalcontrol.presentation.MainActivity
 import com.safeguard.parentalcontrol.util.Constants
+import com.safeguard.parentalcontrol.util.PreferencesManager
+import com.safeguard.parentalcontrol.util.ViolationNotifier
+import com.safeguard.parentalcontrol.worker.PushTokenSyncScheduler
 import com.safeguard.parentalcontrol.worker.SyncWorker
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.*
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 
 /**
- * Firebase Cloud Messaging service for receiving push notifications
+ * Firebase Cloud Messaging service for receiving push notifications.
  *
- * Improvements:
- * - Fixed notification ID overflow issue
- * - Proper CoroutineScope lifecycle management
- * - Uses WorkManager for sync operations
+ * Holds no business logic: every message type is routed to an injected collaborator
+ * (Constitution enforcement rule 7). Violation alerts go to [ViolationNotifier], token
+ * refreshes to [PushTokenSyncWorker], sync commands to [SyncWorker].
  */
 @AndroidEntryPoint
 class SafeGuardFirebaseMessagingService : FirebaseMessagingService() {
 
     @Inject
-    lateinit var deviceRepository: DeviceRepository
+    lateinit var violationNotifier: ViolationNotifier
 
-    // Proper CoroutineScope with lifecycle management
-    private var serviceJob: Job? = null
-    private val serviceScope: CoroutineScope
-        get() = CoroutineScope(Dispatchers.IO + (serviceJob ?: SupervisorJob().also { serviceJob = it }))
+    @Inject
+    lateinit var preferencesManager: PreferencesManager
+
+    @Inject
+    lateinit var pushTokenSyncScheduler: PushTokenSyncScheduler
 
     // Thread-safe notification ID counter to prevent overflow
     private val notificationIdCounter = AtomicInteger(0)
-
-    override fun onCreate() {
-        super.onCreate()
-        serviceJob = SupervisorJob()
-    }
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Timber.d("FCM token refreshed")
 
-        // Update token on server
-        serviceScope.launch {
-            try {
-                deviceRepository.updateFcmToken(token)
-                Timber.d("FCM token updated on server")
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to update FCM token")
-            }
-        }
+        // Publish the new token for whichever role is signed in. The worker owns the role
+        // routing (parent -> PUT /auth/me/fcm-token, child -> PUT /devices/{id}) and gives
+        // us retry + offline handling for free.
+        pushTokenSyncScheduler.schedule()
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
@@ -69,8 +60,14 @@ class SafeGuardFirebaseMessagingService : FirebaseMessagingService() {
             handleDataMessage(message.data)
         }
 
-        // Handle notification payload
+        // Handle notification payload. Violation pushes are data-only by contract, so this
+        // branch only fires for other server-sent notifications — but guard the role anyway
+        // so a stray notification-block violation can never surface on a child device.
         message.notification?.let {
+            if (!preferencesManager.isParent && message.data["type"] == "alert") {
+                Timber.d("Notification-block alert received on a non-parent device; discarded")
+                return@let
+            }
             showNotification(
                 title = it.title ?: "Haris",
                 body = it.body ?: ""
@@ -90,18 +87,7 @@ class SafeGuardFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun handleAlertMessage(data: Map<String, String>) {
-        val title = data["title"] ?: "Alert"
-        val body = data["body"] ?: ""
-        val severity = data["severity"] ?: "medium"
-
-        // Show notification with appropriate priority
-        val priority = when (severity) {
-            "critical" -> NotificationCompat.PRIORITY_MAX
-            "high" -> NotificationCompat.PRIORITY_HIGH
-            else -> NotificationCompat.PRIORITY_DEFAULT
-        }
-
-        showNotification(title, body, priority)
+        violationNotifier.handleViolationPush(data)
     }
 
     private fun handleCommandMessage(data: Map<String, String>) {
@@ -168,13 +154,6 @@ class SafeGuardFirebaseMessagingService : FirebaseMessagingService() {
 
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.notify(getNextNotificationId(), notification)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        serviceJob?.cancel()
-        serviceJob = null
-        Timber.d("SafeGuardFirebaseMessagingService destroyed")
     }
 
     companion object {

@@ -826,4 +826,25 @@
     <string name="notif_sync_limit_warning_msg">Only %1$d minutes of screen time remaining today.</string>
     <string name="notif_sync_bedtime_title">Bedtime Mode Active</string>
     <string name="notif_sync_bedtime_msg">Device usage is restricted during bedtime hours.</string>
+
+    <!-- Violation notification shown on the parent device -->
+    <string name="violation_notification_title">Violation Detected</string>
+    <!-- Joins the child name and the device name, e.g. "Ali — Ali's Pixel" -->
+    <string name="violation_identity_separator"> — </string>
+    <!-- Joins identity, violation type and time, e.g. "Ali — Pixel · Inappropriate text · 4:32 PM" -->
+    <string name="violation_segment_separator"> · </string>
+    <string name="violation_type_inappropriate_text">Inappropriate text</string>
+    <string name="violation_type_inappropriate_image">Inappropriate image</string>
+    <string name="violation_type_content_block">Blocked content</string>
+    <string name="violation_type_screen_time_limit">Screen time limit</string>
+    <string name="violation_type_app_blocked">Blocked app</string>
+    <string name="violation_type_device_admin_disabled">Protection disabled</string>
+    <!-- Shown when the backend reports a violation type this app version does not know -->
+    <string name="violation_type_unknown">Violation</string>
+
+    <!-- Parent reachability banner (notifications disabled) -->
+    <string name="notif_disabled_banner_title">Violation alerts are off</string>
+    <string name="notif_disabled_banner_msg">Notifications are disabled, so you won\'t be told when a violation happens. Alerts still appear when you open the app.</string>
+    <string name="notif_disabled_banner_action">Enable</string>
+    <string name="notif_disabled_banner_dismiss">Dismiss</string>
 </resources>

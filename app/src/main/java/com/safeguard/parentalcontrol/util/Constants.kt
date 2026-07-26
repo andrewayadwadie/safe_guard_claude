@@ -39,6 +39,19 @@ object Constants {
     // only backed up (copy-only). Written only after parent-PIN verification (enforced at the
     // UI layer). Read fresh on every violation. Cleared on logout by clearAll().
     const val KEY_MAXIMUM_PROTECTION_ENABLED = "maximum_protection_enabled"
+    // Signed-in user's display name, captured at login/registration. Attached to every alert
+    // this device reports so the parent's notification can name the child. Cleared on logout.
+    const val KEY_USER_FULL_NAME = "user_full_name"
+    // Parent dismissed the "notifications are disabled" banner. Purely informational; the
+    // banner never blocks any functionality. Cleared on logout by clearAll().
+    const val KEY_NOTIFICATION_BANNER_DISMISSED = "notification_banner_dismissed"
+
+    // Deep link (violation notification -> Alerts screen). Carried as MainActivity intent
+    // extras; consumed once by the nav graph so screen recreation does not re-navigate.
+    const val EXTRA_NAV_TARGET = "nav_target"
+    const val EXTRA_DEVICE_ID = "nav_device_id"
+    const val EXTRA_DEVICE_NAME = "nav_device_name"
+    const val NAV_TARGET_ALERTS = "alerts"
 
     // Sync Intervals (milliseconds)
     const val SYNC_INTERVAL_MINUTES = 5L // Reduced for testing (production: 15L)
@@ -76,6 +89,8 @@ object Constants {
     const val WORK_TAG_IMAGE_SCAN = "image_scan_work"
     const val WORK_TAG_ACCESSIBILITY_MONITOR = "accessibility_monitor_work"
     const val WORK_TAG_TAMPER_ALERT = "tamper_alert_work"
+    const val WORK_PENDING_ALERT_DELIVERY = "pending_alert_delivery"
+    const val WORK_PUSH_TOKEN_SYNC = "push_token_sync"
 
     // Protection Monitor Interval (reduced from 15 to 5 for faster detection)
     const val ACCESSIBILITY_MONITOR_INTERVAL_MINUTES = 5L

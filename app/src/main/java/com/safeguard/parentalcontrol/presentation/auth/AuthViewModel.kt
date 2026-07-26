@@ -14,6 +14,7 @@ import com.safeguard.parentalcontrol.util.AnalyticsHelper
 import com.safeguard.parentalcontrol.util.GoogleSignInManager
 import com.safeguard.parentalcontrol.util.GoogleSignInResult
 import com.safeguard.parentalcontrol.util.LocaleHelper
+import com.safeguard.parentalcontrol.worker.PushTokenSyncScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,6 +64,7 @@ class AuthViewModel @Inject constructor(
     private val deviceRepository: DeviceRepository,
     private val googleSignInManager: GoogleSignInManager,
     private val analyticsHelper: AnalyticsHelper,
+    private val pushTokenSyncScheduler: PushTokenSyncScheduler,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -72,6 +74,14 @@ class AuthViewModel @Inject constructor(
     /** Resolves a string in the user's chosen app language, independent of the device system locale. */
     private fun getString(resId: Int, vararg args: Any): String =
         LocaleHelper.localizedContext(context).getString(resId, *args)
+
+    /**
+     * Make this device reachable for push as soon as a session exists. A parent that never
+     * publishes a token simply never receives a violation notification.
+     */
+    private fun publishPushToken() {
+        pushTokenSyncScheduler.schedule()
+    }
 
     init {
         // Check if already logged in
@@ -109,6 +119,7 @@ class AuthViewModel @Inject constructor(
 
             when (val result = authRepository.login(normalizedEmail, password)) {
                 is NetworkResult.Success -> {
+                    publishPushToken()
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -160,6 +171,7 @@ class AuthViewModel @Inject constructor(
 
             when (val result = authRepository.register(normalizedEmail, password, normalizedFullName, role)) {
                 is NetworkResult.Success -> {
+                    publishPushToken()
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -309,6 +321,7 @@ class AuthViewModel @Inject constructor(
             when (val result = authRepository.googleSignIn(idToken, role)) {
                 is NetworkResult.Success -> {
                     analyticsHelper.logGoogleSignInSuccess()
+                    publishPushToken()
                     _uiState.update {
                         it.copy(
                             isGoogleSignInLoading = false,

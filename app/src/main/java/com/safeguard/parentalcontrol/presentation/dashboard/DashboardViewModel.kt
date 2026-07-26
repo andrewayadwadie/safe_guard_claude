@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.pm.PackageManager
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -62,8 +63,16 @@ data class DashboardUiState(
     val blockSocialMediaEnabled: Boolean = false,
     val blockedSocialMediaPlatforms: Set<SocialMediaPlatform> = emptySet(),
     val showSocialMediaSubMenu: Boolean = false,
-    val isLoadingContentFilter: Boolean = false
-)
+    val isLoadingContentFilter: Boolean = false,
+    // Parent reachability: with notifications off, violation alerts cannot be shown at all.
+    // Surfaced as a dismissible informational banner — never a blocker, and never an error.
+    val notificationsEnabled: Boolean = true,
+    val notificationBannerDismissed: Boolean = false
+) {
+    /** Show the "alerts are off" banner only to a parent who has not dismissed it. */
+    val showNotificationBanner: Boolean
+        get() = isParent && !notificationsEnabled && !notificationBannerDismissed
+}
 
 /**
  * ViewModel for the dashboard screen
@@ -93,10 +102,41 @@ class DashboardViewModel @Inject constructor(
     }
 
     /**
+     * Re-read whether the OS will let this app post notifications. Called on every dashboard
+     * resume, so granting the permission (or toggling it in system settings) clears the
+     * banner without a restart.
+     */
+    fun refreshNotificationState() {
+        val enabled = NotificationManagerCompat
+            .from(getApplication<Application>().applicationContext)
+            .areNotificationsEnabled()
+
+        _uiState.update {
+            it.copy(
+                notificationsEnabled = enabled,
+                notificationBannerDismissed = preferencesManager.notificationBannerDismissed
+            )
+        }
+    }
+
+    /**
+     * Hide the notifications-disabled banner for good. Purely informational — nothing about
+     * the app becomes unavailable either way.
+     */
+    fun dismissNotificationBanner() {
+        preferencesManager.notificationBannerDismissed = true
+        _uiState.update { it.copy(notificationBannerDismissed = true) }
+    }
+
+    /**
      * Check all required permissions for child devices.
      * This determines whether to show the permission setup banner.
      */
     fun checkPermissions() {
+        // Notification state matters on both roles' devices, but only the parent is told
+        // about it — a child has no violation alerts to miss.
+        refreshNotificationState()
+
         // Only check for child devices
         if (authRepository.isParent()) {
             _uiState.update { it.copy(showPermissionBanner = false) }

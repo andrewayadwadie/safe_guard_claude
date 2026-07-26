@@ -100,7 +100,8 @@
       "Bash(./gradlew.bat testDebugUnitTest --tests \"com.safeguard.parentalcontrol.presentation.forgotpassword.*\")",
       "Bash(./gradlew.bat testDebugUnitTest)",
       "Bash(./gradlew.bat installDebug)",
-      "PowerShell(git *)"
+      "PowerShell(git *)",
+      "Bash(pwsh -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly)"
     ]
   }
 }

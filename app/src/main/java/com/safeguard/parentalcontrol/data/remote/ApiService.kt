@@ -35,6 +35,15 @@ interface ApiService {
     @GET("auth/me")
     suspend fun getCurrentUser(): Response<User>
 
+    /**
+     * Register/refresh this user's push token, or clear it by sending null.
+     *
+     * Parent devices have no device record of their own, so this — not `PUT /devices/{id}` —
+     * is how a parent becomes reachable for violation pushes.
+     */
+    @PUT("auth/me/fcm-token")
+    suspend fun updateMyFcmToken(@Body request: FcmTokenUpdateRequest): Response<MessageResponse>
+
     @POST("auth/change-password")
     suspend fun changePassword(@Body request: ChangePasswordRequest): Response<MessageResponse>
 
@@ -135,6 +144,19 @@ interface ApiService {
     @POST("alerts")
     suspend fun createAlert(
         @Body request: AlertCreate,
+        @Header("X-Device-Token") deviceToken: String
+    ): Response<Alert>
+
+    /**
+     * Submit a previously queued alert verbatim.
+     *
+     * Takes the stored JSON as-is instead of a typed model: the alert's `metadata` map is
+     * untyped, so round-tripping it through [AlertCreate] would coerce whole numbers to
+     * doubles and change the payload the backend receives.
+     */
+    @POST("alerts")
+    suspend fun createAlertRaw(
+        @Body request: com.google.gson.JsonObject,
         @Header("X-Device-Token") deviceToken: String
     ): Response<Alert>
 

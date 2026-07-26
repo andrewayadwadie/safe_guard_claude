@@ -117,6 +117,17 @@
 # Keep repositories
 -keep class com.safeguard.parentalcontrol.data.repository.** { *; }
 
+# Room (pending alert queue) - entities are reflected over by the generated DAO impl,
+# and the queued alert payload is (de)serialized with Gson.
+-keep class com.safeguard.parentalcontrol.data.local.** { *; }
+-keep class * extends androidx.room.RoomDatabase { *; }
+-dontwarn androidx.room.paging.**
+
+# Violation alert delivery workers (also covered by the worker.** rule above; listed
+# explicitly per the constitution's "ProGuard updated for every new Worker" rule).
+-keep class com.safeguard.parentalcontrol.worker.PendingAlertWorker { *; }
+-keep class com.safeguard.parentalcontrol.worker.PushTokenSyncWorker { *; }
+
 # EncryptedSharedPreferences / Security Crypto
 -keep class androidx.security.crypto.** { *; }
 -keep class com.google.crypto.tink.** { *; }

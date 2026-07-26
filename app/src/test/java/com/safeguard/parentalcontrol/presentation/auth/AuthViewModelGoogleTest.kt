@@ -12,6 +12,7 @@ import com.safeguard.parentalcontrol.util.AnalyticsHelper
 import com.safeguard.parentalcontrol.util.GoogleSignInManager
 import com.safeguard.parentalcontrol.util.GoogleSignInResult
 import com.safeguard.parentalcontrol.util.LocaleHelper
+import com.safeguard.parentalcontrol.worker.PushTokenSyncScheduler
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -74,8 +75,11 @@ class AuthViewModelGoogleTest {
         unmockkObject(LocaleHelper)
     }
 
+    private val pushTokenSyncScheduler = mockk<PushTokenSyncScheduler>(relaxed = true)
+
     private fun viewModel() = AuthViewModel(
-        authRepository, deviceRepository, googleSignInManager, analyticsHelper, context
+        authRepository, deviceRepository, googleSignInManager, analyticsHelper,
+        pushTokenSyncScheduler, context
     )
 
     @Test

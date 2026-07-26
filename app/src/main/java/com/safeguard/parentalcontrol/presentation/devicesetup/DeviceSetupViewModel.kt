@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.DeviceRepository
+import com.safeguard.parentalcontrol.util.FcmTokenProvider
 import com.safeguard.parentalcontrol.util.LocaleHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -27,6 +28,7 @@ data class DeviceSetupUiState(
 @HiltViewModel
 class DeviceSetupViewModel @Inject constructor(
     private val deviceRepository: DeviceRepository,
+    private val fcmTokenProvider: FcmTokenProvider,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -61,7 +63,12 @@ class DeviceSetupViewModel @Inject constructor(
             Log.d("DeviceSetup", "Registering device: $deviceName")
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            when (val result = deviceRepository.registerDevice(deviceName)) {
+            // Carry the push token in the registration itself so the backend can reach this
+            // child device (for silent sync commands) from the moment it exists. A null token
+            // is tolerated — PushTokenSyncWorker publishes it later once Firebase supplies one.
+            val fcmToken = fcmTokenProvider.currentToken()
+
+            when (val result = deviceRepository.registerDevice(deviceName, fcmToken)) {
                 is NetworkResult.Success -> {
                     Log.d("DeviceSetup", "Device registered successfully: ${result.data.id}")
                     Timber.d("Device registered: ${result.data.deviceName} (ID: ${result.data.id})")

@@ -6,7 +6,9 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.safeguard.parentalcontrol.BuildConfig
 import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.data.local.PendingAlertStore
 import com.safeguard.parentalcontrol.data.model.*
 import com.safeguard.parentalcontrol.data.remote.ApiService
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
@@ -14,6 +16,7 @@ import com.safeguard.parentalcontrol.data.remote.safeApiCall
 import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.TextHasher
+import com.safeguard.parentalcontrol.worker.PendingAlertWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -45,7 +48,8 @@ class AlertRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val apiService: ApiService,
     private val preferencesManager: PreferencesManager,
-    private val textHasher: TextHasher
+    private val textHasher: TextHasher,
+    private val pendingAlertStore: PendingAlertStore
 ) {
     companion object {
         private const val TAG = "AlertRepository"
@@ -83,7 +87,12 @@ class AlertRepository @Inject constructor(
         LocaleHelper.localizedContext(context).getString(resId, *args)
 
     /**
-     * Create a new alert (from device)
+     * Create a new alert (from device).
+     *
+     * Every alert type funnels through here, so this is where identity and timing are
+     * attached and where a failed submission is held for later delivery. Callers observe
+     * exactly what they observed before: detection and enforcement do not change behaviour
+     * because an alert could not be delivered right now.
      */
     suspend fun createAlert(
         alertType: AlertType,
@@ -97,6 +106,8 @@ class AlertRepository @Inject constructor(
         val deviceToken = preferencesManager.deviceId
 
         if (deviceId == -1 || deviceToken == null) {
+            // A rejection, not a failure — an unregistered device has nothing to deliver to
+            // and retrying would never succeed. Never queued.
             return@withContext NetworkResult.Error("Device not registered")
         }
 
@@ -106,7 +117,7 @@ class AlertRepository @Inject constructor(
             severity = severity,
             title = title,
             message = message,
-            metadata = metadata,
+            metadata = enrich(metadata, deviceId),
             evidenceData = evidenceData
         )
 
@@ -116,8 +127,114 @@ class AlertRepository @Inject constructor(
             Timber.d("Alert created: $title (${alertType.name})")
         }
 
+        result.onError { errorMessage, code ->
+            if (isRetryable(code)) {
+                pendingAlertStore.enqueue(request, deviceToken)
+                PendingAlertWorker.enqueueImmediate(context)
+                Timber.w("Alert delivery failed (code=$code); held for retry: $errorMessage")
+            } else {
+                Timber.w("Alert rejected (code=$code); not held: $errorMessage")
+            }
+        }
+
         result
     }
+
+    /**
+     * Attach who/where/when to an alert.
+     *
+     * Enrichment goes in first so a caller that already supplies one of these keys keeps its
+     * own value. Nothing here is new monitored data — it is identity and timing for an alert
+     * that was already being sent.
+     */
+    // internal rather than private so the precedence rule can be unit-tested directly.
+    internal fun enrich(callerMetadata: Map<String, Any>?, deviceDbId: Int): Map<String, Any> =
+        buildMap {
+            preferencesManager.userFullName?.takeIf { it.isNotBlank() }?.let { put("child_name", it) }
+            preferencesManager.deviceName?.takeIf { it.isNotBlank() }?.let { put("device_name", it) }
+            put("device_db_id", deviceDbId)
+            put("occurred_at", System.currentTimeMillis())
+            put("app_version", BuildConfig.VERSION_NAME)
+            callerMetadata?.let { putAll(it) }
+        }
+
+    /**
+     * Decide whether a failed submission is worth holding.
+     *
+     * Retry only what could plausibly succeed later: transport failures (no HTTP status
+     * reached us) and server-side errors. A 4xx means the backend will never accept this
+     * payload, and a 2xx means it already did.
+     *
+     * Suppression decisions — repeat-content dedup, per-category cooldown, daily caps — never
+     * reach this point: they return before submission is attempted. Suppression is a
+     * decision, not a failure, and must not be queued.
+     */
+    // internal rather than private so the retry classification can be unit-tested directly.
+    internal fun isRetryable(code: Int?): Boolean = when {
+        code == null -> true          // network/IO failure surfaced by safeApiCall
+        code >= 500 -> true           // server-side failure
+        else -> false                 // 4xx rejection, or a 2xx with an unusable body
+    }
+
+    // ========== Durable delivery ==========
+
+    /**
+     * Deliver held alerts, oldest first.
+     *
+     * A row is removed only once the backend has confirmed acceptance. A still-failing
+     * submission stops the pass immediately rather than burning through the whole queue
+     * against a backend that is plainly unreachable — the caller reschedules with backoff.
+     */
+    suspend fun flushPendingAlerts(): FlushOutcome = withContext(Dispatchers.IO) {
+        var delivered = 0
+
+        while (true) {
+            val batch = pendingAlertStore.oldestFirst()
+            if (batch.isEmpty()) break
+
+            for (entity in batch) {
+                val payload = pendingAlertStore.parsePayload(entity)
+                if (payload == null) {
+                    // Unreadable row: retrying it forever would block everything behind it.
+                    pendingAlertStore.delete(entity.id)
+                    continue
+                }
+
+                pendingAlertStore.recordAttempt(entity.id)
+                val result = safeApiCall { apiService.createAlertRaw(payload, entity.deviceToken) }
+
+                when {
+                    result.isSuccess -> {
+                        pendingAlertStore.delete(entity.id)
+                        delivered++
+                    }
+                    !isRetryable((result as? NetworkResult.Error)?.code) -> {
+                        // The backend will never accept this payload; holding it forever
+                        // would stall every alert queued behind it.
+                        Timber.w("Dropping rejected pending alert ${entity.id}: ${result.errorMessageOrNull()}")
+                        pendingAlertStore.delete(entity.id)
+                    }
+                    else -> {
+                        val remaining = pendingAlertStore.count()
+                        Timber.d("Pending alert delivery paused: $delivered delivered, $remaining remaining")
+                        return@withContext FlushOutcome(delivered, remaining)
+                    }
+                }
+            }
+        }
+
+        val remaining = pendingAlertStore.count()
+        if (delivered > 0) {
+            Timber.i("Delivered $delivered held alert(s); $remaining remaining")
+        }
+        FlushOutcome(delivered, remaining)
+    }
+
+    /**
+     * Drop every held alert. Called on sign-out so nothing is ever delivered under a
+     * different account.
+     */
+    suspend fun clearPendingAlerts() = pendingAlertStore.clear()
 
     /**
      * Get alerts with optional filters (for parent)
@@ -557,6 +674,16 @@ class AlertRepository @Inject constructor(
         )
     }
 }
+
+/**
+ * Result of one pending-queue drain pass.
+ *
+ * [remaining] greater than zero means the worker should retry with backoff.
+ */
+data class FlushOutcome(
+    val delivered: Int,
+    val remaining: Int
+)
 
 /**
  * Statistics for alerts in a specific category.

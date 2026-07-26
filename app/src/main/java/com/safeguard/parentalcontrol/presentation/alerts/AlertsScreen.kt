@@ -27,7 +27,10 @@ import com.safeguard.parentalcontrol.presentation.theme.shimmerEffect
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.safeguard.parentalcontrol.data.model.Alert
 import com.safeguard.parentalcontrol.data.model.AlertSeverity
@@ -52,6 +55,19 @@ fun AlertsScreen(
     // Set device filter when screen loads
     LaunchedEffect(deviceId, deviceName) {
         viewModel.setDevice(deviceId, deviceName)
+    }
+
+    // Refresh on every resume so a parent arriving from a violation notification — or simply
+    // returning from another screen — never reads a stale list.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.onResume()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     // Show error snackbar

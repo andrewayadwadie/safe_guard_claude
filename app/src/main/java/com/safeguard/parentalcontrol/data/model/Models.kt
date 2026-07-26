@@ -149,6 +149,17 @@ data class DeviceRegisterRequest(
     val fcmToken: String?
 )
 
+/**
+ * Registers, refreshes, or clears the push token for the signed-in user's device.
+ *
+ * A null token clears the registration — sent at logout so the backend stops pushing family
+ * alerts to a device nobody is signed in on.
+ */
+data class FcmTokenUpdateRequest(
+    @SerializedName("fcm_token")
+    val fcmToken: String?
+)
+
 data class DeviceUpdateRequest(
     @SerializedName("device_name")
     val deviceName: String? = null,

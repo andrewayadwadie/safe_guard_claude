@@ -54,6 +54,14 @@ class PreferencesManager @Inject constructor(
         get() = encryptedPrefs.getString(Constants.KEY_USER_ROLE, null)
         set(value) = encryptedPrefs.edit().putString(Constants.KEY_USER_ROLE, value).apply()
 
+    // Signed-in user's display name, captured at login/registration. On a child device this
+    // is the name attached to every reported alert so the parent's notification can say who
+    // triggered it. Null on accounts that signed in before this was captured — callers must
+    // degrade gracefully rather than render an empty name. Cleared on logout by clearAll().
+    var userFullName: String?
+        get() = encryptedPrefs.getString(Constants.KEY_USER_FULL_NAME, null)
+        set(value) = encryptedPrefs.edit().putString(Constants.KEY_USER_FULL_NAME, value).apply()
+
     val isParent: Boolean
         get() = userRole == UserRoles.PARENT
 
@@ -129,13 +137,24 @@ class PreferencesManager @Inject constructor(
         get() = encryptedPrefs.getBoolean(Constants.KEY_MAXIMUM_PROTECTION_ENABLED, false)
         set(value) = encryptedPrefs.edit().putBoolean(Constants.KEY_MAXIMUM_PROTECTION_ENABLED, value).apply()
 
+    // Parent dismissed the "notifications are disabled" banner. Informational only — the
+    // banner never blocks any functionality. Cleared on logout by clearAll().
+    var notificationBannerDismissed: Boolean
+        get() = encryptedPrefs.getBoolean(Constants.KEY_NOTIFICATION_BANNER_DISMISSED, false)
+        set(value) = encryptedPrefs.edit().putBoolean(Constants.KEY_NOTIFICATION_BANNER_DISMISSED, value).apply()
+
     /**
      * Store user information after login
      */
-    fun saveUserInfo(userId: Int, email: String, role: String) {
+    fun saveUserInfo(userId: Int, email: String, role: String, fullName: String? = null) {
         this.userId = userId
         this.userEmail = email
         this.userRole = role
+        // Only overwrite a stored name when the caller actually has one, so a partial
+        // sign-in path can never blank out a previously captured name.
+        if (!fullName.isNullOrBlank()) {
+            this.userFullName = fullName
+        }
         this.isLoggedIn = true
     }
 
