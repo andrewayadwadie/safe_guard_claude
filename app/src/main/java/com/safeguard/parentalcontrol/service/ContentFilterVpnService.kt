@@ -1889,6 +1889,33 @@ class ContentFilterVpnService : VpnService() {
      * "another VPN app" alert, then stop ourselves - we cannot reclaim the slot while
      * the other VPN holds it.
      */
+    /**
+     * Defensive handler for the platform foreground-service timeout (API 35+).
+     *
+     * This service is declared specialUse and so is not subject to the dataSync
+     * 6-hour cumulative cap. The override exists so that, if the platform ever does time
+     * it out, content filtering does not stop silently.
+     *
+     * Logs and requests a restart. Touches none of the packet, DNS or blocklist logic.
+     */
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        Timber.w(
+            "ContentFilterVpnService received foreground-service timeout " +
+                "(startId=$startId, fgsType=$fgsType). Attempting graceful restart."
+        )
+        try {
+            val restartIntent = Intent(applicationContext, ContentFilterVpnService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                applicationContext.startForegroundService(restartIntent)
+            } else {
+                applicationContext.startService(restartIntent)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to restart ContentFilterVpnService after timeout")
+        }
+        super.onTimeout(startId, fgsType)
+    }
+
     override fun onRevoke() {
         Timber.w("onRevoke(): VPN slot taken by another app - content filter displaced")
         revokedByForeignVpn = true

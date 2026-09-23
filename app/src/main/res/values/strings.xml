@@ -619,6 +619,9 @@
     <string name="textreview_cat_bullying">Bullying</string>
     <string name="textreview_cat_grooming">Grooming</string>
     <string name="textreview_cat_unknown">Flagged</string>
+    <string name="textreview_not_notified_skipped">Not sent to parent — suppressed by alert limits</string>
+    <string name="textreview_not_notified_failed">Not sent to parent — delivery failed</string>
+    <string name="textreview_not_notified_pending">Not sent to parent — delivery not completed</string>
 
     <!-- Shared Components -->
     <string name="components_screentime_hero_title">Today\'s Screen Time</string>

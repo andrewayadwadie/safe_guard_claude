@@ -14,13 +14,35 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+// Build configuration comes from an untracked secrets.properties.
+// When it is absent, fall back to the committed example so a fresh clone
+// builds debug with no setup step (FR-003).
+def secretsFile = rootProject.file('secrets.properties')
+def secretsExampleFile = rootProject.file('secrets.properties.example')
+def secrets = new Properties()
+if (secretsFile.exists()) {
+    secretsFile.withInputStream { secrets.load(it) }
+} else if (secretsExampleFile.exists()) {
+    secretsExampleFile.withInputStream { secrets.load(it) }
+}
+def secret = { String key -> (secrets.getProperty(key) ?: '').trim() }
+
 android {
     namespace 'com.safeguard.parentalcontrol'
-    compileSdk 34
+    compileSdk 36
+
+    // Release signing is only configured when usable credentials are present.
+    // A missing file OR a blank storePassword leaves the config undefined, so debug
+    // builds are never affected and only release tasks fail (FR-038).
+    def hasReleaseSigning = keystorePropertiesFile.exists() &&
+            (keystoreProperties['storePassword'] ?: '').trim() &&
+            (keystoreProperties['keyAlias'] ?: '').trim() &&
+            (keystoreProperties['keyPassword'] ?: '').trim() &&
+            (keystoreProperties['storeFile'] ?: '').trim()
 
     signingConfigs {
         release {
-            if (keystorePropertiesFile.exists()) {
+            if (hasReleaseSigning) {
                 storeFile rootProject.file(keystoreProperties['storeFile'])
                 storePassword keystoreProperties['storePassword']
                 keyAlias keystoreProperties['keyAlias']
@@ -32,46 +54,50 @@ android {
     defaultConfig {
         applicationId "com.safeguard.parentalcontrol"
         minSdk 26
-        targetSdk 34
-        versionCode 6
-        versionName "1.1.4"
+        targetSdk 36
+        versionCode 7
+        versionName "1.2.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary true
         }
 
-        // Backend configuration
-        //buildConfigField "String", "API_BASE_URL", "\"https://api.safeguard.app/api/v1/\""
-        //buildConfigField "String", "API_BASE_URL", "\"http://192.168.1.5:8090/api/v1/\""
-        buildConfigField "String", "API_BASE_URL", "\"https://bw.noor.net:8090/api/v1/\""
+        // Only ship ABIs a target device actually uses. TensorFlow Lite publishes four
+        // ABIs; without this filter x86 and x86_64 (~13 MB of native payload) are packaged
+        // for devices that do not exist in this app's market (FR-043).
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
+
+        // Backend configuration. API_BASE_URL is set per buildType below (FR-004).
         buildConfigField "String", "API_VERSION", "\"1.0\""
+        buildConfigField "String", "API_HOST", "\"${secret('API_HOST')}\""
+
+        // Certificate pinning. Empty values disable pinning entirely - NetworkModule
+        // must never build a pin from an empty string (FR-009).
+        buildConfigField "String", "CERT_PIN_PRIMARY", "\"${secret('CERT_PIN_PRIMARY')}\""
+        buildConfigField "String", "CERT_PIN_BACKUP", "\"${secret('CERT_PIN_BACKUP')}\""
 
         // Google OAuth - Web Client ID (client_type 3) from google-services.json.
         // Must belong to the same Firebase project as google-services.json (814941014353 / haris-db7b0),
         // otherwise Google Sign-In fails with DEVELOPER_ERROR.
-        buildConfigField "String", "GOOGLE_WEB_CLIENT_ID", "\"814941014353-8ccdjaes5thocovg3l6qu6rrmobknssh.apps.googleusercontent.com\""
+        buildConfigField "String", "GOOGLE_WEB_CLIENT_ID", "\"${secret('GOOGLE_WEB_CLIENT_ID')}\""
     }
 
     buildTypes {
         release {
-            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : null
+            signingConfig hasReleaseSigning ? signingConfigs.release : null
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            
-            // Production backend
-            //buildConfigField "String", "API_BASE_URL", "\"https://api.safeguard.app/api/v1/\""
-            //buildConfigField "String", "API_BASE_URL", "\"http://192.168.1.5:8090/api/v1/\""
-            buildConfigField "String", "API_BASE_URL", "\"https://bw.noor.net:8090/api/v1/\""
+
+            buildConfigField "String", "API_BASE_URL", "\"${secret('API_BASE_URL_RELEASE')}\""
         }
         debug {
             minifyEnabled false
-            
-            // Development backend
-            // buildConfigField "String", "API_BASE_URL", "\"http://10.0.2.2:8000/api/v1/\""
-            //buildConfigField "String", "API_BASE_URL", "\"http://192.168.1.5:8090/api/v1/\""
-            buildConfigField "String", "API_BASE_URL", "\"https://bw.noor.net:8090/api/v1/\""
+
+            buildConfigField "String", "API_BASE_URL", "\"${secret('API_BASE_URL_DEBUG')}\""
         }
     }
 
@@ -103,6 +129,74 @@ android {
     // Prevent TFLite models from being compressed
     aaptOptions {
         noCompress "tflite"
+    }
+
+    bundle {
+        // Language splitting MUST stay disabled. The app ships Arabic and English; with
+        // splitting on, a tester whose device locale differs from the install-time locale
+        // can receive an APK missing their strings (FR-041).
+        language { enableSplit = false }
+        density { enableSplit = true }
+        abi { enableSplit = true }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Release-only configuration guards.
+// See specs/013-play-store-release-readiness/contracts/build-guards.md
+//
+// Hooked to preReleaseBuild so the build fails BEFORE compilation and before any
+// artifact is emitted, and so debug builds can never be blocked (FR-007).
+// Values are captured as plain Strings so the configuration cache stays valid -
+// gradle.taskGraph.whenReady is unusable here because this project enables
+// org.gradle.configuration-cache.
+// ---------------------------------------------------------------------------
+def guardReleaseUrl = secret('API_BASE_URL_RELEASE')
+def guardClientId = secret('GOOGLE_WEB_CLIENT_ID')
+def guardApiHost = secret('API_HOST')
+def guardPinPrimary = secret('CERT_PIN_PRIMARY')
+def guardPinBackup = secret('CERT_PIN_BACKUP')
+
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
+    doFirst {
+        def failures = []
+
+        // G-1: release URL must be HTTPS
+        if (!guardReleaseUrl.startsWith('https://')) {
+            failures << "API_BASE_URL_RELEASE must start with 'https://' (found: '${guardReleaseUrl}')"
+        }
+
+        // G-2: placeholders must be replaced
+        if (guardReleaseUrl.contains('REPLACE_ME')) {
+            failures << "API_BASE_URL_RELEASE still contains the placeholder REPLACE_ME"
+        }
+        if (guardClientId.contains('REPLACE_ME')) {
+            failures << "GOOGLE_WEB_CLIENT_ID still contains the placeholder REPLACE_ME"
+        }
+
+        // G-3: pin host must match request host. A pin registered against a host the
+        // app never contacts is silently inert, which reads as protection but is not.
+        if (!guardPinPrimary.isEmpty() || !guardPinBackup.isEmpty()) {
+            String urlHost = null
+            try {
+                urlHost = new URI(guardReleaseUrl).host
+            } catch (Exception ignored) {
+                urlHost = null
+            }
+            if (urlHost == null || guardApiHost != urlHost) {
+                failures << ("API_HOST ('${guardApiHost}') does not match the host of " +
+                        "API_BASE_URL_RELEASE ('${urlHost}'). Pins registered against a host the " +
+                        "app never contacts are silently inert. Correct API_HOST, or clear " +
+                        "CERT_PIN_PRIMARY and CERT_PIN_BACKUP to disable pinning.")
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "\n\nRelease build blocked - fix secrets.properties:\n" +
+                    failures.collect { "  * ${it}" }.join("\n") +
+                    "\n\nSee specs/013-play-store-release-readiness/contracts/build-guards.md\n")
+        }
     }
 }
 
@@ -175,7 +269,11 @@ dependencies {
     implementation libs.androidx.credentials.play.services.auth
     implementation libs.google.identity.googleid
 
-    // Image Analysis - TensorFlow Lite (2.16.1+ supports 16KB page alignment for Android 15+)
+    // Image Analysis - TensorFlow Lite
+    // NOTE: 2.16.1 is NOT 16 KB page-size aligned. Its .so files report LOAD align 0x1000
+    // (4 KB), verified from the AAR - see specs/013-play-store-release-readiness/research.md R-003.
+    // 2.17.0 is also 4 KB. LiteRT (com.google.ai.edge.litert) 1.4.0+ is the first aligned release.
+    // Migration is deferred: it edits ml/TFLiteImageClassifier.kt, a guarded file.
     implementation libs.tensorflow.lite
     implementation libs.tensorflow.lite.support
     implementation libs.tensorflow.lite.gpu

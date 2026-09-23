@@ -22,6 +22,7 @@ import com.safeguard.parentalcontrol.presentation.navigation.SafeGuardNavGraph
 import com.safeguard.parentalcontrol.presentation.navigation.Screen
 import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
 import com.safeguard.parentalcontrol.service.MonitoringService
+import com.safeguard.parentalcontrol.util.AlertPipe
 import com.safeguard.parentalcontrol.util.AuthEvent
 import com.safeguard.parentalcontrol.util.Constants
 import com.safeguard.parentalcontrol.util.DeepLinkHolder
@@ -109,12 +110,29 @@ class MainActivity : ComponentActivity() {
      * nav graph, which consumes the value exactly once.
      */
     private fun handleDeepLinkIntent(intent: Intent?) {
-        if (intent?.getStringExtra(Constants.EXTRA_NAV_TARGET) != Constants.NAV_TARGET_ALERTS) return
+        if (intent == null) return
+
+        val alertIdExtra = intent.getIntExtra(Constants.EXTRA_ALERT_ID, -1).takeIf { it > 0 }
+        val targetsAlerts = intent.getStringExtra(Constants.EXTRA_NAV_TARGET) == Constants.NAV_TARGET_ALERTS
+        // An alert id on its own is target enough — there is nowhere else it could mean.
+        if (!targetsAlerts && alertIdExtra == null) return
+
+        // A violation is parent-facing by design; surfacing it on the monitored device teaches
+        // evasion. Only a positively-known child role is refused — an unknown role still flows
+        // through, because the target must survive the login detour an expired session forces.
+        if (preferencesManager.isChild) {
+            Timber.d("Alerts deep link on a child device; discarded")
+            AlertPipe.w("DEEPLINK DISCARDED role=child alert_id=$alertIdExtra")
+            return
+        }
 
         val deviceId = intent.getIntExtra(Constants.EXTRA_DEVICE_ID, -1).takeIf { it != -1 }
         val deviceName = intent.getStringExtra(Constants.EXTRA_DEVICE_NAME)
-        deepLinkHolder.post(PendingDeepLink(deviceId = deviceId, deviceName = deviceName))
+        deepLinkHolder.post(
+            PendingDeepLink(deviceId = deviceId, deviceName = deviceName, alertId = alertIdExtra)
+        )
         Timber.d("Violation notification tapped; alerts deep link pending")
+        AlertPipe.i("DEEPLINK tapped device_db_id=$deviceId alert_id=$alertIdExtra")
     }
 }
 

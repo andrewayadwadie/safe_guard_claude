@@ -62,6 +62,18 @@ class PreferencesManager @Inject constructor(
         get() = encryptedPrefs.getString(Constants.KEY_USER_FULL_NAME, null)
         set(value) = encryptedPrefs.edit().putString(Constants.KEY_USER_FULL_NAME, value).apply()
 
+    /**
+     * SHA-256 of the push token this device last got the backend to accept.
+     *
+     * The token itself is deliberately NOT stored: it is a live credential for reaching this
+     * device, and a hash answers the only question asked of it — "is the current token the one
+     * already published?" — without keeping the credential at rest. Cleared by [clearAll] on
+     * sign-out, so the next session always republishes.
+     */
+    var publishedFcmTokenHash: String?
+        get() = encryptedPrefs.getString(Constants.KEY_PUBLISHED_FCM_TOKEN_HASH, null)
+        set(value) = encryptedPrefs.edit().putString(Constants.KEY_PUBLISHED_FCM_TOKEN_HASH, value).apply()
+
     val isParent: Boolean
         get() = userRole == UserRoles.PARENT
 
@@ -76,6 +88,19 @@ class PreferencesManager @Inject constructor(
     var deviceDbId: Int
         get() = encryptedPrefs.getInt(Constants.KEY_DEVICE_DB_ID, -1)
         set(value) = encryptedPrefs.edit().putInt(Constants.KEY_DEVICE_DB_ID, value).apply()
+
+    /**
+     * The `device_token` the backend issued for this device record.
+     *
+     * Distinct from [deviceId]: that is the locally-derived UUID this device *claims* to be,
+     * while this is the credential the backend hands back and then requires in `X-Device-Token`
+     * on device-authenticated endpoints. Sending the UUID there is rejected. Cleared by
+     * [clearAll] on sign-out, so a new account re-registers rather than reusing a credential
+     * bound to the previous one.
+     */
+    var deviceToken: String?
+        get() = encryptedPrefs.getString(Constants.KEY_DEVICE_TOKEN, null)
+        set(value) = encryptedPrefs.edit().putString(Constants.KEY_DEVICE_TOKEN, value).apply()
 
     var deviceName: String?
         get() = encryptedPrefs.getString(Constants.KEY_DEVICE_NAME, null)
@@ -162,10 +187,20 @@ class PreferencesManager @Inject constructor(
      * Store device information after registration
      * Note: Content filtering is controlled by parent via backend, not locally
      */
-    fun saveDeviceInfo(deviceId: String, deviceDbId: Int, deviceName: String? = null) {
+    fun saveDeviceInfo(
+        deviceId: String,
+        deviceDbId: Int,
+        deviceName: String? = null,
+        deviceToken: String? = null
+    ) {
         this.deviceId = deviceId
         this.deviceDbId = deviceDbId
         this.deviceName = deviceName ?: android.os.Build.MODEL
+        // Only overwrite a stored token when the backend actually returned one, so a response
+        // that omits it can never blank out a working credential.
+        if (!deviceToken.isNullOrBlank()) {
+            this.deviceToken = deviceToken
+        }
         this.isDeviceRegistered = true
     }
 

@@ -9,6 +9,7 @@ import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.DeviceRepository
 import com.safeguard.parentalcontrol.util.FcmTokenProvider
 import com.safeguard.parentalcontrol.util.LocaleHelper
+import com.safeguard.parentalcontrol.worker.PushTokenSyncScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,7 @@ data class DeviceSetupUiState(
 class DeviceSetupViewModel @Inject constructor(
     private val deviceRepository: DeviceRepository,
     private val fcmTokenProvider: FcmTokenProvider,
+    private val pushTokenSyncScheduler: PushTokenSyncScheduler,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -72,6 +74,10 @@ class DeviceSetupViewModel @Inject constructor(
                 is NetworkResult.Success -> {
                     Log.d("DeviceSetup", "Device registered successfully: ${result.data.id}")
                     Timber.d("Device registered: ${result.data.deviceName} (ID: ${result.data.id})")
+                    // The device record now exists, so the token has a destination it did not
+                    // have a moment ago. Republish against it — the token that travelled with
+                    // the registration body may have been null if Firebase was not ready yet.
+                    pushTokenSyncScheduler.scheduleAfterDeviceRegistration()
                     _uiState.update {
                         it.copy(
                             isLoading = false,

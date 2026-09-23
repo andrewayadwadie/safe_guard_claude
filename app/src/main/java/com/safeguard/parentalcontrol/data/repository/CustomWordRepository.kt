@@ -12,7 +12,6 @@ import com.safeguard.parentalcontrol.data.remote.ApiService
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.remote.safeApiCall
 import com.safeguard.parentalcontrol.ml.CustomBlacklistWord
-import com.safeguard.parentalcontrol.util.PreferencesManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -37,7 +36,7 @@ private val Context.wordListDataStore by preferencesDataStore(name = "word_lists
 class CustomWordRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val apiService: ApiService,
-    private val preferencesManager: PreferencesManager
+    private val deviceRepository: DeviceRepository
 ) {
     private val gson = Gson()
 
@@ -135,7 +134,9 @@ class CustomWordRepository @Inject constructor(
      * Called periodically or when app starts.
      */
     suspend fun syncWordLists(): Boolean = withContext(Dispatchers.IO) {
-        val deviceToken = preferencesManager.deviceId ?: return@withContext false
+        // The backend-issued device credential, not the local device UUID — `X-Device-Token`
+        // authenticates the device record and rejects the UUID.
+        val deviceToken = deviceRepository.ensureDeviceToken() ?: return@withContext false
 
         try {
             val result = safeApiCall { apiService.syncWordLists(deviceToken) }

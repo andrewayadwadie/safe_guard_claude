@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.util.FlaggedTextDelivery
 import com.safeguard.parentalcontrol.util.FlaggedTextEvent
 import com.safeguard.parentalcontrol.util.FlaggedTextStore
 import com.safeguard.parentalcontrol.util.LocaleHelper
@@ -73,7 +74,8 @@ class TextReviewViewModel @Inject constructor(
         appName = appName,
         formattedCategory = formatCategory(category),
         formattedDate = formatDate(timestamp),
-        timestamp = timestamp
+        timestamp = timestamp,
+        delivery = delivery
     )
 
     private fun formatDate(timestamp: Long): String =
@@ -101,5 +103,7 @@ data class FlaggedTextUi(
     val appName: String,
     val formattedCategory: String,
     val formattedDate: String,
-    val timestamp: Long
+    val timestamp: Long,
+    /** Whether an alert for this phrase actually reached the parent; drives the review badge. */
+    val delivery: FlaggedTextDelivery = FlaggedTextDelivery.UNKNOWN
 )

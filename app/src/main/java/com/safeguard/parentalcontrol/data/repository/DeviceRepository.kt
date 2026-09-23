@@ -7,9 +7,12 @@ import com.safeguard.parentalcontrol.data.model.*
 import com.safeguard.parentalcontrol.data.remote.ApiService
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.remote.safeApiCall
+import com.safeguard.parentalcontrol.util.FcmTokenProvider
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.TimeZone
@@ -23,8 +26,12 @@ import javax.inject.Singleton
 class DeviceRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val apiService: ApiService,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val fcmTokenProvider: FcmTokenProvider
 ) {
+    /** Serialises token recovery so a burst of alerts cannot re-register the device N times. */
+    private val deviceTokenMutex = Mutex()
+
     /**
      * Register this device with the backend
      */
@@ -58,12 +65,21 @@ class DeviceRepository @Inject constructor(
 
         result.onSuccess { device ->
             // saveDeviceInfo also enables content filtering for child devices
-            preferencesManager.saveDeviceInfo(deviceId, device.id)
+            preferencesManager.saveDeviceInfo(
+                deviceId = deviceId,
+                deviceDbId = device.id,
+                deviceName = deviceName,
+                // The credential every device-authenticated call needs. Captured here because
+                // this response is the only place the backend hands it over.
+                deviceToken = device.deviceToken
+            )
             Timber.i("DEVICE REGISTRATION: SUCCESS!")
             Timber.i("  - Backend deviceDbId: ${device.id}")
             Timber.i("  - Device name: ${device.deviceName}")
             Timber.i("  - Stored deviceUuid: $deviceId")
             Timber.i("  - Stored deviceDbId: ${device.id}")
+            // Presence only — the token itself is a live credential and never goes to logcat.
+            Timber.i("  - device_token: ${if (device.deviceToken.isNullOrBlank()) "MISSING (device-auth calls will fail)" else "stored"}")
         }
 
         result.onError { message, code ->
@@ -73,6 +89,56 @@ class DeviceRepository @Inject constructor(
         }
 
         result
+    }
+
+    /**
+     * The `device_token` for this device, recovering it from the backend when it is missing.
+     *
+     * Callers of the device-authenticated endpoints (`POST /alerts`, `GET /word-lists/sync`)
+     * go through here rather than reading preferences directly, because the token can be
+     * absent on a device that registered before it was persisted at all: that install has a
+     * valid device record and a signed-in user, but nothing to put in `X-Device-Token`, and
+     * every alert it raised was rejected. Recovery order:
+     *
+     * 1. the stored token;
+     * 2. `GET /devices/{id}` — cheap, and does not touch any other device field;
+     * 3. re-registering the same `device_id`, which the backend upserts and answers with the
+     *    existing record plus its token. The current FCM token travels with that request so
+     *    re-registration cannot blank out the device's push registration.
+     *
+     * @return null when the device is not registered or the backend never supplied a token —
+     *   the caller reports that rather than sending a request that is certain to be rejected.
+     */
+    suspend fun ensureDeviceToken(): String? = deviceTokenMutex.withLock {
+        preferencesManager.deviceToken?.takeIf { it.isNotBlank() }?.let { return@withLock it }
+
+        if (!preferencesManager.isDeviceRegistered) {
+            Timber.w("DEVICE TOKEN: no token and device is not registered")
+            return@withLock null
+        }
+
+        val dbId = preferencesManager.deviceDbId
+        if (dbId != -1) {
+            val fetched = (safeApiCall { apiService.getDevice(dbId) } as? NetworkResult.Success)
+                ?.data?.deviceToken?.takeIf { it.isNotBlank() }
+            if (fetched != null) {
+                preferencesManager.deviceToken = fetched
+                Timber.i("DEVICE TOKEN: recovered from GET /devices/$dbId")
+                return@withLock fetched
+            }
+        }
+
+        // GET did not carry the token; re-register to have the backend re-issue it.
+        val deviceName = preferencesManager.deviceName ?: Build.MODEL
+        val result = registerDevice(deviceName, fcmTokenProvider.currentToken())
+        val recovered = (result as? NetworkResult.Success)?.data?.deviceToken?.takeIf { it.isNotBlank() }
+
+        if (recovered == null) {
+            Timber.e("DEVICE TOKEN: recovery failed — device-authenticated calls cannot be made")
+        } else {
+            Timber.i("DEVICE TOKEN: recovered by re-registering device")
+        }
+        recovered
     }
 
     /**
@@ -124,6 +190,8 @@ class DeviceRepository @Inject constructor(
             if (deviceId == preferencesManager.deviceDbId) {
                 preferencesManager.deviceId = null
                 preferencesManager.deviceDbId = -1
+                // The credential dies with the record it authenticated.
+                preferencesManager.deviceToken = null
                 preferencesManager.isDeviceRegistered = false
             }
         }

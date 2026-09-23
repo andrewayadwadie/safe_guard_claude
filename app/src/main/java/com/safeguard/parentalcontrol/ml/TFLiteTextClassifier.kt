@@ -170,6 +170,18 @@ class TFLiteTextClassifier(
         } catch (e: OutOfMemoryError) {
             Timber.w("$TAG: OOM loading $backend model -> regex-only")
             false
+        } catch (e: UnsatisfiedLinkError) {
+            // The native TFLite library failed to load. UnsatisfiedLinkError is a
+            // LinkageError, so it is caught by neither the Exception nor the
+            // OutOfMemoryError clause above and would otherwise propagate uncaught out of
+            // Interpreter(). Most likely cause is a 16 KB page-size device: TFLite 2.16.1
+            // ships 4 KB-aligned native libraries.
+            //
+            // This brings TFLiteTextClassifier in line with TFLiteImageClassifier, which
+            // already catches Error. Closing an inconsistency, not adding new behaviour:
+            // the fallback path (regex-only) is the existing one, unchanged.
+            Timber.w(e, "$TAG: native TFLite library unavailable for $backend -> regex-only")
+            false
         }
     }
 

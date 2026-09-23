@@ -24,10 +24,14 @@
     <!-- Boot Receiver -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     
-    <!-- Alarm -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    
+    <!-- Alarm permissions intentionally NOT declared.
+         The app schedules no exact alarms: MonitoringService uses an inexact,
+         Doze-friendly restart alarm only. SCHEDULE_EXACT_ALARM and USE_EXACT_ALARM
+         were both declared but unmapped to any feature, and USE_EXACT_ALARM is
+         restricted by Google Play to alarm-clock and calendar apps. Both removed.
+         If exact alarms are ever needed, reintroduce the permission together with a
+         runtime AlarmManager.canScheduleExactAlarms() check and an inexact fallback. -->
+
     <!-- Wake Lock -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     
@@ -108,13 +112,21 @@
             android:taskAffinity=""
             android:noHistory="false" />
 
-        <!-- Monitoring Service -->
+        <!-- Monitoring Service
+             foregroundServiceType is specialUse, not dataSync: from Android 15 (API 35) a
+             dataSync foreground service is capped at 6 cumulative hours per 24-hour window,
+             after which the system calls onTimeout() and stops it. For a 24/7 parental-control
+             monitor that ends protection silently. -->
         <service
             android:name=".service.MonitoringService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="dataSync"
-            android:stopWithTask="false" />
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Continuous parental-control monitoring: screen-time enforcement, app-usage tracking and policy enforcement on a supervised child device. Must run uninterrupted for the child to remain protected." />
+        </service>
 
         <!-- Accessibility Service (Text Monitoring) -->
         <service

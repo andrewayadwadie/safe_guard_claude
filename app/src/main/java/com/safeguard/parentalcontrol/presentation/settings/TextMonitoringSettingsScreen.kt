@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.safeguard.parentalcontrol.BuildConfig
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 
@@ -163,6 +164,22 @@ fun TextMonitoringSettingsScreen(
 
                 // Info card
                 InfoCard()
+
+                // Debug-only delivery test. Compiled out of release builds, and the repository
+                // refuses the call there as well. Present because verifying the alert path
+                // otherwise means waiting out a 60–300s category cooldown between attempts.
+                if (BuildConfig.DEBUG) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    OutlinedButton(
+                        onClick = { viewModel.fireTestAlert() },
+                        enabled = !uiState.isSaving,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.BugReport, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Send test alert (debug)")
+                    }
+                }
             }
         }
     }

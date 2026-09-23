@@ -266,7 +266,16 @@ data class Device(
     @SerializedName("last_sync")
     val lastSync: Date?,
     @SerializedName("created_at")
-    val createdAt: Date
+    val createdAt: Date,
+    /**
+     * Per-device credential the backend issues for this device record.
+     *
+     * This — not [deviceId] — is what `X-Device-Token` carries on the device-authenticated
+     * endpoints (`POST /alerts`, `GET /word-lists/sync`). Nullable because only the
+     * registration response is guaranteed to carry it; list responses may omit it.
+     */
+    @SerializedName("device_token")
+    val deviceToken: String? = null
 ) : Parcelable {
     companion object {
         /** Threshold for considering a device as "online" - 15 minutes */

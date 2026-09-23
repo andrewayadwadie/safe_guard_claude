@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    DEBUG-ONLY network security configuration.
+
+    This file exists solely in the debug source set. Resource merging gives a
+    variant res/ directory precedence over main/, so debug builds resolve this
+    file and release builds resolve the strict configuration in
+    app/src/main/res/xml/network_security_config.xml.
+
+    Nothing here ships in a release artifact.
+-->
+<network-security-config>
+
+    <!-- Development and emulator hosts: cleartext permitted for local backends. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Android emulator loopback to the host machine -->
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <!-- Device-local -->
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <!-- LAN development backends -->
+        <domain includeSubdomains="true">192.168.1.5</domain>
+        <domain includeSubdomains="true">192.168.1.1</domain>
+    </domain-config>
+
+    <!-- Trust user-installed CAs so proxy tooling (Charles, mitmproxy) works.
+         Only honoured when android:debuggable="true". -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+
+</network-security-config>

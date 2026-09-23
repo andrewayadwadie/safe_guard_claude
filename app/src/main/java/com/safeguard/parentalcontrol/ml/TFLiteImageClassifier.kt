@@ -64,6 +64,20 @@ class TFLiteImageClassifier(private val context: Context) : Closeable {
     private var isInitialized = false
     private var initAttempted = false
 
+    /**
+     * Whether the native TFLite interpreter is available for image classification.
+     *
+     * False when the model file is absent, memory was too low to load it, or the native
+     * library failed to load — most plausibly on a device using 16 KB memory pages, since
+     * TensorFlow Lite 2.16.1 ships 4 KB-aligned native libraries (see
+     * specs/013-play-store-release-readiness/research.md R-003).
+     *
+     * When false, [classify] falls back to a heuristic and every other protection layer —
+     * text monitoring, VPN filtering, screen time, alerts — is unaffected.
+     */
+    val hasImageClassifier: Boolean
+        get() = isInitialized && interpreter != null
+
     // MEMORY OPTIMIZATION: Removed GPU delegate - saves memory and avoids GPU resource errors
     // MEMORY OPTIMIZATION: Don't load model in init{} - defer until first use
     // This prevents loading ~15-25MB model into memory at app startup
@@ -82,11 +96,27 @@ class TFLiteImageClassifier(private val context: Context) : Closeable {
             isInitialized = true
             Timber.d("TFLite image classifier initialized (CPU-only)")
 
+        } catch (e: UnsatisfiedLinkError) {
+            // The native TFLite library could not be loaded. The most likely cause is a
+            // device using 16 KB memory pages: TensorFlow Lite 2.16.1 ships 4 KB-aligned
+            // native libraries. Image classification is disabled; every other protection
+            // layer keeps working. Remediation is the LiteRT migration tracked in
+            // docs/release-checklist.md.
+            Timber.w(
+                e,
+                "TFLite native library failed to load - image classification disabled. " +
+                    "Likely a 16 KB page-size device; TFLite 2.16.1 libs are 4 KB-aligned. " +
+                    "All other protection layers continue normally."
+            )
+            interpreter = null
+            isInitialized = false
         } catch (e: Exception) {
             Timber.w(e, "Failed to initialize TFLite image classifier")
+            interpreter = null
             isInitialized = false
         } catch (e: Error) {
             Timber.w("TFLite image classifier error: ${e.message}")
+            interpreter = null
             isInitialized = false
         }
     }

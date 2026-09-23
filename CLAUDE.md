@@ -1,6 +1,6 @@
 <!-- SPECKIT START -->
-Active feature: End-to-End Violation Alert Delivery (durable alert queue, alert enrichment, parent push handling + deep link).
-Plan: specs/011-violation-alert-delivery/plan.md
-Spec: specs/011-violation-alert-delivery/spec.md
+Active feature: Play Store Release Readiness (config externalization, network security split, API 36 migration, release signing + AAB).
+Plan: specs/013-play-store-release-readiness/plan.md
+Spec: specs/013-play-store-release-readiness/spec.md
 For technologies, project structure, shell commands, and other context, read the current plan.
 <!-- SPECKIT END -->

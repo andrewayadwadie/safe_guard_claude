@@ -3,6 +3,8 @@ package com.safeguard.parentalcontrol
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
@@ -104,6 +106,17 @@ class SafeGuardApplication : Application(), Configuration.Provider {
                 description = localizedString(R.string.notif_alerts_channel_desc)
                 enableVibration(true)
                 enableLights(true)
+                // Sound is stated rather than inherited. IMPORTANCE_HIGH does default to the
+                // notification sound, but a violation alert is the one notification in this app
+                // that must be noticed, and the default is not worth depending on implicitly.
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                    AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                        .build()
+                )
+                setShowBadge(true)
             }
             notificationManager.createNotificationChannel(alertsChannel)
 

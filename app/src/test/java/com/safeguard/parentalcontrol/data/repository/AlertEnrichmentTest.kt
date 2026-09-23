@@ -29,7 +29,8 @@ class AlertEnrichmentTest {
         apiService = mockk<ApiService>(relaxed = true),
         preferencesManager = preferencesManager,
         textHasher = mockk<TextHasher>(relaxed = true),
-        pendingAlertStore = mockk<PendingAlertStore>(relaxed = true)
+        pendingAlertStore = mockk<PendingAlertStore>(relaxed = true),
+        deviceRepository = mockk<DeviceRepository>(relaxed = true)
     )
 
     private fun withIdentity(childName: String? = "Ali", deviceName: String? = "Ali's Pixel") {

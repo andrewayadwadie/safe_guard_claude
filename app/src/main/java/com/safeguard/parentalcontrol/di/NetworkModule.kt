@@ -85,23 +85,34 @@ object NetworkModule {
      * Certificate pinning for production builds
      * Prevents MITM attacks by validating server certificates
      *
-     * IMPORTANT: Replace placeholder pins with actual certificate hashes before production deployment
-     * Generate pins using: openssl s_client -servername api.safeguard.app -connect api.safeguard.app:443 | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | openssl enc -base64
+     * Pins come from BuildConfig, populated from the untracked secrets.properties.
+     * Both pins are empty for the current release, so pinning is disabled - see the
+     * feature spec's Q1 decision. A build-time guard rejects any configuration where a
+     * non-empty pin is bound to a host other than the one the app actually calls,
+     * because such a pin is silently inert.
+     *
+     * Generate pins with:
+     * openssl s_client -servername <host> -connect <host>:<port> | openssl x509 -pubkey -noout |
+     *   openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | openssl enc -base64
      */
     @Provides
     @Singleton
     fun provideCertificatePinner(): CertificatePinner {
-        return if (!BuildConfig.DEBUG) {
-            CertificatePinner.Builder()
-                // Primary certificate pin - replace with your actual certificate hash
-                .add(Constants.API_HOST, "sha256/${Constants.CERTIFICATE_PIN_PRIMARY}")
-                // Backup certificate pin for rotation - replace with backup certificate hash
-                .add(Constants.API_HOST, "sha256/${Constants.CERTIFICATE_PIN_BACKUP}")
-                .build()
-        } else {
-            // No pinning in debug builds for easier development
-            CertificatePinner.Builder().build()
+        val primary = BuildConfig.CERT_PIN_PRIMARY
+        val backup = BuildConfig.CERT_PIN_BACKUP
+
+        if (primary.isBlank() || backup.isBlank()) {
+            Timber.w(
+                "Certificate pinning disabled: CERT_PIN_PRIMARY/CERT_PIN_BACKUP not configured. " +
+                    "Traffic is still TLS-protected by system trust anchors."
+            )
+            return CertificatePinner.Builder().build()
         }
+
+        return CertificatePinner.Builder()
+            .add(BuildConfig.API_HOST, "sha256/$primary")
+            .add(BuildConfig.API_HOST, "sha256/$backup")
+            .build()
     }
 
     /**

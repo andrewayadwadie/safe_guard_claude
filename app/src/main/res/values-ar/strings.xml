@@ -608,6 +608,9 @@
     <string name="textreview_cat_bullying">تنمر</string>
     <string name="textreview_cat_grooming">استمالة</string>
     <string name="textreview_cat_unknown">مُبلَّغ عنه</string>
+    <string name="textreview_not_notified_skipped">لم يُرسل إلى ولي الأمر — تم إيقافه بسبب حدود التنبيهات</string>
+    <string name="textreview_not_notified_failed">لم يُرسل إلى ولي الأمر — فشل الإرسال</string>
+    <string name="textreview_not_notified_pending">لم يُرسل إلى ولي الأمر — لم يكتمل الإرسال</string>
 
     <!-- Shared Components -->
     <string name="components_screentime_hero_title">وقت الشاشة اليوم</string>

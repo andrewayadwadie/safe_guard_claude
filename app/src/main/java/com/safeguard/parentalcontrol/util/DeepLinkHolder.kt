@@ -38,8 +38,12 @@ class DeepLinkHolder @Inject constructor() {
  *
  * A null [deviceId] means the unfiltered Alerts screen — used when the push carried no device
  * and as the fallback when the target device has been unlinked.
+ *
+ * [alertId] is the specific alert the notification was about. Null when the push carried none
+ * or carried an unparseable one, in which case the screen simply opens unhighlighted.
  */
 data class PendingDeepLink(
     val deviceId: Int?,
-    val deviceName: String?
+    val deviceName: String?,
+    val alertId: Int? = null
 )

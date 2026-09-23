@@ -33,8 +33,9 @@ class TextHasher @Inject constructor() {
         // Maximum number of hashes to keep in memory
         private const val MAX_CACHE_SIZE = 500
 
-        // Time window for considering content as "recent" (5 minutes)
-        private const val RECENT_THRESHOLD_MS = 5 * 60 * 1000L
+        // Time window for considering content as "recent" (5 minutes).
+        // Public so the alert path can report the exact window when it suppresses a duplicate.
+        const val RECENT_WINDOW_MS = 5 * 60 * 1000L
 
         // Hash algorithm
         private const val HASH_ALGORITHM = "SHA-256"
@@ -74,7 +75,7 @@ class TextHasher @Inject constructor() {
 
         synchronized(lock) {
             val lastSeen = recentHashes.get(hash) ?: return false
-            val isRecent = (now - lastSeen) < RECENT_THRESHOLD_MS
+            val isRecent = (now - lastSeen) < RECENT_WINDOW_MS
 
             if (isRecent) {
                 Timber.d("$TAG: Content hash $hash was recently flagged (${(now - lastSeen) / 1000}s ago)")
@@ -122,7 +123,7 @@ class TextHasher @Inject constructor() {
      */
     fun cleanupOldEntries() {
         val now = System.currentTimeMillis()
-        val threshold = now - RECENT_THRESHOLD_MS
+        val threshold = now - RECENT_WINDOW_MS
 
         synchronized(lock) {
             // Get all entries and filter out old ones

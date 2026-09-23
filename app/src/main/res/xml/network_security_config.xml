@@ -1,63 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Network Security Configuration for SafeGuard App
+    Release network security configuration.
 
-    IMPORTANT FOR PRODUCTION:
-    1. Update the pin-set expiration date before it expires
-    2. Replace placeholder certificate pins with actual SHA-256 hashes
-    3. Generate pins using:
-       openssl s_client -servername api.safeguard.app -connect api.safeguard.app:443 | \
-       openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | \
-       openssl dgst -sha256 -binary | openssl enc -base64
-    4. Always include a backup pin for certificate rotation
+    Cleartext is denied everywhere and only system CAs are trusted.
+    Development host exemptions and user-CA trust live in the debug source set at
+    app/src/debug/res/xml/network_security_config.xml and never ship.
+
+    Certificate pinning is deliberately NOT configured here. Pinning is enforced in
+    exactly one place - the OkHttp client in di/NetworkModule.kt - so there is a
+    single source of truth. See the feature spec's Q1 decision.
 -->
 <network-security-config>
-    <!-- Base config for all domains - NO cleartext traffic -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
-            <!-- Trust only system CAs in production -->
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-
-    <!-- Debug config - allow cleartext and user CAs for development only -->
-    <debug-overrides>
-        <trust-anchors>
-            <certificates src="system" />
-            <certificates src="user" />
-        </trust-anchors>
-    </debug-overrides>
-
-    <!-- Development/emulator domains - debug builds only -->
-    <domain-config cleartextTrafficPermitted="true">
-        <!-- Allow cleartext for Android emulator -->
-        <domain includeSubdomains="true">10.0.2.2</domain>
-        <!-- Allow cleartext for localhost -->
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">127.0.0.1</domain>
-        <!-- Allow cleartext for local network development -->
-        <domain includeSubdomains="true">192.168.1.5</domain>
-        <!-- Common local network ranges for development -->
-        <domain includeSubdomains="true">192.168.1.1</domain>
-    </domain-config>
-
-    <!--
-        PRODUCTION CONFIGURATION
-        Uncomment and configure this section before release:
-
-    <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">api.safeguard.app</domain>
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-        <pin-set expiration="2027-01-01">
-            <!- - Primary certificate pin - ->
-            <pin digest="SHA-256">YOUR_PRIMARY_CERTIFICATE_PIN_HERE=</pin>
-            <!- - Backup certificate pin (for rotation) - ->
-            <pin digest="SHA-256">YOUR_BACKUP_CERTIFICATE_PIN_HERE=</pin>
-            <!- - Root CA pin (fallback) - ->
-            <pin digest="SHA-256">YOUR_ROOT_CA_PIN_HERE=</pin>
-        </pin-set>
-    </domain-config>
-    -->
 </network-security-config>

@@ -57,7 +57,7 @@ private const val PASSWORD_RESET_SUCCESS_KEY = "password_reset_success"
  * second tap from stacking another copy when the parent is already looking at the screen.
  */
 private fun NavHostController.navigateToAlerts(link: PendingDeepLink) {
-    navigate(Screen.Alerts.createRoute(link.deviceId, link.deviceName)) {
+    navigate(Screen.Alerts.createRoute(link.deviceId, link.deviceName, link.alertId)) {
         launchSingleTop = true
     }
 }
@@ -92,18 +92,17 @@ sealed class Screen(val route: String) {
     data object Legal : Screen("legal/{doc}") {
         fun createRoute(doc: String): String = "legal/$doc"
     }
-    data object Alerts : Screen("alerts?deviceId={deviceId}&deviceName={deviceName}") {
-        fun createRoute(deviceId: Int? = null, deviceName: String? = null): String {
+    data object Alerts : Screen("alerts?deviceId={deviceId}&deviceName={deviceName}&alertId={alertId}") {
+        fun createRoute(deviceId: Int? = null, deviceName: String? = null, alertId: Int? = null): String {
             // No device means the unfiltered list. A device without a name still filters —
             // a violation push may identify the device without carrying its display name.
-            if (deviceId == null) return "alerts"
-            val base = "alerts?deviceId=$deviceId"
-            return if (deviceName != null) {
-                val encodedName = URLEncoder.encode(deviceName, StandardCharsets.UTF_8.toString())
-                "$base&deviceName=$encodedName"
-            } else {
-                base
+            // An alertId can arrive with or without a device, so it is appended independently.
+            val params = buildList {
+                deviceId?.let { add("deviceId=$it") }
+                deviceName?.let { add("deviceName=" + URLEncoder.encode(it, StandardCharsets.UTF_8.toString())) }
+                alertId?.let { add("alertId=$it") }
             }
+            return if (params.isEmpty()) "alerts" else "alerts?" + params.joinToString("&")
         }
     }
     data object Devices : Screen("devices")
@@ -431,6 +430,11 @@ fun SafeGuardNavGraph(
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("alertId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->
@@ -439,10 +443,12 @@ fun SafeGuardNavGraph(
             val deviceName = backStackEntry.arguments?.getString("deviceName")?.let {
                 if (it != "null") URLDecoder.decode(it, StandardCharsets.UTF_8.toString()) else null
             }
+            val highlightAlertId = backStackEntry.arguments?.getString("alertId")?.toIntOrNull()
 
             AlertsScreen(
                 deviceId = deviceId,
                 deviceName = deviceName,
+                highlightAlertId = highlightAlertId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

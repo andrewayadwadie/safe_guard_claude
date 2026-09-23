@@ -7,8 +7,11 @@ import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.safeguard.parentalcontrol.BuildConfig
+import com.safeguard.parentalcontrol.data.repository.AlertOutcome
 import com.safeguard.parentalcontrol.data.repository.AlertRepository
 import com.safeguard.parentalcontrol.ml.ContentClassifier
+import com.safeguard.parentalcontrol.util.AlertPipe
+import com.safeguard.parentalcontrol.util.FlaggedTextDelivery
 import com.safeguard.parentalcontrol.util.FlaggedTextStore
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import dagger.hilt.EntryPoint
@@ -471,16 +474,26 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
                 val appName = getAppName(packageName)
                 Timber.w("FLAGGED! Inappropriate text detected in $packageName")
                 Timber.w("FLAGGED: Inappropriate text in $packageName: categories=${result.categories}, confidence=${result.confidence}, reason=${result.reason}")
+                AlertPipe.i(
+                    "DETECTED package=$packageName categories=${result.categories} " +
+                        "primary_category=${result.categories.firstOrNull() ?: "unknown"} " +
+                        "confidence=${result.confidence} severity=${result.severity ?: "derived"}"
+                )
 
                 // Persist the flagged phrase on-device ONLY (never transmitted) so a parent
-                // can review it behind the PIN. Done independently of the alert below so every
-                // flagged phrase is reviewable even when the alert is deduped/cooled-down.
-                if (::flaggedTextStore.isInitialized) {
+                // can review it behind the PIN. Every flagged phrase stays reviewable even when
+                // the alert is deduped/cooled-down — but the record is stamped with what
+                // actually happened to the alert below, so a review entry can never imply a
+                // parent was notified when no alert was ever sent.
+                val recordId = if (::flaggedTextStore.isInitialized) {
                     flaggedTextStore.add(
                         phrase = text,
                         appName = appName ?: packageName,
                         category = result.categories.firstOrNull() ?: "unknown"
-                    )
+                    ).also { AlertPipe.d("LOCAL_RECORD written id=$it package=$packageName") }
+                } else {
+                    AlertPipe.w("LOCAL_RECORD SKIPPED store not injected package=$packageName")
+                    null
                 }
 
                 // Send alert with full context (categories, confidence, text for deduplication)
@@ -495,12 +508,34 @@ class TextMonitoringAccessibilityService : AccessibilityService() {
                     severityLabel = result.severity // gating-computed severity (Stage-2); null => derived from category
                 )
 
-                alertResult.onSuccess {
-                    Timber.i("SUCCESS: Text alert created for $packageName: id=${it.id}, severity=${it.severity}")
-                }.onError { message, _ ->
-                    // Log why alert wasn't created (cooldown, deduplication, daily limit, etc.)
-                    Timber.w("SKIPPED: Alert not created for $packageName: $message")
+                // Suppression and failure are reported separately: a cooled-down alert is the
+                // system working, a failed one is not, and during QA the two look identical
+                // from the outside.
+                val delivery = when (alertResult) {
+                    is AlertOutcome.Delivered -> {
+                        Timber.i("SUCCESS: Text alert created for $packageName: id=${alertResult.alert.id}, severity=${alertResult.alert.severity}")
+                        AlertPipe.i("OUTCOME delivered package=$packageName alert_id=${alertResult.alert.id}")
+                        FlaggedTextDelivery.SENT
+                    }
+                    is AlertOutcome.Skipped -> {
+                        Timber.w("SKIPPED: Alert not created for $packageName: ${alertResult.reason.describe()}")
+                        AlertPipe.w("OUTCOME skipped package=$packageName ${alertResult.reason.describe()} (intentional — not a failure)")
+                        FlaggedTextDelivery.SKIPPED
+                    }
+                    is AlertOutcome.Failed -> {
+                        Timber.e("FAILED: Alert submission failed for $packageName: ${alertResult.message}")
+                        AlertPipe.e(
+                            null,
+                            "OUTCOME failed package=$packageName status=${alertResult.code ?: "no-response"} " +
+                                "queued_for_retry=${alertResult.queuedForRetry} body=${alertResult.message}"
+                        )
+                        FlaggedTextDelivery.FAILED
+                    }
                 }
+
+                // Same decision point, same record: the review entry now carries the outcome of
+                // the very attempt made for it.
+                recordId?.let { flaggedTextStore.markDelivery(it, delivery) }
             } else {
                 Timber.d("SAFE: Text from $packageName passed analysis")
             }

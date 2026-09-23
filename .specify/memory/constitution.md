@@ -29,6 +29,30 @@ Templates reviewed for alignment:
   ✅ .specify/templates/checklist-template.md (no changes required)
 
 Deferred placeholders: none. All tokens resolved.
+
+AMENDMENT v2.0.0 -> v2.1.0 (MINOR) - 2026-08-24
+Driver: feature 013-play-store-release-readiness (Play Store Release Readiness).
+
+  1. SDK: targetSdk/compileSdk 35 -> 36. Google Play requires API 36 for submissions from
+     2026-08-31. Also corrects pre-existing drift: the document said 35 while the build was
+     actually on 34.
+  2. Build: AGP 8.5.2 -> 8.13.2, Kotlin 2.0.21/KSP recorded. The document lagged the repository;
+     no upgrade was performed, the stated versions were simply wrong.
+  3. Principle IV: MonitoringService TYPE_DATA_SYNC -> TYPE_SPECIAL_USE. From API 35 a dataSync
+     foreground service is capped at 6 cumulative hours per 24, after which the platform stops it.
+     For a 24/7 monitor that is a silent end of protection - the failure mode Principle I exists to
+     prevent. Both foreground services now override onTimeout() defensively.
+  4. Locked versions: Compose BOM 2023.10.01 -> 2024.09.00, required for supported edge-to-edge and
+     predictive-back APIs at API 36.
+  5. Principle V: certificate pinning may ship disabled when no verified pin set exists. Pins move
+     to the untracked secrets.properties; blank values disable pinning rather than constructing an
+     unsatisfiable pin. A build-time guard rejects a release whose pin subject host differs from the
+     host actually called - the defect that made pinning silently inert before this feature.
+
+Not amended, deliberately: the ML pipeline guardrail. TensorFlow Lite 2.16.1 ships 4 KB-aligned
+native libraries and is not 16 KB page-size compliant. Migrating to LiteRT 1.4.0+ would edit
+ml/TFLiteImageClassifier.kt, which Principle-level guardrails forbid without approval. The
+non-compliance is documented as a known blocker with a remediation path, not silently accepted.
 -->
 
 # SafeGuard Constitution
@@ -113,8 +137,10 @@ Battery Optimization) are the core enforcement surface. They MUST be treated as
 high-risk, always-on infrastructure.
 
 **Service rules:**
-- `MonitoringService` — `TYPE_DATA_SYNC` foreground service. `stopWithTask="false"` in
-  manifest. MUST be restarted on boot (`BootReceiver`), user unlock, and screen-on
+- `MonitoringService` — `TYPE_SPECIAL_USE` foreground service. `stopWithTask="false"` in
+  manifest. (Was `TYPE_DATA_SYNC` until v2.1.0; API 35+ imposes a cumulative 6-hour/24-hour
+  runtime cap on `dataSync`, after which the platform stops the service and protection ends
+  silently. `specialUse` is exempt. Both foreground services override `onTimeout()` defensively.) MUST be restarted on boot (`BootReceiver`), user unlock, and screen-on
   (`ServiceRestartReceiver`).
 - `ContentFilterVpnService` — local DNS sinkhole. On disconnect: enqueue
   `TamperAlertWorker`. Broadcasts `ACTION_VPN_STATE_CHANGED` to UI.
@@ -150,7 +176,11 @@ MUST keep secrets out of the repository.
   API hosts) MUST NOT be committed. The repo ships placeholders only; real values are
   supplied locally or via CI secrets. Any committed secret is a P0 incident requiring
   immediate rotation.
-- Network traffic to `bw.noor.net:8090` uses TLS with `CertificatePinner`. At-rest
+- Network traffic to `bw.noor.net:8090` uses TLS. `CertificatePinner` is supported but MAY ship
+  disabled when no verified pin set exists: pin values come from the untracked
+  `secrets.properties`, and blank values disable pinning rather than producing an unsatisfiable
+  pin. A build-time guard rejects any release whose pin subject host differs from the host the
+  app actually calls, because such a pin is silently inert. At-rest
   secrets and tokens use `EncryptedSharedPreferences` (`TokenManager`). Plaintext token
   storage in any `SharedPreferences` is prohibited.
 - `TokenManager` is the ONLY class that reads or writes tokens. ViewModels and Screens MUST
@@ -171,9 +201,9 @@ controls limit blast radius when any single layer fails.
 **This is the production codebase.** Active feature development occurs here.
 
 - **Platform:** Native Android — Kotlin + Jetpack Compose
-- **SDK:** `minSdk 26` (Android 8.0), `targetSdk 35`, `compileSdk 35`
+- **SDK:** `minSdk 26` (Android 8.0), `targetSdk 36`, `compileSdk 36` (Android 16)
 - **Toolchain:** JDK 21, `jvmTarget = '17'`, Kotlin Compiler Extension `1.5.14`
-- **Build:** Gradle 8.13 / AGP 8.5.2 — build via `./gradlew assembleDebug`
+- **Build:** Gradle 8.13 / AGP 8.13.2 / Kotlin 2.0.21 (KSP) — build via `./gradlew assembleDebug`
 - **Backend:** FastAPI at `https://bw.noor.net:8090/api/v1` — NOT modified. Client conforms
   to existing contract. The Postman collection is the executable reference.
 
@@ -184,7 +214,7 @@ controls limit blast radius when any single layer fails.
 | Hilt | 2.51.1 |
 | Retrofit | 2.9.0 |
 | OkHttp | 4.12.0 |
-| Compose BOM | 2023.10.01 |
+| Compose BOM | 2024.09.00 |
 | Navigation Compose | 2.7.6 |
 | Room | 2.6.1 |
 | WorkManager | 2.9.0 |
@@ -272,4 +302,4 @@ conflicts, the constitution wins.
   Unjustified violations are removed, not annotated. Runtime guidance lives in agent context
   files, which MUST stay consistent with this constitution.
 
-**Version**: 2.0.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-06-23
+**Version**: 2.1.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-24

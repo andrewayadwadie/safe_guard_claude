@@ -4,8 +4,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
 import java.util.Date
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -47,10 +50,32 @@ fun AlertsScreen(
     onNavigateBack: () -> Unit,
     deviceId: Int? = null,
     deviceName: String? = null,
+    /**
+     * The alert a violation notification was about. Its detail dialog opens straight away, and
+     * the list scrolls to it and marks it out once loaded; a null id, or an id no longer in the
+     * list (deleted, filtered out, older than the query window), simply opens the list as normal.
+     */
+    highlightAlertId: Int? = null,
     viewModel: AlertsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val listState = rememberLazyListState()
+
+    // Keyed on the id alone, so closing the dialog is final — a later list refresh must not
+    // reopen it over the parent.
+    LaunchedEffect(highlightAlertId) {
+        highlightAlertId?.let { viewModel.openAlertDetailById(it) }
+    }
+
+    // Runs when the target first appears in the loaded list, not on every recomposition, so a
+    // parent who scrolls away is not dragged back to it.
+    LaunchedEffect(highlightAlertId, uiState.alerts) {
+        val index = uiState.alerts.indexOfFirst { it.id == highlightAlertId }
+        if (highlightAlertId != null && index >= 0) {
+            listState.animateScrollToItem(index)
+        }
+    }
 
     // Set device filter when screen loads
     LaunchedEffect(deviceId, deviceName) {
@@ -205,6 +230,7 @@ fun AlertsScreen(
                 else -> {
                     val screenWidth = rememberScreenWidth()
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier
                             .fillMaxHeight()
                             .responsiveContentWidth(screenWidth),
@@ -217,6 +243,8 @@ fun AlertsScreen(
                         ) { alert ->
                             AlertCard(
                                 alert = alert,
+                                isHighlighted = alert.id == highlightAlertId,
+                                onClick = { viewModel.openAlertDetail(alert) },
                                 onMarkAsRead = { viewModel.markAsRead(alert.id) },
                                 onDismiss = { viewModel.dismissAlert(alert.id) },
                                 onDelete = { viewModel.deleteAlert(alert.id) }
@@ -226,6 +254,15 @@ fun AlertsScreen(
                 }
             }
         }
+    }
+
+    // Outside the Scaffold: a dialog is its own window, and nesting it in the content would
+    // tie its lifetime to whichever list branch happens to be composed.
+    uiState.selectedAlert?.let { alert ->
+        AlertDetailDialog(
+            alert = alert,
+            onDismiss = { viewModel.closeAlertDetail() }
+        )
     }
 }
 
@@ -270,7 +307,11 @@ private fun AlertCard(
     alert: Alert,
     onMarkAsRead: () -> Unit,
     onDismiss: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    /** Opens the full record. The overflow button consumes its own taps, so the menu still works. */
+    onClick: () -> Unit = {},
+    /** The alert the parent arrived here for, given a border so it is findable at a glance. */
+    isHighlighted: Boolean = false
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -292,7 +333,20 @@ private fun AlertCard(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .then(
+                if (isHighlighted) {
+                    Modifier.border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = SafeGuardShapes.large
+                    )
+                } else {
+                    Modifier
+                }
+            ),
         colors = CardDefaults.cardColors(
             containerColor = if (!alert.isRead) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)

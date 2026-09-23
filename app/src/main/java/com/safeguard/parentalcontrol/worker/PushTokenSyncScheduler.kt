@@ -17,4 +17,11 @@ class PushTokenSyncScheduler @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     fun schedule() = PushTokenSyncWorker.enqueue(context)
+
+    /**
+     * Publish after the destination itself changed — currently only device registration, which
+     * moves a child from "no device record" to a real one. Supersedes any in-flight run so the
+     * token is published against the record that now exists.
+     */
+    fun scheduleAfterDeviceRegistration() = PushTokenSyncWorker.enqueue(context, replaceExisting = true)
 }

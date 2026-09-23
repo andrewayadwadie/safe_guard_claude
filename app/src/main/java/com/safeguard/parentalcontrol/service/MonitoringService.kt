@@ -7,6 +7,7 @@ import android.app.Service
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -224,8 +225,18 @@ class MonitoringService : Service() {
             }
         }
 
-        // Start as foreground service
-        startForeground(Constants.NOTIFICATION_ID_MONITORING_SERVICE, createNotification())
+        // Start as foreground service. The declared type is specialUse (see manifest):
+        // dataSync is capped at 6 cumulative hours per 24 from API 35, which would end
+        // monitoring silently. Mirrors ContentFilterVpnService.onStartCommand().
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                Constants.NOTIFICATION_ID_MONITORING_SERVICE,
+                createNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
+        } else {
+            startForeground(Constants.NOTIFICATION_ID_MONITORING_SERVICE, createNotification())
+        }
 
         // Consent gate. A parental-control monitoring service must not run until the
         // parent has acknowledged the in-app monitoring disclosure (Google Play
@@ -322,6 +333,29 @@ class MonitoringService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /**
+     * Defensive handler for the platform foreground-service timeout (API 35+).
+     *
+     * The service is declared specialUse, which is not subject to the dataSync
+     * 6-hour cumulative cap, so this should never fire. It is overridden anyway: if the
+     * platform ever does time this service out, the failure would otherwise be silent and
+     * the child would be left unprotected with no signal to the parent.
+     *
+     * Logs and requests a restart. Contains no monitoring logic.
+     */
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        Timber.w(
+            "MonitoringService received foreground-service timeout " +
+                "(startId=$startId, fgsType=$fgsType). Attempting graceful restart."
+        )
+        try {
+            scheduleServiceRestart()
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to schedule MonitoringService restart after timeout")
+        }
+        super.onTimeout(startId, fgsType)
+    }
 
     override fun onDestroy() {
         super.onDestroy()

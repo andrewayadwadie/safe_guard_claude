@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.safeguard.parentalcontrol.data.remote.ApiService
 import com.safeguard.parentalcontrol.data.repository.CustomWordRepository
+import com.safeguard.parentalcontrol.data.repository.DeviceRepository
 import com.safeguard.parentalcontrol.ml.ContentClassifier
 import com.safeguard.parentalcontrol.ml.download.ModelDownloader
 import com.safeguard.parentalcontrol.util.NetworkMonitor
@@ -58,9 +59,9 @@ object AppModule {
     fun provideCustomWordRepository(
         @ApplicationContext context: Context,
         apiService: ApiService,
-        preferencesManager: PreferencesManager
+        deviceRepository: DeviceRepository
     ): CustomWordRepository {
-        return CustomWordRepository(context, apiService, preferencesManager)
+        return CustomWordRepository(context, apiService, deviceRepository)
     }
 
     @Provides

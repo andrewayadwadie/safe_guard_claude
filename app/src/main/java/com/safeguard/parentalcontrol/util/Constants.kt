@@ -13,6 +13,7 @@ object Constants {
     const val KEY_USER_ROLE = "user_role"
     const val KEY_DEVICE_ID = "device_id"
     const val KEY_DEVICE_DB_ID = "device_db_id"
+    const val KEY_DEVICE_TOKEN = "device_token"
     const val KEY_DEVICE_NAME = "device_name"
     const val KEY_IS_LOGGED_IN = "is_logged_in"
     const val KEY_IS_DEVICE_REGISTERED = "is_device_registered"
@@ -42,6 +43,7 @@ object Constants {
     // Signed-in user's display name, captured at login/registration. Attached to every alert
     // this device reports so the parent's notification can name the child. Cleared on logout.
     const val KEY_USER_FULL_NAME = "user_full_name"
+    const val KEY_PUBLISHED_FCM_TOKEN_HASH = "published_fcm_token_hash"
     // Parent dismissed the "notifications are disabled" banner. Purely informational; the
     // banner never blocks any functionality. Cleared on logout by clearAll().
     const val KEY_NOTIFICATION_BANNER_DISMISSED = "notification_banner_dismissed"
@@ -51,6 +53,7 @@ object Constants {
     const val EXTRA_NAV_TARGET = "nav_target"
     const val EXTRA_DEVICE_ID = "nav_device_id"
     const val EXTRA_DEVICE_NAME = "nav_device_name"
+    const val EXTRA_ALERT_ID = "nav_alert_id"
     const val NAV_TARGET_ALERTS = "alerts"
 
     // Sync Intervals (milliseconds)
@@ -109,11 +112,10 @@ object Constants {
     const val WRITE_TIMEOUT_SECONDS = 30L
 
     // Security - Certificate Pinning
-    // IMPORTANT: Replace with actual certificate hashes before production deployment
-    const val API_HOST = "api.safeguard.app"
-
-    const val CERTIFICATE_PIN_PRIMARY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-    const val CERTIFICATE_PIN_BACKUP = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="
+    // API_HOST, CERTIFICATE_PIN_PRIMARY and CERTIFICATE_PIN_BACKUP were removed here.
+    // Pin configuration now comes from BuildConfig, populated from the untracked
+    // secrets.properties, so it can differ per environment without a code change.
+    // See di/NetworkModule.provideCertificatePinner().
 
     // DNS Cache
     const val DNS_CACHE_SIZE = 500

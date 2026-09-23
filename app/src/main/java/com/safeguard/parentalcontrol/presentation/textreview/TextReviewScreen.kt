@@ -20,6 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.components.ParentPinGate
 import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
+import com.safeguard.parentalcontrol.util.FlaggedTextDelivery
 
 /**
  * Screen for a parent to review phrase-triggered text monitoring on the child's device.
@@ -168,8 +169,33 @@ private fun FlaggedTextCard(event: FlaggedTextUi, onDelete: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            // Only shown when no alert reached the parent. A flagged phrase that was suppressed
+            // by the cooldown or daily cap is the system working as designed, but a reviewer
+            // seeing only the phrase would reasonably assume it had been reported.
+            notDeliveredLabelRes(event.delivery)?.let { labelRes ->
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(labelRes),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
+}
+
+/**
+ * Label for a record whose alert never reached the parent, or null when there is nothing to
+ * flag — delivered, or written by a build that did not track delivery and so cannot claim
+ * either way.
+ */
+private fun notDeliveredLabelRes(delivery: FlaggedTextDelivery): Int? = when (delivery) {
+    FlaggedTextDelivery.SKIPPED -> R.string.textreview_not_notified_skipped
+    FlaggedTextDelivery.FAILED -> R.string.textreview_not_notified_failed
+    FlaggedTextDelivery.PENDING -> R.string.textreview_not_notified_pending
+    FlaggedTextDelivery.SENT, FlaggedTextDelivery.UNKNOWN -> null
 }
 
 @Composable

@@ -13,6 +13,7 @@ import androidx.work.WorkerParameters
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.AuthRepository
 import com.safeguard.parentalcontrol.data.repository.DeviceRepository
+import com.safeguard.parentalcontrol.util.AlertPipe
 import com.safeguard.parentalcontrol.util.Constants
 import com.safeguard.parentalcontrol.util.FcmTokenProvider
 import com.safeguard.parentalcontrol.util.PreferencesManager
@@ -50,22 +51,47 @@ class PushTokenSyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         if (!preferencesManager.isLoggedIn) {
             Timber.d("$TAG: no session; nothing to publish")
+            AlertPipe.d("TOKEN SKIPPED no session")
             return Result.success()
         }
 
         val token = fcmTokenProvider.currentToken()
         if (token == null) {
             Timber.d("$TAG: no FCM token available yet; will retry")
+            AlertPipe.w("TOKEN UNAVAILABLE Firebase returned no token; will retry")
             return Result.retry()
         }
 
+        val role = if (preferencesManager.isParent) "parent" else "child"
+        AlertPipe.i("TOKEN OBTAINED role=$role token=${AlertPipe.fingerprint(token)}")
+
+        // Publication is idempotent but not free: this worker runs on every app start, so an
+        // unchanged token would otherwise cost a network round trip per launch. The cache key
+        // covers the destination as well as the token, so a child that registers its device
+        // (deviceDbId -1 -> real id) or a role change republishes instead of being skipped.
+        val publicationKey = publicationKey(role, token)
+        if (preferencesManager.publishedFcmTokenHash == publicationKey) {
+            AlertPipe.d("TOKEN SKIPPED unchanged since last accepted publication role=$role")
+            return Result.success()
+        }
+
+        val endpoint: String
         val result = when {
-            preferencesManager.isParent -> authRepository.publishFcmToken(token)
-            preferencesManager.deviceDbId != -1 -> deviceRepository.updateFcmToken(token)
+            preferencesManager.isParent -> {
+                endpoint = "PUT auth/me/fcm-token"
+                AlertPipe.i("TOKEN UPLOAD attempt endpoint=$endpoint role=parent")
+                authRepository.publishFcmToken(token)
+            }
+            preferencesManager.deviceDbId != -1 -> {
+                endpoint = "PUT devices/${preferencesManager.deviceDbId}"
+                AlertPipe.i("TOKEN UPLOAD attempt endpoint=$endpoint role=child")
+                deviceRepository.updateFcmToken(token)
+            }
             else -> {
                 // Child device that has not registered yet: registration itself carries the
                 // token, so there is nothing to do and nothing to retry.
                 Timber.d("$TAG: child device not registered yet; token ships with registration")
+                AlertPipe.d("TOKEN SKIPPED child not registered; token ships with device registration")
                 return Result.success()
             }
         }
@@ -73,15 +99,22 @@ class PushTokenSyncWorker @AssistedInject constructor(
         return when (result) {
             is NetworkResult.Success -> {
                 Timber.d("$TAG: push token synced")
+                AlertPipe.i("TOKEN UPLOADED status=200 endpoint=$endpoint role=$role")
+                // Recorded only once the backend has accepted it, so a failed publication is
+                // always retried rather than being cached as done.
+                preferencesManager.publishedFcmTokenHash = publicationKey
                 Result.success()
             }
             is NetworkResult.Error -> {
+                preferencesManager.publishedFcmTokenHash = null
                 // A 4xx will not start succeeding on retry; anything else might.
                 val code = result.code
                 if (code != null && code in 400..499) {
                     Timber.w("$TAG: push token rejected (code=$code)")
+                    AlertPipe.w("TOKEN UPLOAD REJECTED status=$code endpoint=$endpoint body=${result.message} -> giving up")
                     Result.failure()
                 } else {
+                    AlertPipe.w("TOKEN UPLOAD FAILED status=${code ?: "no-response"} endpoint=$endpoint body=${result.message} -> retry with backoff")
                     Result.retry()
                 }
             }
@@ -89,15 +122,27 @@ class PushTokenSyncWorker @AssistedInject constructor(
         }
     }
 
+    /**
+     * Identity of a successful publication: which token, sent where. Comparing the whole tuple
+     * (not just the token) is what makes the skip safe — the same token published against a
+     * different destination is a different publication.
+     */
+    private fun publicationKey(role: String, token: String): String =
+        "$role:${preferencesManager.deviceDbId}:${AlertPipe.digest(token)}"
+
     companion object {
         private const val TAG = "PushTokenSyncWorker"
         private const val BACKOFF_SECONDS = 10L
 
         /**
-         * Publish the current token. Unique with KEEP, so overlapping triggers (app start,
-         * sign-in, token rotation) collapse into one run.
+         * Publish the current token. Unique with KEEP by default, so overlapping routine
+         * triggers (app start, sign-in, token rotation) collapse into one run.
+         *
+         * @param replaceExisting supersede an in-flight run. Used after device registration,
+         *   where an already-running pass may have read `deviceDbId` while it was still -1 and
+         *   would otherwise cache a publication made against the wrong destination.
          */
-        fun enqueue(context: Context) {
+        fun enqueue(context: Context, replaceExisting: Boolean = false) {
             val request = OneTimeWorkRequestBuilder<PushTokenSyncWorker>()
                 .setConstraints(
                     Constraints.Builder()
@@ -110,7 +155,7 @@ class PushTokenSyncWorker @AssistedInject constructor(
 
             WorkManager.getInstance(context).enqueueUniqueWork(
                 Constants.WORK_PUSH_TOKEN_SYNC,
-                ExistingWorkPolicy.KEEP,
+                if (replaceExisting) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
                 request
             )
         }

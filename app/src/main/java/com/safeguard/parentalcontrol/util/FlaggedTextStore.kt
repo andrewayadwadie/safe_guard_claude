@@ -20,15 +20,25 @@ import javax.inject.Singleton
 class FlaggedTextStore @Inject constructor(
     private val prefs: PreferencesManager
 ) {
-    /** Record a newly flagged phrase. Newest first; prunes old/excess entries. */
+    /**
+     * Record a newly flagged phrase. Newest first; prunes old/excess entries.
+     *
+     * @return the record id (its timestamp, which is also the delete key), or null when the
+     *   write failed. Returned so the detection path can log *which* review record it wrote
+     *   and QA can line that record up against the alert that followed it.
+     */
     @Synchronized
-    fun add(phrase: String, appName: String, category: String, timestamp: Long = System.currentTimeMillis()) {
+    fun add(phrase: String, appName: String, category: String, timestamp: Long = System.currentTimeMillis()): Long? {
         try {
             val entry = JSONObject().apply {
                 put(FIELD_PHRASE, phrase.trim().take(MAX_PHRASE_LEN))
                 put(FIELD_APP, appName)
                 put(FIELD_CATEGORY, category)
                 put(FIELD_TIMESTAMP, timestamp)
+                // Written as PENDING and stamped by the caller once the alert path has run.
+                // A record that stays PENDING means the process died mid-flow — which is
+                // itself worth seeing, and is not the same as "we chose not to send it".
+                put(FIELD_DELIVERY, FlaggedTextDelivery.PENDING.wireValue)
             }
             val events = loadArray()
             val pruned = prune(events, now = timestamp)
@@ -40,8 +50,40 @@ class FlaggedTextStore @Inject constructor(
                 JSONArray().also { for (i in 0 until MAX_ENTRIES) it.put(out.getJSONObject(i)) }
             } else out
             prefs.putString(Constants.KEY_FLAGGED_TEXT_EVENTS, capped.toString())
+            return timestamp
         } catch (e: Exception) {
             Timber.e(e, "FlaggedTextStore: failed to add entry")
+            AlertPipe.e(e, "LOCAL_RECORD FAILED category=$category app=$appName")
+            return null
+        }
+    }
+
+    /**
+     * Stamp what happened to the alert for an existing record.
+     *
+     * Keeps the review list honest: a phrase shown to a parent as "flagged" while nothing was
+     * ever sent to them is exactly the confusion this feature exists to remove. A missing
+     * record (pruned, capped out) is a no-op rather than an error.
+     */
+    @Synchronized
+    fun markDelivery(recordId: Long, delivery: FlaggedTextDelivery) {
+        try {
+            val events = loadArray()
+            var updated = false
+            for (i in 0 until events.length()) {
+                val o = events.optJSONObject(i) ?: continue
+                if (o.optLong(FIELD_TIMESTAMP) == recordId) {
+                    o.put(FIELD_DELIVERY, delivery.wireValue)
+                    updated = true
+                    break
+                }
+            }
+            if (updated) {
+                prefs.putString(Constants.KEY_FLAGGED_TEXT_EVENTS, events.toString())
+            }
+            AlertPipe.d("LOCAL_RECORD delivery id=$recordId state=${delivery.wireValue} found=$updated")
+        } catch (e: Exception) {
+            Timber.e(e, "FlaggedTextStore: failed to mark delivery")
         }
     }
 
@@ -59,7 +101,8 @@ class FlaggedTextStore @Inject constructor(
                         phrase = o.optString(FIELD_PHRASE),
                         appName = o.optString(FIELD_APP),
                         category = o.optString(FIELD_CATEGORY),
-                        timestamp = o.optLong(FIELD_TIMESTAMP)
+                        timestamp = o.optLong(FIELD_TIMESTAMP),
+                        delivery = FlaggedTextDelivery.fromWire(o.optString(FIELD_DELIVERY))
                     )
                 )
             }
@@ -112,6 +155,7 @@ class FlaggedTextStore @Inject constructor(
         private const val FIELD_APP = "appName"
         private const val FIELD_CATEGORY = "category"
         private const val FIELD_TIMESTAMP = "timestamp"
+        private const val FIELD_DELIVERY = "delivery"
     }
 }
 
@@ -120,5 +164,40 @@ data class FlaggedTextEvent(
     val phrase: String,
     val appName: String,
     val category: String,
-    val timestamp: Long
+    val timestamp: Long,
+    /**
+     * Whether an alert for this phrase actually reached the parent. Records written before
+     * this was tracked read as [FlaggedTextDelivery.UNKNOWN] rather than claiming either
+     * outcome.
+     */
+    val delivery: FlaggedTextDelivery = FlaggedTextDelivery.UNKNOWN
 )
+
+/**
+ * What happened to the parent alert for a locally flagged phrase.
+ *
+ * Detection and notification are separate outcomes: suppression rules mean a phrase can be
+ * correctly flagged on the child's device and correctly never sent. Recording which is which
+ * is what stops a full review list from being read as "the parent was told about all of these".
+ */
+enum class FlaggedTextDelivery(val wireValue: String) {
+    /** Written before the alert path ran; a record still in this state never completed it. */
+    PENDING("pending"),
+
+    /** The backend accepted the alert. */
+    SENT("sent"),
+
+    /** Deliberately suppressed — dedup, cooldown, daily cap, or no device record. */
+    SKIPPED("skipped"),
+
+    /** Submission was attempted and failed; it may still be queued for retry. */
+    FAILED("failed"),
+
+    /** Written by a build that did not track delivery. Makes no claim either way. */
+    UNKNOWN("");
+
+    companion object {
+        fun fromWire(value: String?): FlaggedTextDelivery =
+            entries.firstOrNull { it.wireValue == value } ?: UNKNOWN
+    }
+}

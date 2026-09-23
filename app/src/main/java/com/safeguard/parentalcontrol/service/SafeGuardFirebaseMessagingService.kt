@@ -9,6 +9,7 @@ import com.google.firebase.messaging.RemoteMessage
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.SafeGuardApplication
 import com.safeguard.parentalcontrol.presentation.MainActivity
+import com.safeguard.parentalcontrol.util.AlertPipe
 import com.safeguard.parentalcontrol.util.Constants
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.ViolationNotifier
@@ -44,6 +45,7 @@ class SafeGuardFirebaseMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Timber.d("FCM token refreshed")
+        AlertPipe.i("ONNEWTOKEN fired token=${AlertPipe.fingerprint(token)}; scheduling upload")
 
         // Publish the new token for whichever role is signed in. The worker owns the role
         // routing (parent -> PUT /auth/me/fcm-token, child -> PUT /devices/{id}) and gives
@@ -54,10 +56,18 @@ class SafeGuardFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
         Timber.d("FCM message received from: ${message.from}")
+        AlertPipe.i(
+            "ONMESSAGERECEIVED from=${message.from} data_keys=${message.data.keys.sorted()} " +
+                "notification_payload=${message.notification != null} " +
+                "priority=${message.priority}/original=${message.originalPriority} " +
+                "role=${if (preferencesManager.isParent) "parent" else "non-parent"}"
+        )
 
         // Handle data payload
         if (message.data.isNotEmpty()) {
             handleDataMessage(message.data)
+        } else {
+            AlertPipe.w("ONMESSAGERECEIVED empty data payload; nothing to route")
         }
 
         // Handle notification payload. Violation pushes are data-only by contract, so this
@@ -70,19 +80,40 @@ class SafeGuardFirebaseMessagingService : FirebaseMessagingService() {
             }
             showNotification(
                 title = it.title ?: "Haris",
-                body = it.body ?: ""
+                body = it.body ?: "",
+                // A notification-payload alert still names its alert in the data block, so it
+                // deep-links to the same detail view a data-only violation push does.
+                alertId = message.data["alert_id"]?.toIntOrNull()
             )
         }
     }
 
     private fun handleDataMessage(data: Map<String, String>) {
-        val type = data["type"] ?: return
+        val type = data["type"]
+        if (type == null) {
+            // A push with no "type" used to fall out of here without a trace, which looks
+            // exactly like a push that was never delivered. Name it.
+            AlertPipe.w("ROUTE type=<absent> keys=${data.keys.sorted()} branch=NONE -> dropped")
+            return
+        }
 
         when (type) {
-            "alert" -> handleAlertMessage(data)
-            "command" -> handleCommandMessage(data)
-            "sync" -> handleSyncMessage()
-            else -> Timber.d("Unknown message type: $type")
+            "alert" -> {
+                AlertPipe.i("ROUTE type=alert branch=handleAlertMessage")
+                handleAlertMessage(data)
+            }
+            "command" -> {
+                AlertPipe.i("ROUTE type=command branch=handleCommandMessage")
+                handleCommandMessage(data)
+            }
+            "sync" -> {
+                AlertPipe.i("ROUTE type=sync branch=handleSyncMessage")
+                handleSyncMessage()
+            }
+            else -> {
+                Timber.d("Unknown message type: $type")
+                AlertPipe.w("ROUTE type=$type branch=NONE -> unrecognized type, no notification shown")
+            }
         }
     }
 
@@ -132,14 +163,31 @@ class SafeGuardFirebaseMessagingService : FirebaseMessagingService() {
     private fun showNotification(
         title: String,
         body: String,
-        priority: Int = NotificationCompat.PRIORITY_DEFAULT
+        priority: Int = NotificationCompat.PRIORITY_DEFAULT,
+        /** When present, tapping opens the Alerts screen with this alert's detail already open. */
+        alertId: Int? = null
     ) {
         val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            flags = if (alertId != null) {
+                // CLEAR_TOP, not CLEAR_TASK: a running app should navigate to the alert through
+                // onNewIntent rather than restart from scratch.
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            } else {
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            alertId?.let {
+                putExtra(Constants.EXTRA_NAV_TARGET, Constants.NAV_TARGET_ALERTS)
+                putExtra(Constants.EXTRA_ALERT_ID, it)
+            }
         }
 
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
+            this,
+            // Per-alert request code. A shared request code of 0 made every notification reuse
+            // one PendingIntent, so under FLAG_UPDATE_CURRENT the newest extras overwrote the
+            // targets of every notification already sitting in the tray.
+            alertId ?: 0,
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -153,7 +201,9 @@ class SafeGuardFirebaseMessagingService : FirebaseMessagingService() {
             .build()
 
         val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.notify(getNextNotificationId(), notification)
+        val notificationId = getNextNotificationId()
+        AlertPipe.i("NOTIFY channel=${SafeGuardApplication.CHANNEL_ALERTS} notification_id=$notificationId source=notification-payload")
+        notificationManager.notify(notificationId, notification)
     }
 
     companion object {

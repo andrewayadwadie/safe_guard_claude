@@ -50,6 +50,10 @@ captures/
 *.p12
 *.pfx
 keystore.properties
+/keystore/
+
+# Build configuration secrets (MUST NOT commit)
+secrets.properties
 
 # External native build folder
 .externalNativeBuild

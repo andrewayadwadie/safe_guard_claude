@@ -228,6 +228,10 @@ class AuthViewModel @Inject constructor(
 
             when (val result = deviceRepository.registerDevice(deviceName.trim(), fcmToken)) {
                 is NetworkResult.Success -> {
+                    // The device record now exists, so the token has a destination it did not
+                    // have a moment ago. Republish against it rather than trusting the token
+                    // that travelled with the registration body, which may have been null.
+                    pushTokenSyncScheduler.scheduleAfterDeviceRegistration()
                     _uiState.update {
                         it.copy(
                             isLoading = false,

@@ -6,7 +6,6 @@ import androidx.compose.ui.res.stringResource
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.util.LocaleHelper
 
-import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.app.usage.UsageStatsManager
@@ -19,6 +18,7 @@ import android.telephony.TelephonyManager
 import timber.log.Timber
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -159,6 +159,17 @@ class LockScreenActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Block Back, including the predictive-back gesture. From API 36 predictive back
+        // is on by default and does NOT route through the deprecated onBackPressed()
+        // override, so without this callback the lock screen becomes dismissible - which
+        // would defeat enforcement entirely. An always-enabled callback that does nothing
+        // consumes the event before the default finish() behaviour runs.
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // Intentionally empty: Back must never dismiss the lock screen.
+            }
+        })
+
         // Check if this is a re-show (from onPause/onStop) or initial show
         val isReshow = intent.getBooleanExtra(EXTRA_IS_RESHOW, false)
 
@@ -237,13 +248,10 @@ class LockScreenActivity : ComponentActivity() {
         }
     }
 
-    // Prevent back button from closing the lock screen. Intentionally does NOT
-    // call super: the whole point of the lock screen is that Back cannot dismiss it.
-    @SuppressLint("MissingSuperCall")
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        // Do nothing - prevent dismissing the lock screen
-    }
+    // Back is blocked by the always-enabled OnBackPressedCallback registered in onCreate().
+    // The deprecated onBackPressed() override was removed: it is not invoked on the
+    // predictive-back path that API 36 enables by default, so it no longer protected
+    // anything.
 
     /**
      * Check if a phone call is currently active or ringing

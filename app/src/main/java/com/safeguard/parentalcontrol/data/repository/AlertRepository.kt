@@ -13,6 +13,7 @@ import com.safeguard.parentalcontrol.data.model.*
 import com.safeguard.parentalcontrol.data.remote.ApiService
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.remote.safeApiCall
+import com.safeguard.parentalcontrol.util.AlertPipe
 import com.safeguard.parentalcontrol.util.LocaleHelper
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.TextHasher
@@ -49,7 +50,8 @@ class AlertRepository @Inject constructor(
     private val apiService: ApiService,
     private val preferencesManager: PreferencesManager,
     private val textHasher: TextHasher,
-    private val pendingAlertStore: PendingAlertStore
+    private val pendingAlertStore: PendingAlertStore,
+    private val deviceRepository: DeviceRepository
 ) {
     companion object {
         private const val TAG = "AlertRepository"
@@ -103,28 +105,42 @@ class AlertRepository @Inject constructor(
         evidenceData: String? = null
     ): NetworkResult<Alert> = withContext(Dispatchers.IO) {
         val deviceId = preferencesManager.deviceDbId
-        val deviceToken = preferencesManager.deviceId
+        // The backend-issued credential, NOT the local device UUID: `POST /alerts` authenticates
+        // the device by `X-Device-Token` and rejects anything else outright.
+        val deviceToken = deviceRepository.ensureDeviceToken()
 
         if (deviceId == -1 || deviceToken == null) {
             // A rejection, not a failure — an unregistered device has nothing to deliver to
             // and retrying would never succeed. Never queued.
+            AlertPipe.w("POST ABORTED device not registered (device_db_id=$deviceId, device_token=${if (deviceToken == null) "absent" else "present"})")
             return@withContext NetworkResult.Error("Device not registered")
         }
 
+        val enrichedMetadata = enrich(metadata, deviceId)
         val request = AlertCreate(
             deviceId = deviceId,
             alertType = alertType,
             severity = severity,
             title = title,
             message = message,
-            metadata = enrich(metadata, deviceId),
+            metadata = enrichedMetadata,
             evidenceData = evidenceData
+        )
+
+        // Metadata KEYS only. The values carry the child's name, the app label and the
+        // detection reason; the keys are enough to diagnose a 422 schema mismatch without
+        // putting any of that in logcat.
+        AlertPipe.i(
+            "POST /alerts device_id=$deviceId alert_type=${alertType.name.lowercase()} " +
+                "severity=${severity.name.lowercase()} metadata_keys=${enrichedMetadata.keys.sorted()} " +
+                "evidence=${if (evidenceData == null) "none" else "attached"}"
         )
 
         val result = safeApiCall { apiService.createAlert(request, deviceToken) }
 
         result.onSuccess {
             Timber.d("Alert created: $title (${alertType.name})")
+            AlertPipe.i("POST OK alert_id=${it.id} severity=${it.severity} device_id=$deviceId")
         }
 
         result.onError { errorMessage, code ->
@@ -132,8 +148,10 @@ class AlertRepository @Inject constructor(
                 pendingAlertStore.enqueue(request, deviceToken)
                 PendingAlertWorker.enqueueImmediate(context)
                 Timber.w("Alert delivery failed (code=$code); held for retry: $errorMessage")
+                AlertPipe.w("POST FAILED status=${code ?: "no-response"} body=$errorMessage -> queued for retry")
             } else {
                 Timber.w("Alert rejected (code=$code); not held: $errorMessage")
+                AlertPipe.w("POST REJECTED status=$code body=$errorMessage -> dropped, not retryable")
             }
         }
 
@@ -201,22 +219,29 @@ class AlertRepository @Inject constructor(
                 }
 
                 pendingAlertStore.recordAttempt(entity.id)
-                val result = safeApiCall { apiService.createAlertRaw(payload, entity.deviceToken) }
+                // Prefer the token in force now over the one captured when the row was written:
+                // a row queued before the device token was ever stored carries an unusable value,
+                // and replaying that guarantees a rejection the alert does not deserve.
+                val deviceToken = deviceRepository.ensureDeviceToken() ?: entity.deviceToken
+                val result = safeApiCall { apiService.createAlertRaw(payload, deviceToken) }
 
                 when {
                     result.isSuccess -> {
                         pendingAlertStore.delete(entity.id)
                         delivered++
+                        AlertPipe.i("QUEUE delivered held alert row=${entity.id} attempts=${entity.attemptCount + 1}")
                     }
                     !isRetryable((result as? NetworkResult.Error)?.code) -> {
                         // The backend will never accept this payload; holding it forever
                         // would stall every alert queued behind it.
                         Timber.w("Dropping rejected pending alert ${entity.id}: ${result.errorMessageOrNull()}")
+                        AlertPipe.w("QUEUE dropped row=${entity.id} status=${(result as? NetworkResult.Error)?.code} body=${result.errorMessageOrNull()}")
                         pendingAlertStore.delete(entity.id)
                     }
                     else -> {
                         val remaining = pendingAlertStore.count()
                         Timber.d("Pending alert delivery paused: $delivered delivered, $remaining remaining")
+                        AlertPipe.w("QUEUE paused delivered=$delivered remaining=$remaining status=${(result as? NetworkResult.Error)?.code ?: "no-response"}")
                         return@withContext FlushOutcome(delivered, remaining)
                     }
                 }
@@ -390,6 +415,10 @@ class AlertRepository @Inject constructor(
      * @param categories List of detected content categories (e.g., "self_harm", "violence")
      * @param confidence Detection confidence (0.0 to 1.0)
      * @param textForDedup Optional text for deduplication (hashed, never stored or transmitted)
+     *
+     * @return an [AlertOutcome] rather than a `NetworkResult`, because the three ways this can
+     *   end — delivered, deliberately suppressed, failed — are not the same event. The gate
+     *   logic, its thresholds, and its wording are unchanged; only their reporting is typed.
      */
     suspend fun createInappropriateTextAlert(
         appPackage: String,
@@ -399,26 +428,41 @@ class AlertRepository @Inject constructor(
         confidence: Float = 0.0f,
         textForDedup: String? = null,
         severityLabel: String? = null
-    ): NetworkResult<Alert> = withContext(Dispatchers.IO) {
+    ): AlertOutcome = withContext(Dispatchers.IO) {
         val primaryCategory = categories.firstOrNull() ?: "unknown"
 
         // Check deduplication first (most efficient filter)
         if (textForDedup != null && !textHasher.shouldProcessContent(textForDedup, appPackage)) {
             Timber.d("$TAG: Skipping duplicate content alert for $appPackage (category: $primaryCategory)")
-            return@withContext NetworkResult.Error("Duplicate content - alert skipped")
+            AlertPipe.w("GATE dedup=BLOCKED package=$appPackage category=$primaryCategory reason=identical content seen within ${TextHasher.RECENT_WINDOW_MS}ms")
+            return@withContext AlertOutcome.Skipped(
+                AlertSkipReason.DuplicateContent(TextHasher.RECENT_WINDOW_MS)
+            )
         }
+        AlertPipe.d("GATE dedup=PASS package=$appPackage category=$primaryCategory")
 
         // Check cooldown for this category
-        if (!checkCooldown(primaryCategory)) {
+        val cooldownRemainingMs = cooldownRemainingMs(primaryCategory)
+        if (cooldownRemainingMs > 0) {
             Timber.d("$TAG: Cooldown active for category $primaryCategory")
-            return@withContext NetworkResult.Error("Cooldown active for category: $primaryCategory")
+            AlertPipe.w("GATE cooldown=BLOCKED category=$primaryCategory remaining_ms=$cooldownRemainingMs window_ms=${cooldownMsFor(primaryCategory)}")
+            return@withContext AlertOutcome.Skipped(
+                AlertSkipReason.CooldownActive(primaryCategory, cooldownRemainingMs)
+            )
         }
+        AlertPipe.d("GATE cooldown=PASS category=$primaryCategory window_ms=${cooldownMsFor(primaryCategory)}")
 
         // Check daily limit for this category
-        if (!checkDailyLimit(primaryCategory)) {
+        val dailyCount = dailyCount(primaryCategory)
+        val dailyLimit = DAILY_ALERT_LIMITS[primaryCategory] ?: DEFAULT_DAILY_LIMIT
+        if (dailyCount >= dailyLimit) {
             Timber.w("$TAG: Daily limit reached for category $primaryCategory")
-            return@withContext NetworkResult.Error("Daily limit reached for category: $primaryCategory")
+            AlertPipe.w("GATE daily_limit=BLOCKED category=$primaryCategory count=$dailyCount limit=$dailyLimit")
+            return@withContext AlertOutcome.Skipped(
+                AlertSkipReason.DailyLimitReached(primaryCategory, dailyCount, dailyLimit)
+            )
         }
+        AlertPipe.d("GATE daily_limit=PASS category=$primaryCategory count=$dailyCount limit=$dailyLimit")
 
         // Severity: prefer the gating-provided label (Stage-2 AI path); otherwise derive
         // from the primary category (Stage-1 regex path, custom blacklist, or fallback).
@@ -446,12 +490,69 @@ class AlertRepository @Inject constructor(
         // Record this alert for cooldown and limit tracking
         recordAlert(primaryCategory)
 
-        createAlert(
+        val result = createAlert(
             alertType = AlertType.INAPPROPRIATE_TEXT,
             severity = severity,
             title = title,
             message = message,
             metadata = metadata
+        )
+
+        when (result) {
+            is NetworkResult.Success -> AlertOutcome.Delivered(result.data)
+            is NetworkResult.Loading -> AlertOutcome.Failed("Unexpected loading state", null, queuedForRetry = false)
+            is NetworkResult.Error ->
+                // An unregistered device is a rejection rather than a failure: createAlert
+                // returns before attempting submission and queues nothing, so reporting it as
+                // a failure would send QA looking for a network problem that never happened.
+                if (preferencesManager.deviceDbId == -1 || preferencesManager.deviceToken.isNullOrBlank()) {
+                    AlertOutcome.Skipped(AlertSkipReason.DeviceNotRegistered)
+                } else {
+                    AlertOutcome.Failed(result.message, result.code, isRetryable(result.code))
+                }
+        }
+    }
+
+    /**
+     * Fire a synthetic alert through the real delivery path. **Debug builds only.**
+     *
+     * Exists because the honest way to test delivery is otherwise unusable: a second real
+     * violation inside the category cooldown is suppressed by design, so verifying a fix to the
+     * POST-to-push path meant waiting out 60–300 seconds between every attempt, and a tester
+     * who cannot tell "suppressed" from "broken" learns nothing from the wait.
+     *
+     * This bypasses **only** the local suppression gates, and only for an alert that is
+     * explicitly labelled synthetic. Everything downstream is the production path: real
+     * enrichment, real `POST /alerts`, real retry queue, real backend fan-out, real push. The
+     * cooldown, dedup and daily-cap rules that apply to actual detections are untouched, and
+     * this entry point does not exist in a release build.
+     *
+     * @return an error without touching the network on a release build.
+     */
+    suspend fun createDebugTestAlert(): NetworkResult<Alert> = withContext(Dispatchers.IO) {
+        if (!BuildConfig.DEBUG) {
+            return@withContext NetworkResult.Error("Test alerts are debug-only")
+        }
+
+        AlertPipe.i("DEBUG_TRIGGER firing synthetic alert (suppression gates deliberately bypassed)")
+
+        createAlert(
+            alertType = AlertType.INAPPROPRIATE_TEXT,
+            severity = AlertSeverity.HIGH,
+            title = "Test alert (debug build)",
+            message = "Synthetic alert fired from settings to verify delivery.",
+            metadata = mapOf(
+                // Marked so this can be told apart from a real violation anywhere downstream —
+                // in the backend, in the parent's list, and in a bug report.
+                "synthetic" to true,
+                "package_name" to "com.safeguard.parentalcontrol.debug",
+                "app_name" to "Haris (debug trigger)",
+                "primary_category" to "custom",
+                "confidence" to 1.0f,
+                "reason" to "debug delivery test",
+                "detection_method" to "manual_trigger",
+                "timestamp" to System.currentTimeMillis()
+            )
         )
     }
 
@@ -547,41 +648,36 @@ class AlertRepository @Inject constructor(
         }
     }
 
+    /** Cooldown window configured for a category, in milliseconds. */
+    private fun cooldownMsFor(category: String): Long =
+        CATEGORY_COOLDOWN_MS[category] ?: DEFAULT_COOLDOWN_MS
+
     /**
-     * Check if cooldown has passed for this category.
+     * How much of this category's cooldown is left, in milliseconds; `0` when it has passed.
+     *
+     * Returns the remaining time rather than a boolean so the caller can say *how long* a
+     * suppressed alert has to wait. During repeat manual testing that number is the whole
+     * explanation for a missing push, and a bare `false` never showed it.
      */
-    private suspend fun checkCooldown(category: String): Boolean {
+    private suspend fun cooldownRemainingMs(category: String): Long {
         val cooldownKey = longPreferencesKey("cooldown_$category")
         val lastAlertTime = context.alertCooldownStore.data.first()[cooldownKey] ?: 0L
-        val cooldownMs = CATEGORY_COOLDOWN_MS[category] ?: DEFAULT_COOLDOWN_MS
-        val now = System.currentTimeMillis()
+        val remaining = cooldownMsFor(category) - (System.currentTimeMillis() - lastAlertTime)
 
-        val cooldownPassed = (now - lastAlertTime) >= cooldownMs
-
-        if (!cooldownPassed) {
-            val remainingSeconds = (cooldownMs - (now - lastAlertTime)) / 1000
-            Timber.d("$TAG: Cooldown check for $category: ${remainingSeconds}s remaining")
+        if (remaining > 0) {
+            Timber.d("$TAG: Cooldown check for $category: ${remaining / 1000}s remaining")
         }
 
-        return cooldownPassed
+        return remaining.coerceAtLeast(0L)
     }
 
     /**
-     * Check if daily limit has been reached for this category.
+     * Alerts already sent today for this category. Compared against the category's limit by
+     * the caller, which logs both numbers.
      */
-    private suspend fun checkDailyLimit(category: String): Boolean {
-        val today = getTodayKey()
-        val countKey = intPreferencesKey("count_${category}_$today")
-        val currentCount = context.alertCooldownStore.data.first()[countKey] ?: 0
-        val limit = DAILY_ALERT_LIMITS[category] ?: DEFAULT_DAILY_LIMIT
-
-        val withinLimit = currentCount < limit
-
-        if (!withinLimit) {
-            Timber.w("$TAG: Daily limit reached for $category: $currentCount/$limit")
-        }
-
-        return withinLimit
+    private suspend fun dailyCount(category: String): Int {
+        val countKey = intPreferencesKey("count_${category}_${getTodayKey()}")
+        return context.alertCooldownStore.data.first()[countKey] ?: 0
     }
 
     /**

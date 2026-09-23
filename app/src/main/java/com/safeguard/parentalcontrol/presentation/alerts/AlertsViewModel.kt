@@ -28,7 +28,11 @@ data class AlertsUiState(
     val selectedFilter: AlertFilter = AlertFilter.ALL,
     val successMessage: String? = null,
     val deviceId: Int? = null,
-    val deviceName: String? = null
+    val deviceName: String? = null,
+    /** The alert whose detail dialog is open. Null means no dialog. */
+    val selectedAlert: Alert? = null,
+    /** A deep-linked alert is being fetched because it was not in the loaded list. */
+    val isLoadingSelectedAlert: Boolean = false
 )
 
 enum class AlertFilter {
@@ -155,6 +159,56 @@ class AlertsViewModel @Inject constructor(
     }
 
     /**
+     * Open the detail dialog for an alert already in hand.
+     *
+     * Opening is what "seeing" an alert means, so an unread one is marked read here rather
+     * than leaving that to the overflow menu.
+     */
+    fun openAlertDetail(alert: Alert) {
+        _uiState.update { it.copy(selectedAlert = alert) }
+        if (!alert.isRead) {
+            markAsRead(alert.id)
+        }
+    }
+
+    /** Close the detail dialog. */
+    fun closeAlertDetail() {
+        _uiState.update { it.copy(selectedAlert = null) }
+    }
+
+    /**
+     * Open the detail dialog for an alert identified only by id — the notification deep link.
+     *
+     * The pushed alert is usually already in the loaded list. When it is not (older than the
+     * 30-day / 100-item window, or filtered out) it is fetched on its own rather than showing
+     * the parent nothing after they tapped a notification about it.
+     */
+    fun openAlertDetailById(alertId: Int) {
+        _uiState.value.alerts.firstOrNull { it.id == alertId }?.let { alert ->
+            openAlertDetail(alert)
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingSelectedAlert = true) }
+            when (val result = alertRepository.getAlert(alertId)) {
+                is NetworkResult.Success -> {
+                    _uiState.update { it.copy(isLoadingSelectedAlert = false) }
+                    openAlertDetail(result.data)
+                }
+                is NetworkResult.Error -> {
+                    _uiState.update {
+                        it.copy(isLoadingSelectedAlert = false, error = result.message)
+                    }
+                }
+                else -> {
+                    _uiState.update { it.copy(isLoadingSelectedAlert = false) }
+                }
+            }
+        }
+    }
+
+    /**
      * Mark alert as read
      */
     fun markAsRead(alertId: Int) {
@@ -165,6 +219,13 @@ class AlertsViewModel @Inject constructor(
                         state.copy(
                             alerts = state.alerts.map { alert ->
                                 if (alert.id == alertId) result.data else alert
+                            },
+                            // An open dialog holds its own copy of the alert; without this it
+                            // would keep rendering "Read: No" for the alert being read.
+                            selectedAlert = if (state.selectedAlert?.id == alertId) {
+                                result.data
+                            } else {
+                                state.selectedAlert
                             }
                         )
                     }

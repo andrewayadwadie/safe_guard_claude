@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.SafeGuardApplication
 import com.safeguard.parentalcontrol.presentation.MainActivity
@@ -51,10 +52,17 @@ class ViolationNotifier @Inject constructor(
         // evasion, so a non-parent device records the event and displays nothing.
         if (!preferencesManager.isParent) {
             Timber.d("Violation push received on a non-parent device; discarded without display")
+            AlertPipe.w("VIOLATION DISCARDED role=${preferencesManager.userRole ?: "none"} (not parent); nothing displayed")
             return
         }
 
         val push = parse(data)
+        AlertPipe.i(
+            "VIOLATION PARSED alert_id=${push.alertId} alert_type=${push.alertType} " +
+                "severity=${push.severity} device_db_id=${push.deviceDbId} " +
+                "occurred_at=${push.occurredAt} has_child_name=${push.childName != null} " +
+                "has_device_name=${push.deviceName != null}"
+        )
         val title = push.title?.takeIf { it.isNotBlank() } ?: getString(R.string.violation_notification_title)
         val body = push.body?.takeIf { it.isNotBlank() } ?: buildBody(push)
 
@@ -70,8 +78,19 @@ class ViolationNotifier @Inject constructor(
             .setAutoCancel(true)
             .build()
 
-        context.getSystemService(NotificationManager::class.java)
-            ?.notify(notificationIdFor(push.alertId), notification)
+        val notificationId = notificationIdFor(push.alertId)
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        if (notificationManager == null) {
+            AlertPipe.w("NOTIFY FAILED NotificationManager unavailable alert_id=${push.alertId}")
+            return
+        }
+
+        AlertPipe.i(
+            "NOTIFY channel=${SafeGuardApplication.CHANNEL_ALERTS} notification_id=$notificationId " +
+                "alert_id=${push.alertId} priority=${priorityFor(push.severity)} " +
+                "notifications_enabled=${NotificationManagerCompat.from(context).areNotificationsEnabled()}"
+        )
+        notificationManager.notify(notificationId, notification)
     }
 
     // ==================== Parsing ====================
@@ -172,9 +191,10 @@ class ViolationNotifier @Inject constructor(
         alertId?.hashCode() ?: Constants.NOTIFICATION_ID_ALERT
 
     /**
-     * Open the EXISTING Alerts route for the originating device. Uses CLEAR_TOP (not
-     * CLEAR_TASK) so a running app navigates rather than restarting; MainActivity is
-     * declared singleTop, so it receives this through onNewIntent.
+     * Open the EXISTING Alerts route for the originating device, pointed at the alert that was
+     * actually tapped when the push identified one. Uses CLEAR_TOP (not CLEAR_TASK) so a
+     * running app navigates rather than restarting; MainActivity is declared singleTop, so it
+     * receives this through onNewIntent.
      */
     private fun buildDeepLinkIntent(push: ViolationPush): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -182,6 +202,9 @@ class ViolationNotifier @Inject constructor(
             putExtra(Constants.EXTRA_NAV_TARGET, Constants.NAV_TARGET_ALERTS)
             push.deviceDbId?.let { putExtra(Constants.EXTRA_DEVICE_ID, it) }
             push.deviceName?.let { putExtra(Constants.EXTRA_DEVICE_NAME, it) }
+            // Alert ids arrive as strings and may be absent or malformed; a bad one degrades to
+            // the device-filtered list rather than a broken target.
+            push.alertId?.toIntOrNull()?.let { putExtra(Constants.EXTRA_ALERT_ID, it) }
         }
 
         return PendingIntent.getActivity(

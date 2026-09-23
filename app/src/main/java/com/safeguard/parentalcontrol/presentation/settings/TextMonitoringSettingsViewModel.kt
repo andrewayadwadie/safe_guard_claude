@@ -3,7 +3,9 @@ package com.safeguard.parentalcontrol.presentation.settings
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.safeguard.parentalcontrol.BuildConfig
 import com.safeguard.parentalcontrol.R
+import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.AlertRepository
 import com.safeguard.parentalcontrol.data.repository.CategoryAlertStats
 import com.safeguard.parentalcontrol.util.LocaleHelper
@@ -264,6 +266,30 @@ class TextMonitoringSettingsViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Fire a synthetic alert down the real delivery path. **Debug builds only** — the trigger
+     * is not rendered in a release build and the repository refuses the call there too.
+     *
+     * Reports the outcome through the existing error channel so a tester sees the HTTP result
+     * on screen instead of having to hold a logcat filter open, though the ALERT_PIPE trace is
+     * still the fuller picture.
+     */
+    fun fireTestAlert() {
+        if (!BuildConfig.DEBUG) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true) }
+            val result = alertRepository.createDebugTestAlert()
+            val message = when (result) {
+                is NetworkResult.Success -> "Test alert sent — alert id ${result.data.id}"
+                is NetworkResult.Error -> "Test alert failed (${result.code ?: "no response"}): ${result.message}"
+                is NetworkResult.Loading -> "Test alert in flight"
+            }
+            Timber.i("$TAG: $message")
+            _uiState.update { it.copy(isSaving = false, error = message) }
+        }
     }
 
     /**
