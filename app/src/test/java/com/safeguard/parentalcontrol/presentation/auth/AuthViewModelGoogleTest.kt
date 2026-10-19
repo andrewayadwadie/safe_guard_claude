@@ -8,6 +8,7 @@ import com.safeguard.parentalcontrol.data.model.UserRole
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.AuthRepository
 import com.safeguard.parentalcontrol.data.repository.DeviceRepository
+import com.safeguard.parentalcontrol.util.AccountDeletionState
 import com.safeguard.parentalcontrol.util.AnalyticsHelper
 import com.safeguard.parentalcontrol.util.GoogleSignInManager
 import com.safeguard.parentalcontrol.util.GoogleSignInResult
@@ -77,9 +78,11 @@ class AuthViewModelGoogleTest {
 
     private val pushTokenSyncScheduler = mockk<PushTokenSyncScheduler>(relaxed = true)
 
+    private val accountDeletionState = mockk<AccountDeletionState>(relaxed = true)
+
     private fun viewModel() = AuthViewModel(
         authRepository, deviceRepository, googleSignInManager, analyticsHelper,
-        pushTokenSyncScheduler, context
+        pushTokenSyncScheduler, accountDeletionState, context
     )
 
     @Test

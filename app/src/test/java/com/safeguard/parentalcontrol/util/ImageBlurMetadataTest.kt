@@ -24,9 +24,13 @@ class ImageBlurMetadataTest {
     val tempFolder = TemporaryFolder()
 
     private val context = mockk<Context>(relaxed = true)
-    private val manager = ImageBlurManager(context)
+    private val mediaWriteAccess = mockk<MediaWriteAccess>(relaxed = true)
+    private val manager = ImageBlurManager(context, mediaWriteAccess)
 
-    private fun sampleMetadata(blurApplied: Boolean) = ImageBlurManager.ImageMetadata(
+    private fun sampleMetadata(
+        blurApplied: Boolean,
+        notBlurredReason: String? = null
+    ) = ImageBlurManager.ImageMetadata(
         backupId = "abc123def456",
         originalPath = "/storage/emulated/0/Download/flagged.jpg",
         category = "nsfw",
@@ -34,7 +38,8 @@ class ImageBlurMetadataTest {
         timestamp = 1_700_000_000_000L,
         originalSize = 204_800L,
         originalName = "flagged.jpg",
-        blurApplied = blurApplied
+        blurApplied = blurApplied,
+        notBlurredReason = notBlurredReason
     )
 
     @Test
@@ -88,5 +93,57 @@ class ImageBlurMetadataTest {
         manager.saveMetadata(file, sampleMetadata(blurApplied = false))
 
         assertTrue(file.readLines().any { it == "blurApplied=false" })
+    }
+
+    // -----------------------------------------------------------------------------------
+    // notBlurredReason — added by feature 016
+    // -----------------------------------------------------------------------------------
+
+    @Test
+    fun `round-trip preserves a not-blurred reason`() {
+        val file = tempFolder.newFile("reason.meta")
+        val original = sampleMetadata(
+            blurApplied = false,
+            notBlurredReason = ImageBlurManager.REASON_FOLDER_NOT_GRANTABLE
+        )
+
+        manager.saveMetadata(file, original)
+
+        assertEquals(original, manager.loadMetadata(file))
+    }
+
+    @Test
+    fun `a deliberate copy-only backup records no reason`() {
+        // Null is meaningful: Maximum Protection was off, so nothing went wrong. That has to stay
+        // distinguishable from a blur that was wanted and could not happen.
+        val file = tempFolder.newFile("copyonly-noreason.meta")
+        manager.saveMetadata(file, sampleMetadata(blurApplied = false, notBlurredReason = null))
+
+        assertEquals(null, manager.loadMetadata(file)?.notBlurredReason)
+        assertTrue(file.readLines().none { it.startsWith("notBlurredReason=") })
+    }
+
+    @Test
+    fun `metadata written before feature 016 loads with no reason rather than failing`() {
+        // Existing installs carry backup files with no such key. They must stay fully usable: the
+        // parent can still restore or delete those images after granting folder access.
+        val file = tempFolder.newFile("pre016.meta")
+        file.writeText(
+            buildString {
+                appendLine("backupId=abc123def456")
+                appendLine("originalPath=/storage/emulated/0/DCIM/Camera/flagged.jpg")
+                appendLine("category=nsfw")
+                appendLine("confidence=0.87")
+                appendLine("timestamp=1700000000000")
+                appendLine("originalSize=204800")
+                appendLine("originalName=flagged.jpg")
+                appendLine("blurApplied=true")
+            }
+        )
+
+        val loaded = manager.loadMetadata(file)
+
+        assertEquals(true, loaded?.blurApplied)
+        assertEquals(null, loaded?.notBlurredReason)
     }
 }

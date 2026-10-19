@@ -168,7 +168,17 @@ class ImageScanWorker @AssistedInject constructor(
 
                             when (blurResult) {
                                 is ImageBlurManager.BlurResult.Success -> {
-                                    Timber.i("$TAG: Image blurred. Backup ID: ${blurResult.backupId}")
+                                    // Whether the gallery copy was actually replaced is carried by
+                                    // the metadata, not implied by Success (FR-016).
+                                    if (blurResult.metadata.blurApplied) {
+                                        Timber.i("$TAG: Image blurred. Backup ID: ${blurResult.backupId}")
+                                    } else {
+                                        Timber.i(
+                                            "$TAG: Image backed up without blurring " +
+                                                "(${blurResult.metadata.notBlurredReason ?: "copy-only mode"}). " +
+                                                "Backup ID: ${blurResult.backupId}"
+                                        )
+                                    }
                                 }
                                 is ImageBlurManager.BlurResult.AlreadyBlurred -> {
                                     Timber.d("$TAG: Image already blurred: ${blurResult.backupId}")

@@ -1,8 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  isAccessibilityTool="false": Haris is NOT an accessibility tool. It does not assist
+  users with disabilities; it monitors a supervised child device. The value is declared
+  explicitly rather than left unset so the classification is unambiguous to Play review.
+  Google Play therefore applies the prominent-disclosure-and-consent branch, which
+  ConsentScreen satisfies before any monitoring starts. Setting this true would be a
+  false declaration to Google and an enforcement risk.
+-->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeViewTextChanged|typeWindowStateChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
+    android:isAccessibilityTool="false"
     android:canRetrieveWindowContent="true"
     android:canPerformGestures="false"
     android:canTakeScreenshot="false"

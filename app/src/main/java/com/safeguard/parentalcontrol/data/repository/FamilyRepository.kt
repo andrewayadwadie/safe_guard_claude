@@ -106,6 +106,16 @@ class FamilyRepository @Inject constructor(
     }
 
     /**
+     * Permanently delete a linked child's ACCOUNT (not the same as [removeChild], which only
+     * unlinks). [childId] must be `FamilyLink.childId`. Any 2xx is success. The id is not logged.
+     */
+    suspend fun deleteChildAccount(childId: Int): NetworkResult<Unit> = withContext(Dispatchers.IO) {
+        val raw = safeApiCall { apiService.deleteChildAccount(childId) }
+        Timber.tag("AccountDeletion").i("child delete code=%s", (raw as? NetworkResult.Error)?.code ?: "2xx")
+        raw.treatEmpty2xxAsSuccess()
+    }
+
+    /**
      * Get details of a specific family link
      */
     suspend fun getFamilyLink(childId: Int): NetworkResult<FamilyLink> = withContext(Dispatchers.IO) {

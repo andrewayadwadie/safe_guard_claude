@@ -1,6 +1,6 @@
 <!-- SPECKIT START -->
-Active feature: Play Store Release Readiness (config externalization, network security split, API 36 migration, release signing + AAB).
-Plan: specs/013-play-store-release-readiness/plan.md
-Spec: specs/013-play-store-release-readiness/spec.md
+Active feature: Parent App Lock Reliably Enforced on the Child Device (parent auto-save per control, explicit empty-array wire format, child-side durable rule store enforced before any network call, one push-triggered refresh path, non-silent Usage Access handling, single AppLock log tag).
+Plan: specs/017-app-lock-enforcement/plan.md
+Spec: specs/017-app-lock-enforcement/spec.md
 For technologies, project structure, shell commands, and other context, read the current plan.
 <!-- SPECKIT END -->

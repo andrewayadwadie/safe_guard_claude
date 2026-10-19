@@ -96,6 +96,7 @@
     <string name="settings_review_text_desc">ولي الأمر: اطّلع على العبارات المُبلّغ عنها في هذا الجهاز</string>
     <string name="settings_maximum_protection">الحماية القصوى</string>
     <string name="settings_maximum_protection_desc">عند التفعيل، تُموَّه الصور المُبلّغ عنها في المعرض. عند الإيقاف، تُنسخ فقط لمراجعة ولي الأمر.</string>
+    <string name="settings_maximum_protection_needs_folders">مُفعّل، لكنه غير نشط بعد: لا يزال حارس بحاجة إلى إذن لمجلدات الصور. اضغط أدناه للإكمال.</string>
     <string name="settings_notifications">الإشعارات</string>
     <string name="settings_notifications_on">تشغيل</string>
     <string name="settings_notifications_off_tap">إيقاف — اضغط للتفعيل</string>
@@ -188,8 +189,19 @@
     <string name="permissions_phone_title">المكالمات الهاتفية</string>
     <string name="permissions_phone_desc">مطلوب للسماح بالمكالمات الهاتفية أثناء وقت النوم وحدود وقت الشاشة. سيتمكن طفلك دائماً من إجراء واستقبال مكالمات الطوارئ.</string>
     <string name="permissions_media_title">الصور والوسائط</string>
-    <string name="permissions_media_desc">مطلوب لمنع المحتوى الجنسي. يحتاج حارس إلى وصول كامل للتخزين لاكتشاف وتمويه الصور غير اللائقة، لحماية طفلك من المحتوى الضار.</string>
-    <string name="permissions_media_desc_r_plus">مطلوب لمنع المحتوى الجنسي. فعّل \'الوصول لجميع الملفات\' للسماح لحارس باكتشاف وتمويه الصور غير اللائقة، لحماية طفلك من المحتوى الضار.</string>
+    <string name="permissions_media_desc">مطلوب لمنع المحتوى الجنسي. يقرأ حارس الصور المحفوظة على هذا الجهاز ليكتشف الصور غير اللائقة على الجهاز نفسه ويبلغك عنها.</string>
+    <string name="permissions_media_desc_r_plus">مطلوب لمنع المحتوى الجنسي. اسمح بالوصول إلى الصور ليتحقق حارس من الصور المحفوظة على هذا الجهاز وينبّهك إلى غير اللائقة منها. يتم التحقق على الجهاز.</string>
+    <string name="permissions_media_partial_error">يحتاج حارس إلى الوصول إلى كل الصور، لا إلى صور مُحدّدة فقط. الاختيار اليدوي لا يشمل الصور التي يستلمها طفلك لاحقًا.</string>
+    <string name="permissions_media_partial_desc">تم السماح بعدد قليل من الصور المحدّدة فقط. لا يستطيع حارس رؤية الصور التي تصل لاحقًا، لذلك حماية الصور متوقفة. اضغط للسماح بكل الصور.</string>
+
+    <string name="permissions_folder_title">مجلدات الصور</string>
+    <string name="permissions_folder_desc">لاستبدال صورة غير لائقة بنسخة مموّهة، يحتاج حارس إلى إذن لمجلدات صور طفلك. سيُطلب منك اختيار كل مجلد مرة واحدة.</string>
+    <string name="permissions_folder_action">اختر المجلد</string>
+    <string name="permissions_folder_wrong_choice">هذا المجلد ليس من المجلدات التي يراقبها حارس. يرجى اختيار المجلد الذي يظهر عند فتح النافذة.</string>
+    <string name="permissions_folder_revoked">تم إيقاف إذن المجلدات، لذلك لم يعد يتم تمويه الصور المحظورة. الاكتشاف والتنبيهات لا تزال تعمل.</string>
+    <string name="permissions_folder_granted">تم منح إذن المجلدات. سيتم تمويه الصور المحظورة تلقائيًا.</string>
+    <string name="permissions_download_blur_notice">ملاحظة واحدة: لا يمكن تمويه الصور المحفوظة في مجلد التنزيلات. لا يسمح نظام أندرويد بهذا الإذن لأي تطبيق لذلك المجلد. ومع ذلك يتم اكتشاف هذه الصور وإبلاغك عنها.</string>
+    <string name="permissions_download_blur_notice_ack">حسنًا</string>
     <string name="permissions_notifications_title">الإشعارات</string>
     <string name="permissions_notifications_desc">مطلوب لعرض التنبيهات والإشعارات حول نشاط جهاز طفلك.</string>
     <string name="permissions_continue_dashboard">المتابعة إلى لوحة التحكم</string>
@@ -288,9 +300,9 @@
     <string name="children_empty_title">لا يوجد أطفال مرتبطون بعد</string>
     <string name="children_empty_subtitle">أضف حساب طفلك لبدء مراقبة نشاط جهازه</string>
     <string name="children_add_first">أضف طفلك الأول</string>
-    <string name="children_remove_title">إزالة %1$s؟</string>
-    <string name="children_remove_message">سيؤدي هذا إلى إلغاء ربط حساب %1$s. لن تتمكن بعد الآن من مراقبة أجهزته.</string>
-    <string name="children_remove">إزالة</string>
+    <string name="children_remove_title">إيقاف مراقبة %1$s؟</string>
+    <string name="children_remove_message">سيتم الاحتفاظ بحساب %1$s. لن تتمكن بعد الآن من رؤية أجهزته أو إدارتها. لمسح الحساب بدلًا من ذلك، استخدم \"حذف الحساب نهائيًا\".</string>
+    <string name="children_remove">إيقاف المراقبة (مع إبقاء الحساب)</string>
     <string name="children_linked_when">تم الربط %1$s</string>
     <string name="children_view_devices">عرض الأجهزة</string>
     <string name="children_add_instructions">على جهاز طفلك، افتح تطبيق حارس واضغط على "ربط ولي أمر" للحصول على رمز الاقتران. أدخل هذا الرمز هنا.</string>
@@ -421,6 +433,7 @@
     <string name="screentime_rules_disabled">القواعد معطّلة</string>
     <string name="screentime_rules_enforced">يتم تطبيق حدود وقت الشاشة</string>
     <string name="screentime_no_restrictions">لا توجد قيود مطبقة</string>
+    <string name="screentime_rules_disabled_warning">لا يتم تطبيق أي شيء — يتم تجاهل أقفال التطبيقات والحدود أثناء إيقاف هذا الخيار</string>
     <string name="screentime_daily_limit">الحد اليومي لوقت الشاشة</string>
     <string name="screentime_set_daily_limit">تحديد الحد اليومي</string>
     <string name="screentime_bedtime_mode">وضع وقت النوم</string>
@@ -581,6 +594,9 @@
     <string name="imagereview_error_load">فشل تحميل المراجعات المعلّقة</string>
     <string name="imagereview_error_restore">فشل استعادة الصورة</string>
     <string name="imagereview_error_delete">فشل حذف الصورة</string>
+    <string name="imagereview_error_folder_access_needed">يحتاج حارس إلى إذن لمجلدات صور طفلك قبل أن يتمكن من تغيير هذه الصورة. افتح الأذونات لمنحه — لا شيء يُفقد في هذه الأثناء.</string>
+    <string name="imagereview_error_folder_access_revoked">تم إيقاف إذن المجلدات، لذلك لا يمكن تغيير هذه الصورة الآن. امنحه مرة أخرى من الأذونات — النسخة الاحتياطية لا تزال محفوظة.</string>
+    <string name="imagereview_error_folder_not_grantable">لا يسمح نظام أندرويد بأي إذن للمجلد الذي توجد به هذه الصورة، لذلك لا يمكن تغييرها على الجهاز. النسخة الاحتياطية لا تزال متاحة للمراجعة.</string>
     <string name="imagereview_error_generic">خطأ: %1$s</string>
     <string name="imagereview_cat_adult">محتوى للبالغين</string>
     <string name="imagereview_cat_suggestive">محتوى موحٍ</string>
@@ -832,4 +848,68 @@
     <string name="notif_disabled_banner_msg">الإشعارات معطّلة، لذلك لن يتم إعلامك عند حدوث مخالفة. ما زالت التنبيهات تظهر عند فتح التطبيق.</string>
     <string name="notif_disabled_banner_action">تفعيل</string>
     <string name="notif_disabled_banner_dismiss">تجاهل</string>
+
+    <!-- 014 Account deletion: Settings -->
+    <string name="settings_delete_account">حذف الحساب</string>
+    <string name="settings_delete_account_desc">احذف حسابك وبياناتك نهائيًا</string>
+    <string name="settings_deletion_help">كيف يعمل حذف الحساب</string>
+    <string name="settings_deletion_help_desc">يفتح صفحة حذف الحساب العامة</string>
+    <string name="settings_deletion_help_no_browser">تعذّر فتح الصفحة. زُر: %1$s</string>
+
+    <!-- 014 Account deletion: delete-account screen -->
+    <string name="delete_account_title">حذف الحساب</string>
+    <string name="delete_account_intro">حذف حسابك فوري ونهائي ولا يمكن التراجع عنه.</string>
+    <string name="delete_account_consequences_heading">ما الذي سيُحذف</string>
+    <string name="delete_account_consequence_account">حسابك وتسجيل دخولك</string>
+    <plurals name="delete_account_consequence_children_n">
+        <item quantity="zero">حسابات أطفالك المرتبطين (%1$d) مع جميع بياناتهم</item>
+        <item quantity="one">حساب طفلك المرتبط مع جميع بياناته</item>
+        <item quantity="two">حسابا طفليك المرتبطين مع جميع بياناتهما</item>
+        <item quantity="few">حسابات أطفالك المرتبطين (%1$d) مع جميع بياناتهم</item>
+        <item quantity="many">حسابات أطفالك المرتبطين (%1$d) مع جميع بياناتهم</item>
+        <item quantity="other">حسابات أطفالك المرتبطين (%1$d) مع جميع بياناتهم</item>
+    </plurals>
+    <string name="delete_account_consequence_children_unknown">حسابات جميع أطفالك المرتبطين</string>
+    <string name="delete_account_consequence_data">جميع الأجهزة وسجل وقت الشاشة واستخدام التطبيقات والتنبيهات والقواعد والفلاتر وروابط العائلة</string>
+    <string name="delete_account_consequence_device_data">بيانات هذا الجهاز وسجلّه</string>
+    <string name="delete_account_consequence_blurred_photos">الصور التي تم تمويهها في معرض الصور ستبقى مموّهة ولا يمكن استعادتها بعد الآن</string>
+    <string name="delete_account_password_label">كلمة المرور</string>
+    <string name="delete_account_confirm_word_label">اكتب DELETE للتأكيد</string>
+    <string name="delete_account_switch_to_google">سجّلت الدخول عبر Google؟ اكتب DELETE بدلًا من ذلك</string>
+    <string name="delete_account_switch_to_password">استخدم كلمة المرور بدلًا من ذلك</string>
+    <string name="delete_account_button">حذف الحساب نهائيًا</string>
+    <string name="delete_account_final_title">حذف حسابك؟</string>
+    <string name="delete_account_final_message">هذه فرصتك الأخيرة. سيتم حذف حسابك وبياناتك فورًا ولا يمكن استرجاعها.</string>
+    <string name="delete_account_final_confirm">حذف نهائي</string>
+    <string name="delete_account_cancel">إلغاء</string>
+    <string name="delete_account_error_wrong_password">كلمة المرور غير صحيحة.</string>
+    <string name="delete_account_error_wrong_confirmation">لم يتم قبول هذا التأكيد. لم يتم حذف أي شيء.</string>
+    <string name="delete_account_error_supervised">وليّ أمرك فقط يمكنه حذف هذا الحساب. يُرجى أن تطلب منه ذلك.</string>
+    <string name="delete_account_error_rate_limited">محاولات كثيرة جدًا. يُرجى الانتظار قليلًا ثم المحاولة مرة أخرى.</string>
+    <string name="delete_account_error_rate_limited_seconds">محاولات كثيرة جدًا. يُرجى المحاولة مرة أخرى بعد %1$d ثانية.</string>
+    <string name="delete_account_error_network">لم يتم حذف أي شيء. تحقق من اتصالك وحاول مرة أخرى.</string>
+    <string name="delete_account_error_unknown">حدث خطأ ما. لم يتم حذف أي شيء.</string>
+    <string name="delete_account_retry">إعادة المحاولة</string>
+
+    <!-- 014 Account deletion: Login notices -->
+    <string name="login_account_deleted">تم حذف حسابك.</string>
+    <string name="login_account_deleted_by_parent">تم حذف حسابك من قِبل وليّ أمرك.</string>
+    <string name="login_uninstall_note_title">الحماية متوقفة</string>
+    <string name="login_uninstall_note_body">لم يعد حسابك موجودًا. يمكنك الآن إلغاء تثبيت حارس أو إيقاف صلاحياته.</string>
+    <string name="login_uninstall_note_button">فتح إعدادات التطبيق</string>
+    <string name="login_session_ended">انتهت جلستك. يُرجى تسجيل الدخول مرة أخرى.</string>
+    <string name="login_uninstall_note_dismiss">تجاهل</string>
+
+    <!-- 014 Account deletion: Children screen -->
+    <string name="children_delete_action">حذف الحساب نهائيًا</string>
+    <string name="children_cd_more_options">المزيد من الخيارات</string>
+    <string name="children_delete_title">حذف حساب %1$s نهائيًا؟</string>
+    <string name="children_delete_message">سيؤدي هذا إلى حذف حساب %1$s وجميع بياناته فورًا. لا يمكن التراجع عن ذلك. لإيقاف المراقبة فقط والاحتفاظ بالحساب، استخدم \"إيقاف المراقبة\" بدلًا من ذلك.</string>
+    <string name="children_delete_type_name_label">اكتب %1$s للتأكيد</string>
+    <string name="children_delete_password_label">كلمة مرورك</string>
+    <string name="children_delete_confirm_google">التأكيد عبر Google</string>
+    <string name="children_delete_google_mismatch">حساب Google هذا لا يطابق حسابك. لم يتم حذف أي شيء.</string>
+    <string name="children_delete_account_mismatch">تعذّر التحقق من هويتك. يُرجى تسجيل الدخول مرة أخرى. لم يتم حذف أي شيء.</string>
+    <string name="children_delete_success">تم حذف حساب %1$s.</string>
+    <string name="children_delete_not_linked">%1$s لم يعد مرتبطًا بحسابك.</string>
 </resources>

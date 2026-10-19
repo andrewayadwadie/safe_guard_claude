@@ -4,6 +4,7 @@ import com.safeguard.parentalcontrol.data.model.*
 import com.safeguard.parentalcontrol.data.remote.ApiService
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.remote.safeApiCall
+import com.safeguard.parentalcontrol.util.AppLockPipe
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -180,12 +181,41 @@ class ScreenTimeRulesRepository @Inject constructor(
             isActive = isActive
         )
 
+        // The fields this request actually carries. A partial update is the point: anything
+        // absent here must come back from the server unchanged, so the log has to show which
+        // keys went out, not what the whole rule row happens to look like locally.
+        val fieldsSent = buildList {
+            if (dailyLimit != null) add("daily_limit=$dailyLimit")
+            if (bedtimeEnabled != null) add("bedtime_enabled=$bedtimeEnabled")
+            if (bedtimeStart != null) add("bedtime_start")
+            if (bedtimeEnd != null) add("bedtime_end")
+            if (studyTimeEnabled != null) add("study_time_enabled=$studyTimeEnabled")
+            if (studyTimeStart != null) add("study_time_start")
+            if (studyTimeEnd != null) add("study_time_end")
+            if (studyTimeAllowedApps != null) add("study_time_allowed_apps[${studyTimeAllowedApps.size}]")
+            if (isDeviceLocked != null) add("is_device_locked=$isDeviceLocked")
+            if (deviceLockedMessage != null) add("device_locked_message[${deviceLockedMessage.length}]")
+            if (appLimits != null) add("app_limits[${appLimits.size}]")
+            if (blockedApps != null) add("blocked_apps[${blockedApps.size}]")
+            if (isActive != null) add("is_active=$isActive")
+        }
+        AppLockPipe.i("PUT deviceId=$deviceId fields=${fieldsSent.joinToString(",")}")
+
         val result = safeApiCall { apiService.updateScreenTimeRules(deviceId, request) }
 
         result.onSuccess { rules ->
             _cachedRules.value = rules
             cacheTimestamp = System.currentTimeMillis()
             Timber.d("Screen time rules updated for device $deviceId")
+            AppLockPipe.i(
+                "PUT deviceId=$deviceId http=200 server now has " +
+                    "blocked_apps[${rules.blockedApps?.size ?: 0}] isActive=${rules.isActive} " +
+                    "daily_limit=${rules.dailyLimit} bedtime_enabled=${rules.bedtimeEnabled}"
+            )
+        }
+
+        if (result is NetworkResult.Error) {
+            AppLockPipe.w("PUT deviceId=$deviceId failed http=${result.code ?: -1}")
         }
 
         result

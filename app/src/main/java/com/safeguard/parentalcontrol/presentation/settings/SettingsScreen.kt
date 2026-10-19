@@ -4,7 +4,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -15,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
 import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,8 +38,10 @@ import com.safeguard.parentalcontrol.data.model.UserRole
 import com.safeguard.parentalcontrol.presentation.components.ParentPinDialog
 import com.safeguard.parentalcontrol.presentation.components.ParentPinViewModel
 import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
+import com.safeguard.parentalcontrol.util.AccountDeletionLinks
 import com.safeguard.parentalcontrol.util.LocaleHelper
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
@@ -52,6 +57,7 @@ fun SettingsScreen(
     onNavigateToImageReview: () -> Unit = {},
     onNavigateToTextReview: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
+    onNavigateToDeleteAccount: () -> Unit = {},
     onNavigateToPrivacyPolicy: () -> Unit = {},
     onNavigateToTerms: () -> Unit = {},
     onLogout: () -> Unit,
@@ -69,6 +75,9 @@ fun SettingsScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
     val contentFilteringEnabledMessage = stringResource(R.string.settings_content_filtering_enabled_snackbar)
+    val coroutineScope = rememberCoroutineScope()
+    val deletionHelpUrl = remember { AccountDeletionLinks.publicDeletionPageUrl() }
+    val deletionHelpNoBrowserMessage = stringResource(R.string.settings_deletion_help_no_browser, deletionHelpUrl)
 
     // Refresh VPN state when returning to this screen
     DisposableEffect(lifecycleOwner) {
@@ -337,10 +346,27 @@ fun SettingsScreen(
                     SettingsToggleItem(
                         icon = Icons.Default.Security,
                         title = stringResource(R.string.settings_maximum_protection),
-                        subtitle = stringResource(R.string.settings_maximum_protection_desc),
+                        subtitle = if (uiState.needsFolderAccessForBlur) {
+                            stringResource(R.string.settings_maximum_protection_needs_folders)
+                        } else {
+                            stringResource(R.string.settings_maximum_protection_desc)
+                        },
                         checked = uiState.isMaximumProtectionEnabled,
                         onCheckedChange = { desired -> pendingMaxProtectionChange = desired }
                     )
+
+                    // Blurring also needs permission for the picture folders, granted once through
+                    // the system picker. Without it the switch above would read "on" while nothing
+                    // was actually being blurred, so the parent is sent to finish the job rather
+                    // than left with a setting that does nothing.
+                    if (uiState.needsFolderAccessForBlur) {
+                        SettingsItem(
+                            icon = Icons.Default.Folder,
+                            title = stringResource(R.string.permissions_folder_title),
+                            subtitle = stringResource(R.string.permissions_folder_desc),
+                            onClick = onNavigateToPermissionsSetup
+                        )
+                    }
                 }
             }
 
@@ -428,6 +454,17 @@ fun SettingsScreen(
                     iconTint = MaterialTheme.colorScheme.error,
                     titleColor = MaterialTheme.colorScheme.error
                 )
+                // Visible to every signed-in user, whatever the role: the server decides whether a
+                // supervised child may delete, not the local role (FR-001, FR-013).
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsItem(
+                    icon = Icons.Default.DeleteForever,
+                    title = stringResource(R.string.settings_delete_account),
+                    subtitle = stringResource(R.string.settings_delete_account_desc),
+                    onClick = onNavigateToDeleteAccount,
+                    iconTint = MaterialTheme.colorScheme.error,
+                    titleColor = MaterialTheme.colorScheme.error
+                )
             }
 
             // About section
@@ -451,6 +488,25 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_terms),
                     subtitle = stringResource(R.string.settings_terms_desc),
                     onClick = onNavigateToTerms
+                )
+                // The public page registered in Play Console. Needs no login, so every role sees it.
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsItem(
+                    icon = Icons.AutoMirrored.Filled.HelpOutline,
+                    title = stringResource(R.string.settings_deletion_help),
+                    subtitle = stringResource(R.string.settings_deletion_help_desc),
+                    onClick = {
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(deletionHelpUrl)))
+                        } catch (e: ActivityNotFoundException) {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = deletionHelpNoBrowserMessage,
+                                    duration = SnackbarDuration.Long
+                                )
+                            }
+                        }
+                    }
                 )
             }
 

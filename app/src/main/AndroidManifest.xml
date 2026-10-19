@@ -18,7 +18,6 @@
     
     <!-- Foreground Service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     
     <!-- Boot Receiver -->
@@ -43,13 +42,23 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
-    <!-- Full Storage Access (for sexting prevention - blur/modify detected images)
-         This permission is required for parental control apps to:
-         - Replace inappropriate images with blurred versions
-         - Protect children from viewing harmful content
-         Google Play allows this for parental control category apps -->
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" />
+    <!-- All-files access (MANAGE_EXTERNAL_STORAGE) is deliberately NOT declared and must never be
+         reintroduced.
+
+         Google Play restricts it to file managers, backup and restore tools, anti-virus apps,
+         document managers, on-device file search, disk encryption and device migration. Parental
+         control is not on that permitted-use list, and the declaration form's mandatory question —
+         why the Storage Access Framework cannot be used instead — has no good answer here, because
+         it can be.
+
+         What replaced it:
+         - Reading the child's photos for detection: READ_MEDIA_IMAGES above, requested at runtime.
+         - Replacing, restoring or deleting a flagged image: folder access the parent grants once per
+           picture folder through the system document picker, held by MediaWriteAccess.
+
+         A release-blocking build guard in app/build.gradle fails the build if this permission
+         reappears in the merged manifest from any source, including a dependency.
+         See specs/016-remove-all-files-access/ and contracts/build-guard.md. -->
 
     <!-- System Alert Window (for lock screen overlay) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -63,14 +72,42 @@
     <!-- Full Screen Intent (for lock screen on Android 10+) -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
-    <!-- Query All Packages (required on Android 11+ to see installed apps)
-         This is necessary for parental control apps to:
-         - Show app list for setting per-app screen time limits
-         - Show app list for blocking specific apps
-         - Monitor which apps are being used
-         Google Play allows this for parental control category apps -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission" />
+    <!-- Package visibility (Android 11+ / API 30+).
+
+         QUERY_ALL_PACKAGES is deliberately NOT declared and must never be reintroduced.
+         Google Play treats the inventory of installed apps as personal and sensitive data and
+         restricts the permission to apps whose core purpose is broad app visibility (device
+         search, anti-virus, file managers). Parental control is not on that list, so declaring
+         it forces a sensitive-permission declaration form and blocks the release review.
+
+         The filtered <queries> list below is the policy-compliant alternative and needs no
+         declaration. Every app the parent can act on is launchable by the child, so matching
+         ACTION_MAIN + CATEGORY_LAUNCHER makes exactly the set the product needs visible to
+         PackageManager: getInstalledApplications(), getLaunchIntentForPackage(),
+         getApplicationInfo(), getApplicationLabel() and getApplicationIcon().
+         CATEGORY_HOME is matched separately so TextMonitoringAccessibilityService can keep
+         resolving OEM launchers out of text monitoring.
+
+         What is NOT visible this way: packages with no launcher activity (background-only
+         services, most of them non-system). They were already filtered out of the parent's app
+         list by the getLaunchIntentForPackage() check, and foreground-app enforcement works on
+         the package name from UsageStatsManager, which does not need visibility; only the
+         human-readable label is unavailable, and every call site already falls back to the
+         package name.
+
+         A release-blocking build guard in app/build.gradle fails the build if
+         QUERY_ALL_PACKAGES reappears in the merged manifest from any source, including a
+         dependency. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
+    </queries>
 
     <application
         android:name=".SafeGuardApplication"

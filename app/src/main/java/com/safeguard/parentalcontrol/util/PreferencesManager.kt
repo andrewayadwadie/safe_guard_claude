@@ -168,6 +168,27 @@ class PreferencesManager @Inject constructor(
         get() = encryptedPrefs.getBoolean(Constants.KEY_NOTIFICATION_BANNER_DISMISSED, false)
         set(value) = encryptedPrefs.edit().putBoolean(Constants.KEY_NOTIFICATION_BANNER_DISMISSED, value).apply()
 
+    // Names of the picture-folder grant targets the parent has completed the system picker for.
+    // Deliberately NOT a mirror of the grants: MediaWriteAccess reads the platform's persisted
+    // permissions on every call, because a cached "granted" that the owner has since revoked would
+    // make the app report an image as blurred when it was not. This set records only what was asked
+    // and answered, which is what lets a lost grant be described as "access was turned off" instead
+    // of "never set up". Cleared on logout by clearAll().
+    var completedFolderGrantTargets: Set<String>
+        get() = encryptedPrefs.getStringSet(Constants.KEY_COMPLETED_FOLDER_GRANTS, emptySet())
+            ?: emptySet()
+        set(value) = encryptedPrefs.edit()
+            .putStringSet(Constants.KEY_COMPLETED_FOLDER_GRANTS, value)
+            .apply()
+
+    // The parent has been shown, once, the notice that images in the Download folder cannot be
+    // blurred in place. Shown once and then suppressed — never repeated on every alert.
+    // Cleared on logout by clearAll().
+    var downloadBlurNoticeShown: Boolean
+        get() = encryptedPrefs.getBoolean(Constants.KEY_DOWNLOAD_BLUR_NOTICE_SHOWN, false)
+        set(value) = encryptedPrefs.edit()
+            .putBoolean(Constants.KEY_DOWNLOAD_BLUR_NOTICE_SHOWN, value).apply()
+
     /**
      * Store user information after login
      */

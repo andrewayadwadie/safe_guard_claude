@@ -99,6 +99,10 @@
     <string name="settings_review_text_desc">Parent: See phrases flagged on this device</string>
     <string name="settings_maximum_protection">Maximum Protection</string>
     <string name="settings_maximum_protection_desc">When on, flagged photos are blurred in the gallery. When off, they are only copied for parent review.</string>
+    <!-- Feature 016: blurring needs folder permission as well as the setting. Shown instead of the
+         description above when the setting is on but no picture folder has been granted, so the
+         switch never reads "on" while nothing is actually being blurred. -->
+    <string name="settings_maximum_protection_needs_folders">On, but not yet active: Haris still needs permission for the picture folders. Tap below to finish.</string>
     <string name="settings_notifications">Notifications</string>
     <string name="settings_notifications_on">On</string>
     <string name="settings_notifications_off_tap">Off — tap to enable</string>
@@ -193,8 +197,25 @@
     <string name="permissions_phone_title">Phone Calls</string>
     <string name="permissions_phone_desc">Required to allow phone calls during bedtime and screen time limits. Your child will always be able to make and receive emergency calls.</string>
     <string name="permissions_media_title">Photos &amp; Media</string>
-    <string name="permissions_media_desc">Required for sexting prevention. Haris needs full storage access to detect and blur inappropriate images, protecting your child from harmful content.</string>
-    <string name="permissions_media_desc_r_plus">Required for sexting prevention. Enable \'All files access\' to allow Haris to detect and blur inappropriate images, protecting your child from harmful content.</string>
+    <string name="permissions_media_desc">Required for sexting prevention. Haris reads the photos saved on this device so inappropriate images can be detected on the device itself and reported to you.</string>
+    <!-- Feature 016: the all-files-access wording is gone because the app no longer asks for that
+         permission. Google Play restricts it to file managers, backup tools, anti-virus apps and the
+         like, and parental control is not on that list. Photos are read with the ordinary photo
+         permission; modifying a flagged image uses folder access the parent grants below. -->
+    <string name="permissions_media_desc_r_plus">Required for sexting prevention. Allow access to photos so Haris can check images saved on this device and alert you about inappropriate ones. Images are checked on the device.</string>
+    <string name="permissions_media_partial_error">Haris needs access to all photos, not a selected few. A hand-picked selection cannot include photos your child receives later.</string>
+    <string name="permissions_media_partial_desc">Only a few selected photos were allowed. Haris cannot see photos that arrive later, so image protection is off. Tap to allow all photos.</string>
+
+    <!-- Folder access (feature 016). Blurring a flagged image means changing a file another app
+         created, which Android only allows for folders you pick yourself. -->
+    <string name="permissions_folder_title">Picture folders</string>
+    <string name="permissions_folder_desc">To replace an inappropriate image with a blurred version, Haris needs permission for your child\'s picture folders. You will be asked to choose each folder once.</string>
+    <string name="permissions_folder_action">Choose folder</string>
+    <string name="permissions_folder_wrong_choice">That folder is not one Haris watches. Please choose the folder shown when the picker opens.</string>
+    <string name="permissions_folder_revoked">Folder access was turned off, so flagged images are no longer being blurred. Detection and alerts are still working.</string>
+    <string name="permissions_folder_granted">Folder access granted. Flagged images will be blurred automatically.</string>
+    <string name="permissions_download_blur_notice">One limitation: images saved to the Downloads folder cannot be blurred. Android does not allow any app permission for that folder. Those images are still detected and reported to you.</string>
+    <string name="permissions_download_blur_notice_ack">Got it</string>
     <string name="permissions_notifications_title">Notifications</string>
     <string name="permissions_notifications_desc">Required for showing alerts and notifications about your child\'s device activity.</string>
     <string name="permissions_continue_dashboard">Continue to Dashboard</string>
@@ -298,9 +319,9 @@
     <string name="children_empty_title">No children linked yet</string>
     <string name="children_empty_subtitle">Add your child\'s account to start monitoring their device activity</string>
     <string name="children_add_first">Add Your First Child</string>
-    <string name="children_remove_title">Remove %1$s?</string>
-    <string name="children_remove_message">This will unlink %1$s\'s account. You will no longer be able to monitor their devices.</string>
-    <string name="children_remove">Remove</string>
+    <string name="children_remove_title">Stop monitoring %1$s?</string>
+    <string name="children_remove_message">%1$s\'s account will be kept. You will no longer see or manage their devices. To erase the account instead, use \"Delete account permanently\".</string>
+    <string name="children_remove">Stop monitoring (account kept)</string>
     <string name="children_linked_when">Linked %1$s</string>
     <string name="children_view_devices">View Devices</string>
     <string name="children_add_instructions">On your child\'s device, open Haris and tap "Link a parent" to get a pairing code. Enter that code here.</string>
@@ -432,6 +453,7 @@
     <string name="screentime_rules_disabled">Rules Disabled</string>
     <string name="screentime_rules_enforced">Screen time limits are being enforced</string>
     <string name="screentime_no_restrictions">No restrictions applied</string>
+    <string name="screentime_rules_disabled_warning">Nothing is being enforced — app locks and limits are ignored while this is off</string>
     <string name="screentime_daily_limit">Daily Screen Time Limit</string>
     <string name="screentime_set_daily_limit">Set daily limit</string>
     <string name="screentime_bedtime_mode">Bedtime Mode</string>
@@ -592,6 +614,11 @@
     <string name="imagereview_error_load">Failed to load pending reviews</string>
     <string name="imagereview_error_restore">Failed to restore image</string>
     <string name="imagereview_error_delete">Failed to delete image</string>
+    <!-- Feature 016: acting on a reviewed image writes to the child's picture folder, which needs the
+         folder access the parent granted during setup and may have since turned off. -->
+    <string name="imagereview_error_folder_access_needed">Haris needs permission for the picture folders on this device before it can change this image. Open Permissions to grant it — nothing is lost in the meantime.</string>
+    <string name="imagereview_error_folder_access_revoked">Folder access was turned off, so this image cannot be changed yet. Grant it again in Permissions — the backup is still safe.</string>
+    <string name="imagereview_error_folder_not_grantable">Android does not allow any app permission for the folder this image is in, so it cannot be changed on the device. The backup is still here for you to review.</string>
     <string name="imagereview_error_generic">Error: %1$s</string>
     <string name="imagereview_cat_adult">Adult Content</string>
     <string name="imagereview_cat_suggestive">Suggestive Content</string>
@@ -850,4 +877,64 @@
     <string name="notif_disabled_banner_msg">Notifications are disabled, so you won\'t be told when a violation happens. Alerts still appear when you open the app.</string>
     <string name="notif_disabled_banner_action">Enable</string>
     <string name="notif_disabled_banner_dismiss">Dismiss</string>
+
+    <!-- 014 Account deletion: Settings -->
+    <string name="settings_delete_account">Delete account</string>
+    <string name="settings_delete_account_desc">Permanently delete your account and data</string>
+    <string name="settings_deletion_help">How account deletion works</string>
+    <string name="settings_deletion_help_desc">Opens our public account-deletion page</string>
+    <string name="settings_deletion_help_no_browser">Couldn\'t open the page. Visit: %1$s</string>
+
+    <!-- 014 Account deletion: delete-account screen -->
+    <string name="delete_account_title">Delete account</string>
+    <string name="delete_account_intro">Deleting your account is immediate and permanent. It cannot be undone.</string>
+    <string name="delete_account_consequences_heading">What will be deleted</string>
+    <string name="delete_account_consequence_account">Your account and your sign-in</string>
+    <plurals name="delete_account_consequence_children_n">
+        <item quantity="one">The account of your %1$d linked child, with all of their data</item>
+        <item quantity="other">The accounts of your %1$d linked children, with all of their data</item>
+    </plurals>
+    <string name="delete_account_consequence_children_unknown">All of your linked children\'s accounts</string>
+    <string name="delete_account_consequence_data">All devices, screen-time and app-usage history, alerts, rules, filters and family links</string>
+    <string name="delete_account_consequence_device_data">This device\'s data and history</string>
+    <string name="delete_account_consequence_blurred_photos">Photos already blurred in your gallery will stay blurred and can no longer be restored</string>
+    <string name="delete_account_password_label">Password</string>
+    <string name="delete_account_confirm_word_label">Type DELETE to confirm</string>
+    <string name="delete_account_switch_to_google">Signed in with Google? Type DELETE instead</string>
+    <string name="delete_account_switch_to_password">Use my password instead</string>
+    <string name="delete_account_button">Delete account permanently</string>
+    <string name="delete_account_final_title">Delete your account?</string>
+    <string name="delete_account_final_message">This is your last chance. Your account and data will be deleted immediately and cannot be recovered.</string>
+    <string name="delete_account_final_confirm">Delete permanently</string>
+    <string name="delete_account_cancel">Cancel</string>
+    <string name="delete_account_error_wrong_password">That password is incorrect.</string>
+    <string name="delete_account_error_wrong_confirmation">That confirmation wasn\'t accepted. Nothing was deleted.</string>
+    <string name="delete_account_error_supervised">Only your parent can delete this account. Please ask them.</string>
+    <string name="delete_account_error_rate_limited">Too many attempts. Please wait a while and try again.</string>
+    <string name="delete_account_error_rate_limited_seconds">Too many attempts. Please try again in %1$d seconds.</string>
+    <string name="delete_account_error_network">Nothing was deleted. Check your connection and try again.</string>
+    <string name="delete_account_error_unknown">Something went wrong. Nothing was deleted.</string>
+    <string name="delete_account_retry">Retry</string>
+
+    <!-- 014 Account deletion: Login notices -->
+    <string name="login_account_deleted">Your account was deleted.</string>
+    <string name="login_account_deleted_by_parent">Your account was deleted by your parent.</string>
+    <string name="login_uninstall_note_title">Protection is off</string>
+    <string name="login_uninstall_note_body">Your account is gone. You can now uninstall Haris or turn off its permissions.</string>
+    <string name="login_uninstall_note_button">Open app settings</string>
+    <string name="login_session_ended">Your session ended. Please sign in again.</string>
+    <string name="login_uninstall_note_dismiss">Dismiss</string>
+
+    <!-- 014 Account deletion: Children screen -->
+    <string name="children_delete_action">Delete account permanently</string>
+    <string name="children_cd_more_options">More options</string>
+    <string name="children_delete_title">Permanently delete %1$s\'s account?</string>
+    <string name="children_delete_message">This deletes %1$s\'s account and all of their data immediately. It cannot be undone. To only stop monitoring and keep the account, use \"Stop monitoring\" instead.</string>
+    <string name="children_delete_type_name_label">Type %1$s to confirm</string>
+    <string name="children_delete_password_label">Your password</string>
+    <string name="children_delete_confirm_google">Confirm with Google</string>
+    <string name="children_delete_google_mismatch">That Google account doesn\'t match yours. Nothing was deleted.</string>
+    <string name="children_delete_account_mismatch">We couldn\'t confirm it\'s you. Please sign in again. Nothing was deleted.</string>
+    <string name="children_delete_success">%1$s\'s account was deleted.</string>
+    <string name="children_delete_not_linked">%1$s is no longer linked to your account.</string>
 </resources>

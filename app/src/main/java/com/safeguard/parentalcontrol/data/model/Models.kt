@@ -125,6 +125,25 @@ data class ForgotPasswordRequest(
     val email: String
 )
 
+/**
+ * Body of `DELETE /auth/account`. Exactly one field is set: [password] for a password account,
+ * or [confirmation] (always "DELETE") for an account with no password. The Gson instance has no
+ * `serializeNulls`, so the unset field is omitted from the JSON.
+ */
+data class DeleteAccountRequest(
+    val password: String? = null,
+    val confirmation: String? = null
+) {
+    override fun toString(): String =
+        "DeleteAccountRequest(password=${if (password != null) "<redacted>" else "null"}, " +
+            "confirmation=${if (confirmation != null) "<redacted>" else "null"})"
+
+    companion object {
+        fun forPassword(password: String) = DeleteAccountRequest(password = password)
+        fun forGoogle() = DeleteAccountRequest(confirmation = "DELETE")
+    }
+}
+
 data class ResetPasswordRequest(
     val email: String,
     val code: String,

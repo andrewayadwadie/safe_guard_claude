@@ -89,6 +89,25 @@ class ImageReviewViewModel @Inject constructor(
     }
 
     /**
+     * The message to show instead of carrying out [action], or null when it can go ahead.
+     *
+     * No backup is ever discarded while access is missing — the private copy is the only thing
+     * standing between the parent and an unrecoverable original, so the answer is always "restore
+     * access and try again", never "that failed, it is gone".
+     */
+    private fun folderAccessBlockedMessage(
+        backupId: String,
+        action: ImageBlurManager.ReviewAction
+    ): String? = when (imageBlurManager.reviewBlockedReason(backupId, action)) {
+        null -> null
+        ImageBlurManager.REASON_FOLDER_ACCESS_REVOKED ->
+            getString(R.string.imagereview_error_folder_access_revoked)
+        ImageBlurManager.REASON_FOLDER_NOT_GRANTABLE ->
+            getString(R.string.imagereview_error_folder_not_grantable)
+        else -> getString(R.string.imagereview_error_folder_access_needed)
+    }
+
+    /**
      * Select an image to view details.
      */
     fun selectImage(image: PendingImage) {
@@ -107,6 +126,14 @@ class ImageReviewViewModel @Inject constructor(
      */
     fun approveImage(backupId: String) {
         viewModelScope.launch {
+            // Say what is missing before acting, not after failing. Restoring an image writes to the
+            // child's picture folder, which needs the folder access the parent granted during setup —
+            // and which they may have since turned off in system settings.
+            folderAccessBlockedMessage(backupId, ImageBlurManager.ReviewAction.APPROVE)?.let { message ->
+                _uiState.value = _uiState.value.copy(isProcessing = false, error = message)
+                return@launch
+            }
+
             _uiState.value = _uiState.value.copy(isProcessing = true)
 
             try {
@@ -139,6 +166,12 @@ class ImageReviewViewModel @Inject constructor(
      */
     fun rejectImage(backupId: String) {
         viewModelScope.launch {
+            // Rejecting always removes the image from the device, so it always needs folder access.
+            folderAccessBlockedMessage(backupId, ImageBlurManager.ReviewAction.REJECT)?.let { message ->
+                _uiState.value = _uiState.value.copy(isProcessing = false, error = message)
+                return@launch
+            }
+
             _uiState.value = _uiState.value.copy(isProcessing = true)
 
             try {

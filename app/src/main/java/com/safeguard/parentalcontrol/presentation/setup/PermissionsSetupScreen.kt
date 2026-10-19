@@ -31,6 +31,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 import com.safeguard.parentalcontrol.util.AccessibilityServiceHelper
+import com.safeguard.parentalcontrol.util.BlurEnforcement
+import com.safeguard.parentalcontrol.util.MediaReadAccess
 import kotlinx.coroutines.flow.collectLatest
 import timber.log.Timber
 
@@ -70,16 +72,25 @@ fun PermissionsSetupScreen(
         }
     }
 
-    // Media permission launcher (for sexting prevention)
+    // Media permission launcher (for sexting prevention).
+    // The result is handed to the ViewModel rather than interpreted here, because "granted" is not
+    // the whole answer on Android 14+: the user may have allowed only a hand-picked set of photos,
+    // which cannot include images the child receives later and so does not count as granted.
     val mediaPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        viewModel.checkPermissions()
-        if (isGranted) {
-            Timber.d("Media permission granted")
-        } else {
-            Timber.d("Media permission denied")
-        }
+        Timber.d("Media permission result: granted=$isGranted")
+        viewModel.onMediaPermissionResult()
+    }
+
+    // Folder-access launcher. Replacing a flagged image means modifying a file another app created,
+    // which Android only permits for a folder the user picked themselves.
+    val folderAccessLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        viewModel.onFolderAccessResult(
+            if (result.resultCode == Activity.RESULT_OK) result.data?.data else null
+        )
     }
 
     // Collect permission events
@@ -93,30 +104,22 @@ fun PermissionsSetupScreen(
                     phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
                 }
                 is PermissionsSetupEvent.RequestMediaPermission -> {
-                    // For Android 11+ we need MANAGE_EXTERNAL_STORAGE which requires Settings
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                        try {
-                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                                data = Uri.parse("package:${context.packageName}")
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            }
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to open all files access settings")
-                            // Fallback to general storage settings
-                            try {
-                                val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION).apply {
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                }
-                                context.startActivity(intent)
-                            } catch (e2: Exception) {
-                                Timber.e(e2, "Failed to open storage settings fallback")
-                            }
-                        }
-                    } else {
-                        // For older versions, use runtime permission
-                        val permission = Manifest.permission.READ_EXTERNAL_STORAGE
-                        mediaPermissionLauncher.launch(permission)
+                    // An ordinary runtime permission on every supported version.
+                    //
+                    // This branch used to route Android 11+ to the all-files-access settings screen
+                    // and never request a read permission at all, so on those versions photos could
+                    // only be read because all-files access happened to be granted. Google Play does
+                    // not permit that permission for parental control, so it is gone and this is now
+                    // the only thing that authorises reading the child's photos.
+                    mediaPermissionLauncher.launch(event.permission)
+                }
+
+                is PermissionsSetupEvent.RequestFolderAccess -> {
+                    try {
+                        folderAccessLauncher.launch(event.pickerIntent)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to open the folder picker for ${event.target.name}")
+                        viewModel.onFolderAccessResult(null)
                     }
                 }
             }
@@ -133,7 +136,17 @@ fun PermissionsSetupScreen(
         }
     }
 
+    // Errors surface as a Snackbar and are cleared after display, per the project's UI rules.
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearError()
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.permissions_setup_title)) },
@@ -337,14 +350,17 @@ fun PermissionsSetupScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Media permission (for sexting prevention)
-            // On Android 11+ this requires "All files access" permission from Settings
+            // Media permission (for sexting prevention).
+            // A partial grant ("Select photos" on Android 14+) is shown as not granted, with its own
+            // explanation, because a hand-picked selection cannot contain images that arrive later.
             PermissionCard(
                 title = stringResource(R.string.permissions_media_title),
-                description = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                    stringResource(R.string.permissions_media_desc_r_plus)
-                } else {
-                    viewModel.getMediaDescription()
+                description = when {
+                    uiState.imageProtection.read == MediaReadAccess.PARTIAL ->
+                        stringResource(R.string.permissions_media_partial_desc)
+                    android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R ->
+                        stringResource(R.string.permissions_media_desc_r_plus)
+                    else -> viewModel.getMediaDescription()
                 },
                 icon = Icons.Default.Image,
                 isGranted = uiState.mediaPermissionGranted,
@@ -355,6 +371,56 @@ fun PermissionsSetupScreen(
             )
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            // Picture-folder access. Only shown once the parent has turned Maximum Protection on and
+            // photos can actually be read — asking for folders the app has no use for yet, or cannot
+            // read anything in, would send the parent to fix the wrong thing.
+            if (uiState.imageProtection.blur == BlurEnforcement.NO_GRANT ||
+                uiState.imageProtection.blur == BlurEnforcement.REVOKED
+            ) {
+                PermissionCard(
+                    title = stringResource(R.string.permissions_folder_title),
+                    description = if (uiState.imageProtection.blur == BlurEnforcement.REVOKED) {
+                        stringResource(R.string.permissions_folder_revoked)
+                    } else {
+                        stringResource(R.string.permissions_folder_desc)
+                    },
+                    icon = Icons.Default.Folder,
+                    isGranted = false,
+                    // Blurring is opt-in, so a missing folder grant must never block setup.
+                    isRequired = false,
+                    onRequestPermission = {
+                        viewModel.requestNextFolderAccess()
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // The one capability this app cannot offer: Android refuses to grant the Downloads
+            // folder to any app, so images saved there are detected and reported but never blurred.
+            // Said once, when blurring first starts working — not repeated on every alert.
+            if (uiState.showDownloadBlurNotice) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.permissions_download_blur_notice),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(onClick = { viewModel.onDownloadBlurNoticeShown() }) {
+                            Text(stringResource(R.string.permissions_download_blur_notice_ack))
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             // Optional notification permission
             PermissionCard(

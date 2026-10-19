@@ -228,14 +228,19 @@ class MonitoringService : Service() {
         // Start as foreground service. The declared type is specialUse (see manifest):
         // dataSync is capped at 6 cumulative hours per 24 from API 35, which would end
         // monitoring silently. Mirrors ContentFilterVpnService.onStartCommand().
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                Constants.NOTIFICATION_ID_MONITORING_SERVICE,
-                createNotification(),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-            )
-        } else {
-            startForeground(Constants.NOTIFICATION_ID_MONITORING_SERVICE, createNotification())
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    Constants.NOTIFICATION_ID_MONITORING_SERVICE,
+                    createNotification(),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else {
+                startForeground(Constants.NOTIFICATION_ID_MONITORING_SERVICE, createNotification())
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to start foreground service (API ${Build.VERSION.SDK_INT})")
+            return START_NOT_STICKY
         }
 
         // Consent gate. A parental-control monitoring service must not run until the

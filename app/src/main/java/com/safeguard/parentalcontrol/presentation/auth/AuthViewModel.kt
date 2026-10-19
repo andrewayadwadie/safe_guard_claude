@@ -10,6 +10,7 @@ import com.safeguard.parentalcontrol.data.model.UserRole
 import com.safeguard.parentalcontrol.data.remote.NetworkResult
 import com.safeguard.parentalcontrol.data.repository.AuthRepository
 import com.safeguard.parentalcontrol.data.repository.DeviceRepository
+import com.safeguard.parentalcontrol.util.AccountDeletionState
 import com.safeguard.parentalcontrol.util.AnalyticsHelper
 import com.safeguard.parentalcontrol.util.GoogleSignInManager
 import com.safeguard.parentalcontrol.util.GoogleSignInResult
@@ -37,8 +38,17 @@ data class AuthUiState(
     // Google Sign-In state
     val isGoogleSignInLoading: Boolean = false,
     val needsRoleSelection: Boolean = false,
-    val pendingGoogleIdToken: String? = null
+    val pendingGoogleIdToken: String? = null,
+    // Set after an account deletion until dismissed or the user signs in again.
+    val deletionNotice: DeletionNotice? = null
 )
+
+/**
+ * Confirmation the Login screen shows after this device's account was deleted.
+ * [showUninstallNote] is set on a child device, where protection is now off and the app or its
+ * permissions can be removed.
+ */
+data class DeletionNotice(val showUninstallNote: Boolean)
 
 /**
  * Validation errors for form fields
@@ -65,6 +75,7 @@ class AuthViewModel @Inject constructor(
     private val googleSignInManager: GoogleSignInManager,
     private val analyticsHelper: AnalyticsHelper,
     private val pushTokenSyncScheduler: PushTokenSyncScheduler,
+    private val accountDeletionState: AccountDeletionState,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -83,7 +94,20 @@ class AuthViewModel @Inject constructor(
         pushTokenSyncScheduler.schedule()
     }
 
+    /** Hides the post-deletion confirmation and clears its durable flag. */
+    fun dismissDeletionNotice() {
+        accountDeletionState.dismissNotice()
+        _uiState.update { it.copy(deletionNotice = null) }
+    }
+
     init {
+        // Read once: the flag is durable, so this also shows after a cold start.
+        if (accountDeletionState.noticePending()) {
+            _uiState.update {
+                it.copy(deletionNotice = DeletionNotice(showUninstallNote = accountDeletionState.childUninstallNotice()))
+            }
+        }
+
         // Check if already logged in
         if (authRepository.isLoggedIn()) {
             _uiState.update {
@@ -120,6 +144,7 @@ class AuthViewModel @Inject constructor(
             when (val result = authRepository.login(normalizedEmail, password)) {
                 is NetworkResult.Success -> {
                     publishPushToken()
+                    dismissDeletionNotice()
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -172,6 +197,7 @@ class AuthViewModel @Inject constructor(
             when (val result = authRepository.register(normalizedEmail, password, normalizedFullName, role)) {
                 is NetworkResult.Success -> {
                     publishPushToken()
+                    dismissDeletionNotice()
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -326,6 +352,7 @@ class AuthViewModel @Inject constructor(
                 is NetworkResult.Success -> {
                     analyticsHelper.logGoogleSignInSuccess()
                     publishPushToken()
+                    dismissDeletionNotice()
                     _uiState.update {
                         it.copy(
                             isGoogleSignInLoading = false,

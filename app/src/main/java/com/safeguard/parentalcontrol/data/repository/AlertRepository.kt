@@ -261,6 +261,11 @@ class AlertRepository @Inject constructor(
      */
     suspend fun clearPendingAlerts() = pendingAlertStore.clear()
 
+    /** Drop the per-category alert cooldown and daily-count history. Called on account deletion. */
+    suspend fun clearCooldowns() {
+        context.alertCooldownStore.edit { it.clear() }
+    }
+
     /**
      * Get alerts with optional filters (for parent)
      */

@@ -16,8 +16,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.service.ContentFilterVpnService
+import android.net.Uri
 import com.safeguard.parentalcontrol.util.AccessibilityServiceHelper
+import com.safeguard.parentalcontrol.util.BlurEnforcement
+import com.safeguard.parentalcontrol.util.ImageProtectionStatus
+import com.safeguard.parentalcontrol.util.ImageProtectionStatusResolver
 import com.safeguard.parentalcontrol.util.LocaleHelper
+import com.safeguard.parentalcontrol.util.MediaReadAccess
+import com.safeguard.parentalcontrol.util.MediaWriteAccess
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -47,7 +53,22 @@ data class PermissionsSetupUiState(
     val phoneStatePermissionGranted: Boolean = false,
     val mediaPermissionGranted: Boolean = false,
     val isParent: Boolean = false,
-    val allRequiredPermissionsGranted: Boolean = false
+    val allRequiredPermissionsGranted: Boolean = false,
+    /**
+     * Image protection as the parent sees it: whether photos can be read at all, whether flagged
+     * images are being blurred in place, and which picture folders still need granting.
+     *
+     * This is the single source of truth for the media row on this screen. It replaced a check that
+     * asked whether the app was an all-files manager — a permission the app no longer declares,
+     * because Google Play does not permit it for this app category.
+     */
+    val imageProtection: ImageProtectionStatus = ImageProtectionStatus(
+        read = MediaReadAccess.DENIED,
+        blur = BlurEnforcement.READ_BLOCKED
+    ),
+    /** Shown once: images in the Download folder cannot be blurred in place on modern Android. */
+    val showDownloadBlurNotice: Boolean = false,
+    val error: String? = null
 )
 
 /**
@@ -56,7 +77,27 @@ data class PermissionsSetupUiState(
 sealed class PermissionsSetupEvent {
     data class RequestVpnPermission(val prepareIntent: Intent) : PermissionsSetupEvent()
     object RequestPhoneStatePermission : PermissionsSetupEvent()
-    object RequestMediaPermission : PermissionsSetupEvent()
+
+    /**
+     * Ask for the narrow photo permission.
+     *
+     * [permission] is the runtime permission to request: the photo-specific one from Android 13, the
+     * legacy read permission below that. Before feature 016 this event routed Android 11+ to the
+     * all-files-access settings screen instead and **never requested either permission**, so on those
+     * versions image reading worked only because all-files access had been granted.
+     */
+    data class RequestMediaPermission(val permission: String) : PermissionsSetupEvent()
+
+    /**
+     * Open the system folder picker so the parent can grant one picture folder.
+     *
+     * Needed because blurring a flagged image means modifying a file another app created, which
+     * scoped storage does not otherwise allow.
+     */
+    data class RequestFolderAccess(
+        val target: MediaWriteAccess.GrantTarget,
+        val pickerIntent: Intent
+    ) : PermissionsSetupEvent()
 }
 
 /**
@@ -68,7 +109,8 @@ sealed class PermissionsSetupEvent {
 @HiltViewModel
 class PermissionsSetupViewModel @Inject constructor(
     application: Application,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val mediaWriteAccess: MediaWriteAccess
 ) : AndroidViewModel(application) {
 
     companion object {
@@ -118,7 +160,10 @@ class PermissionsSetupViewModel @Inject constructor(
         val batteryOptimizationDisabled = isBatteryOptimizationDisabled()
         val vpnPermissionGranted = hasVpnPermission()
         val phoneStatePermissionGranted = hasPhoneStatePermission()
-        val mediaPermissionGranted = hasMediaPermission()
+        val imageProtection = resolveImageProtection()
+        // The media row is satisfied when photos can actually be read. Blurring is a separate,
+        // opt-in capability and must never block setup completion — Maximum Protection ships off.
+        val mediaPermissionGranted = imageProtection.detectionWorks
 
         // For child devices, required permissions are:
         // - Accessibility (for text monitoring)
@@ -148,7 +193,12 @@ class PermissionsSetupViewModel @Inject constructor(
                 phoneStatePermissionGranted = phoneStatePermissionGranted,
                 mediaPermissionGranted = mediaPermissionGranted,
                 isParent = isParent,
-                allRequiredPermissionsGranted = allRequired
+                allRequiredPermissionsGranted = allRequired,
+                imageProtection = imageProtection,
+                // Only worth saying once the parent has actually asked for blurring, and only once.
+                showDownloadBlurNotice = !isParent &&
+                    imageProtection.blur == BlurEnforcement.ACTIVE &&
+                    !preferencesManager.downloadBlurNoticeShown
             )
         }
 
@@ -341,29 +391,157 @@ class PermissionsSetupViewModel @Inject constructor(
         LocaleHelper.localizedContext(context).getString(R.string.permissions_phone_desc)
 
     /**
-     * Check if media (photos) permission is granted.
-     * We need MANAGE_EXTERNAL_STORAGE for full access (to blur images).
-     * Falls back to READ_MEDIA_IMAGES for detection only.
+     * The runtime permission that lets the app read the child's photos on this Android version.
+     *
+     * An ordinary runtime permission, so it is requested with the normal permission dialog. The four
+     * special permissions this screen also manages (accessibility, usage access, overlay, VPN) keep
+     * their system-settings routing — this one never belonged in that group, and treating it as if it
+     * did is what left it ungranted on every Android 11+ device.
      */
-    private fun hasMediaPermission(): Boolean {
-        // Check for full storage access (Android 11+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return android.os.Environment.isExternalStorageManager()
-        }
-        // Older versions - check read permission
-        return ContextCompat.checkSelfPermission(
-            context,
+    private fun mediaReadPermission(): String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_IMAGES
+        } else {
             Manifest.permission.READ_EXTERNAL_STORAGE
-        ) == PackageManager.PERMISSION_GRANTED
+        }
+
+    private fun isGranted(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * How much of the photo library the app may read.
+     *
+     * From Android 14 the permission prompt offers a middle option that grants a hand-picked set of
+     * photos. That is detected and reported as [MediaReadAccess.PARTIAL] rather than treated as
+     * success: a photo the child receives tomorrow was not in yesterday's selection, so partial
+     * access cannot do this feature's job. The platform tracks the user-selected permission for any
+     * app holding the photo permission, whether or not the app declares it, which is what makes the
+     * distinction observable without declaring a permission the app would only ever reject.
+     */
+    private fun mediaReadAccess(): MediaReadAccess {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return if (isGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                MediaReadAccess.FULL
+            } else {
+                MediaReadAccess.DENIED
+            }
+        }
+
+        val userSelectedOnly = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+            isGranted(READ_MEDIA_VISUAL_USER_SELECTED)
+
+        return when {
+            userSelectedOnly -> MediaReadAccess.PARTIAL
+            isGranted(Manifest.permission.READ_MEDIA_IMAGES) -> MediaReadAccess.FULL
+            else -> MediaReadAccess.DENIED
+        }
     }
 
     /**
-     * Request media permission - for Android 11+ opens Settings for MANAGE_EXTERNAL_STORAGE
+     * The whole image-protection picture, derived fresh — never cached.
+     *
+     * Folder-grant state comes from the platform's persisted-permission list on every call, so a
+     * grant the device owner revoked in settings is noticed rather than assumed to still hold.
+     */
+    private fun resolveImageProtection(): ImageProtectionStatus {
+        val missingTargets = mediaWriteAccess.missingTargets()
+        return ImageProtectionStatusResolver.resolve(
+            read = mediaReadAccess(),
+            maximumProtectionOn = preferencesManager.isMaximumProtectionEnabled,
+            hasAnyFolderGrant = mediaWriteAccess.hasAnyGrant(),
+            anyGrantRevoked = missingTargets.any {
+                mediaWriteAccess.grantState(it) == MediaWriteAccess.GrantState.REVOKED
+            },
+            missingFolderTargets = missingTargets.map { it.name }
+        )
+    }
+
+    /**
+     * Request the narrow photo permission with the ordinary runtime prompt.
      */
     fun requestMediaPermission() {
         viewModelScope.launch {
-            _events.emit(PermissionsSetupEvent.RequestMediaPermission)
+            _events.emit(PermissionsSetupEvent.RequestMediaPermission(mediaReadPermission()))
         }
+    }
+
+    /**
+     * Called when the photo permission dialog closes.
+     *
+     * A partial grant is reported back to the parent as not protected, with the reason, rather than
+     * being quietly accepted.
+     */
+    fun onMediaPermissionResult() {
+        checkPermissions()
+        if (mediaReadAccess() == MediaReadAccess.PARTIAL) {
+            _uiState.update {
+                it.copy(
+                    error = LocaleHelper.localizedContext(context)
+                        .getString(R.string.permissions_media_partial_error)
+                )
+            }
+        }
+    }
+
+    /**
+     * Start the folder-grant flow for the next picture folder that still needs one.
+     *
+     * One picker per folder, each pre-pointed at the folder it is asking for. Does nothing when every
+     * folder is already granted, so it is safe to call from a retry button.
+     */
+    fun requestNextFolderAccess() {
+        viewModelScope.launch {
+            val target = mediaWriteAccess.missingTargets().firstOrNull() ?: run {
+                checkPermissions()
+                return@launch
+            }
+            _events.emit(
+                PermissionsSetupEvent.RequestFolderAccess(
+                    target = target,
+                    pickerIntent = mediaWriteAccess.pickerIntent(target)
+                )
+            )
+        }
+    }
+
+    /**
+     * Called with whatever the folder picker returned, which may be nothing (the parent cancelled) or
+     * a folder other than the one that was asked for.
+     *
+     * A partial result is kept rather than discarded: a parent who granted the camera folder and
+     * backed out of the pictures one should keep camera protection, and be able to come back for the
+     * rest without starting setup again.
+     */
+    fun onFolderAccessResult(treeUri: Uri?) {
+        if (treeUri == null) {
+            Timber.d("$TAG: Folder picker cancelled; keeping any grants already held")
+            checkPermissions()
+            return
+        }
+
+        val covered = mediaWriteAccess.persistGrant(treeUri)
+        if (covered.isEmpty()) {
+            _uiState.update {
+                it.copy(
+                    error = LocaleHelper.localizedContext(context)
+                        .getString(R.string.permissions_folder_wrong_choice)
+                )
+            }
+        } else {
+            Timber.i("$TAG: Folder access granted for ${covered.joinToString { t -> t.name }}")
+        }
+        checkPermissions()
+    }
+
+    /** Suppress the one-time Download-folder notice once the parent has seen it. */
+    fun onDownloadBlurNoticeShown() {
+        preferencesManager.downloadBlurNoticeShown = true
+        _uiState.update { it.copy(showDownloadBlurNotice = false) }
+    }
+
+    /** Clear a surfaced error after it has been displayed. */
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
     }
 
     /**
@@ -372,3 +550,13 @@ class PermissionsSetupViewModel @Inject constructor(
     fun getMediaDescription(): String =
         LocaleHelper.localizedContext(context).getString(R.string.permissions_media_desc)
 }
+
+/**
+ * Declared as a literal because the app deliberately does not list this permission in its manifest.
+ *
+ * The platform tracks it for any app holding the photo permission, so its grant state is readable and
+ * is the signal that the parent chose "Select photos" instead of full access. Declaring it would only
+ * let the app enumerate a selection it is going to reject anyway.
+ */
+private const val READ_MEDIA_VISUAL_USER_SELECTED =
+    "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"

@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -38,10 +39,16 @@ import com.safeguard.parentalcontrol.util.formatAsRelative
 fun ChildrenScreen(
     onNavigateBack: () -> Unit,
     onNavigateToChildDevices: (childId: Int, childName: String) -> Unit = { _, _ -> },
+    onChildrenChanged: () -> Unit = {},
     viewModel: ChildrenViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Every deleted child bumps the counter, so the Dashboard below is told each time.
+    LaunchedEffect(uiState.childrenChangedCount) {
+        if (uiState.childrenChangedCount > 0) onChildrenChanged()
+    }
 
     // Show error snackbar
     LaunchedEffect(uiState.error) {
@@ -72,6 +79,27 @@ fun ChildrenScreen(
             onConfirm = { pairingCode -> viewModel.addChild(pairingCode) },
             isLoading = uiState.isAddingChild,
             error = uiState.addChildError
+        )
+    }
+
+    // Permanent account deletion. Rendered here (not inside ChildCard) so it survives the list
+    // reloading and can be driven by the ViewModel.
+    val context = LocalContext.current
+    uiState.deleteTarget?.let { target ->
+        DeleteChildAccountDialog(
+            child = target,
+            nameInput = uiState.deleteNameInput,
+            credential = uiState.deleteCredential,
+            parentIsGoogle = uiState.parentIsGoogle,
+            credentialError = uiState.deleteCredentialError,
+            notice = uiState.deleteDialogNotice,
+            isDeleting = uiState.deletingChildId == target.childId,
+            canDelete = uiState.canDelete,
+            onNameChange = viewModel::onDeleteNameChange,
+            onCredentialChange = viewModel::onDeleteCredentialChange,
+            onConfirmPassword = viewModel::confirmDeletePassword,
+            onConfirmGoogle = { viewModel.confirmDeleteWithGoogle(context) },
+            onDismiss = viewModel::closeDeleteDialog
         )
     }
 
@@ -146,7 +174,8 @@ fun ChildrenScreen(
                             ChildCard(
                                 child = child,
                                 onViewDevices = { onNavigateToChildDevices(child.childId, child.childName) },
-                                onRemove = { viewModel.removeChild(child.childId, child.childName) }
+                                onRemove = { viewModel.removeChild(child.childId, child.childName) },
+                                onDeleteAccount = { viewModel.openDeleteDialog(child) }
                             )
                         }
 
@@ -199,9 +228,11 @@ private fun EmptyState(
 private fun ChildCard(
     child: FamilyLink,
     onViewDevices: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onDeleteAccount: () -> Unit
 ) {
     var showRemoveDialog by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
 
     if (showRemoveDialog) {
         AlertDialog(
@@ -282,12 +313,45 @@ private fun ChildCard(
                     )
                 }
 
+                // "Stop monitoring (account kept)": neutral, because it is reversible by re-linking.
                 IconButton(onClick = { showRemoveDialog = true }) {
                     Icon(
                         Icons.Default.PersonRemove,
                         contentDescription = stringResource(R.string.children_remove),
-                        tint = MaterialTheme.colorScheme.error
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+
+                // "Delete account permanently" lives behind an overflow menu, in the error colour,
+                // so it can never be mistaken for the unlink action next to it.
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = stringResource(R.string.children_cd_more_options)
+                        )
+                    }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = stringResource(R.string.children_delete_action),
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.DeleteForever,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                onDeleteAccount()
+                            }
+                        )
+                    }
                 }
             }
 

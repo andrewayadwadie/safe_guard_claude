@@ -350,22 +350,104 @@ Each of these requires a declaration form or written justification in Play Conso
 accessibility and all-files-access policies are the most common rejection causes for parental
 control apps. Text below is drafted for you to paste and adapt.
 
-### `MANAGE_EXTERNAL_STORAGE` — All files access
+### Foreground service types — Special use ONLY
 
-> SafeGuard is a parental control application installed by a parent on a child's device with
-> consent. All-files access is required to replace images that on-device classification has
-> identified as sexually explicit with a blurred version, so the child cannot view them. The
-> replacement happens entirely on the device. Scoped storage is insufficient because the app must
-> modify pre-existing image files created by other applications (camera, messaging, downloads),
-> which scoped storage does not permit. No file contents are transmitted off the device.
+The app declares exactly **two** foreground services, both `specialUse`:
 
-### `QUERY_ALL_PACKAGES` — Package visibility
+| Service | Type | Subtype property |
+| --- | --- | --- |
+| `MonitoringService` | `specialUse` | Continuous parental-control monitoring: screen-time enforcement, app-usage tracking and policy enforcement on a supervised child device. Must run uninterrupted for the child to remain protected. |
+| `ContentFilterVpnService` | `specialUse` | VPN content filtering for parental control |
 
-> SafeGuard must enumerate installed applications so a parent can select which apps to block and
-> which to apply per-app screen-time limits to, and so the app can identify the foreground
-> application when enforcing those limits. A filtered `<queries>` list is insufficient because the
-> parent may restrict any app on the device, which is not knowable in advance. The list of package
-> names is shown to the parent and used for local enforcement.
+`FOREGROUND_SERVICE_DATA_SYNC` is **NOT** declared and must never be reintroduced. The Play
+Console foreground-service declaration form should therefore present only the Special use
+section. If it asks about data sync, a dependency has reintroduced the permission into the
+merged manifest — read `app/build/outputs/logs/manifest-merger-release-report.txt` to find
+which one.
+
+A release-blocking build guard enforces this. It reads the merged manifest during
+`process{Debug,Release}MainManifest` and fails the build if the permission or a `dataSync`
+service type is present. Contract and acceptance tests:
+`specs/015-remove-datasync-fgs-permission/contracts/build-guard.md`.
+
+### `MANAGE_EXTERNAL_STORAGE` — All files access — **REMOVED, no declaration is made**
+
+**Do not fill in the All files access form. The app does not declare this permission.** If the
+Play Console presents that form, a dependency has reintroduced the permission into the merged
+manifest — read `app/build/outputs/logs/manifest-merger-release-report.txt` to find which one, and
+note that the build should already have failed before reaching the console.
+
+The justification previously drafted here was withdrawn with feature
+`016-remove-all-files-access`. It did not survive its own reasoning: Google Play restricts all-files
+access to file managers, backup and restore tools, anti-virus apps, document managers, on-device
+file search, disk encryption and device migration. **Parental control is not on that permitted-use
+list**, and the form's mandatory question — why the Storage Access Framework cannot be used — had
+no good answer, because it can be.
+
+What the app does instead:
+
+| Capability | Mechanism |
+| --- | --- |
+| Read saved photos for on-device classification | `READ_MEDIA_IMAGES`, requested at runtime (API 33+); `READ_EXTERNAL_STORAGE` below that |
+| Replace a flagged image with a blurred version, restore it, or delete it | Folder access the parent grants once per picture folder through the system document picker, persisted across reboots |
+
+Two consequences worth knowing before a review conversation:
+
+- **Images in `Download` are detected and reported but never blurred in place.** From Android 11 the
+  platform refuses to grant that folder to any app through the picker. Detection, the private backup
+  and the parent alert all still work there; only the in-place blur does not, and the parent is told
+  so once in-product.
+- **In-place blurring now also works on Android 8–10**, where it had silently failed for the app's
+  whole life: all-files access only exists from Android 11, and no legacy write permission was ever
+  declared.
+
+A release-blocking build guard enforces the removal. The same guard that bans
+`FOREGROUND_SERVICE_DATA_SYNC` was extended with this permission rather than duplicated. Contract and
+acceptance tests: `specs/016-remove-all-files-access/contracts/build-guard.md`.
+
+### `QUERY_ALL_PACKAGES` — removed, no declaration needed
+
+**Nothing to declare. The permission is gone.** Play's declaration prompt for it means the build
+still carries it; rebuild from a commit that contains this change.
+
+The justification previously drafted here was withdrawn. Its own key claim was wrong: it said a
+filtered `<queries>` list was insufficient "because the parent may restrict any app on the device,
+which is not knowable in advance". A `<queries>` entry does not have to name packages — it can match
+an **intent**, and `ACTION_MAIN` + `CATEGORY_LAUNCHER` matches every launchable app on the device
+without naming any of them. That is the whole set the parent can act on, so the permission bought the
+app nothing except a sensitive-data declaration and a review risk: Play restricts
+`QUERY_ALL_PACKAGES` to apps whose core purpose is broad app visibility (device search, anti-virus,
+file managers), and parental control is not on that list.
+
+What the app does instead — `app/src/main/AndroidManifest.xml`:
+
+```xml
+<queries>
+    <intent>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent>
+    <intent>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.HOME" />
+    </intent>
+</queries>
+```
+
+| Capability | Still works because |
+| --- | --- |
+| Parent's app list for per-app limits and blocking | `getInstalledApplications()` returns every launcher-visible app; the list already filtered on `getLaunchIntentForPackage() != null`, so the visible set is unchanged |
+| App name and icon for a chosen app | `getApplicationInfo` / `getApplicationLabel` / `getApplicationIcon` — launchable apps are visible |
+| Foreground-app enforcement | Package name comes from `UsageStatsManager` under `PACKAGE_USAGE_STATS`, which needs no package visibility |
+| Skipping OEM launchers in text monitoring | `queryIntentActivities(ACTION_MAIN + CATEGORY_HOME)` is covered by the second `<intent>` |
+
+The one difference: packages with **no launcher activity** are not visible, so `getAppName()` returns
+null for them and the UI falls back to the package name — as it already did for any lookup failure.
+Such packages were never in the parent's app list.
+
+A release-blocking build guard enforces the removal: `QUERY_ALL_PACKAGES` was added to the same
+banned-permission list in `app/build.gradle` that bans `MANAGE_EXTERNAL_STORAGE` and
+`FOREGROUND_SERVICE_DATA_SYNC`, so a dependency cannot reintroduce it through the merged manifest.
 
 ### `BIND_ACCESSIBILITY_SERVICE` — Accessibility API
 
@@ -536,6 +618,10 @@ Kotlin 2.0.21 and SDK Platform 36 were already present.
   capped at 6 cumulative hours per 24, after which the platform stops it. For a 24/7 monitor that
   ends protection silently, with no signal to the parent. Both foreground services now override
   `onTimeout()` to log and request a restart.
+  **Follow-up, feature 015:** the now-unused `FOREGROUND_SERVICE_DATA_SYNC` `<uses-permission>`
+  was left declared here (task `T035`, FR-027 recorded removal as out of scope at the time). That
+  orphan was the sole reason Play Console kept asking for a data-sync justification. It has now
+  been removed and the deferral is **closed**; a build guard prevents its return. See §6.
 - **Both exact-alarm permissions removed.** `SCHEDULE_EXACT_ALARM` and `USE_EXACT_ALARM` were
   declared but the app schedules no exact alarms at all — only an inexact Doze-friendly restart.
   `USE_EXACT_ALARM` is additionally restricted by Play to alarm-clock and calendar apps.
@@ -628,3 +714,37 @@ CLAUDE.md
 - `safeguard-release.jks` — gitignored; compromised, replace it
 - `third_party/` — gitignored, 206 MB, not a build input
 - `nightrun.ps1` — untracked; not part of this feature, review separately
+
+---
+
+## 12. Account deletion (feature 014): limitations, follow-ups and backend questions
+
+**Feature**: [`specs/014-account-deletion`](../specs/014-account-deletion/spec.md). This is the in-app deletion flow Google Play requires. It ships in the same release as §7 (Data Safety).
+
+**Play Console**: the account-deletion URL to register is `{root}/account-deletion`, where `{root}` is the API base URL without `/api/v1` (for release: `https://bw.noor.net:8090/account-deletion`). The app opens the same page from Settings → About → "How account deletion works".
+
+### Known limitations
+
+1. **A child device is not told when its account is deleted remotely.** The server returns the same 401 for a deleted account as for any lost session, so the app cannot tell them apart and keeps today's behaviour: tokens cleared, Login shown, protection left running. Blocked on backend question Q6. (Spec FR-025.)
+2. `SyncWorker` is enqueued on every cold start with no login gate. It can raise a "Session expired" toast on the Login screen after a deletion or a logout. Outside this feature's worker guardrail.
+3. `TamperDetectionReceiver` and `ServiceRestartReceiver` read the encrypted preferences file as plain preferences, so both are effectively inert. Affects features 004 and 010.
+4. The logout flow still leaves `MonitoringService` running. Migrating logout to `AccountTeardownManager` is a follow-up.
+5. The session toasts in `MainActivity` are hard-coded English.
+6. The `Retry-After` value is not available to the client (`NetworkResult.Error` carries no headers), so the rate-limit message says "wait a while" without a number. The seconds string exists for when it is exposed.
+7. The Google credential state (`clearCredentialState`) is not cleared after a deletion.
+
+### Questions for the backend developer
+
+| # | Question |
+|---|---|
+| Q1 | What does a 200 from `DELETE /auth/account` and `DELETE /family/child/{id}` contain: `MessageResponse`, an empty body, or 204? (The client accepts any 2xx.) |
+| Q2 | How can the client tell that an account has no password? Does `GET /auth/me` always return `auth_provider`, and what does it report for a local account that later linked Google? Could `has_password` be added? |
+| Q3 | Is `DELETE /auth/account` rate-limited? What window, and is there a `Retry-After` header? Does `DELETE /family/child` share the login limiter? |
+| Q4 | After a child (or a parent with children) is deleted, is any FCM message sent to the child's device? |
+| Q5 | Is the error body for 400/403 always `{"detail": "<string>"}`, and is it localized? (The client maps by status code only.) |
+| Q6 | Can the server return something that clearly means "this account was deleted", different from an expired or revoked session (for example `error_code: "account_deleted"`, or a 410 on `/auth/refresh` and `/auth/me`)? Unblocks limitation 1. |
+| Q7 | Could `DELETE /family/child/{id}` accept `{"password"}` / `{"confirmation"}` like `/auth/account`? It would replace the separate re-authentication login step with one atomic call. |
+
+### Verification still to run on a device
+
+Unit tests and the build are green. The on-device scenarios V1 to V14 in [`quickstart.md`](../specs/014-account-deletion/quickstart.md) need throwaway accounts (Postman folder 0) and have **not** been run yet. Never run them against a real family: deletion is immediate and permanent.

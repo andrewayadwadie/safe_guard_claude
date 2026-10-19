@@ -41,7 +41,15 @@ import javax.inject.Singleton
  * 3. Analyze with ContentClassifier
  * 4. Create alert if inappropriate
  *
- * Uses Android's FileObserver API for real-time detection.
+ * **Two triggers, and which one carries the weight.** The primary trigger is a [ContentObserver] on
+ * the media database; [FileObserver] on the raw directories is a secondary. That ordering matters
+ * since feature 016 removed all-files access: `FileObserver` is built on the kernel's inotify
+ * facility over raw paths, and the platform documents no inotify delivery for shared storage once
+ * scoped storage applies — it worked before only because all-files access exempted this app from
+ * scoped storage entirely. The media-database observer is the documented mechanism, needs only the
+ * narrow photo permission, and also sees the `Download` folder, so detection coverage is unchanged.
+ * The file observers are kept because where inotify does fire they arrive sooner, and anything they
+ * catch is deduplicated downstream by [ImageHasher]; nothing depends on them.
  */
 @Singleton
 class MediaFileObserver @Inject constructor(
@@ -454,7 +462,18 @@ class MediaFileObserver @Inject constructor(
 
                     when (blurResult) {
                         is ImageBlurManager.BlurResult.Success -> {
-                            Timber.i("$TAG: Image blurred successfully. Backup ID: ${blurResult.backupId}")
+                            // Success means the violation was processed and backed up. Whether the
+                            // gallery image itself was replaced is carried by the metadata — saying
+                            // "blurred" here when it was not is the dishonesty FR-016 forbids.
+                            if (blurResult.metadata.blurApplied) {
+                                Timber.i("$TAG: Image blurred. Backup ID: ${blurResult.backupId}")
+                            } else {
+                                Timber.i(
+                                    "$TAG: Image backed up without blurring " +
+                                        "(${blurResult.metadata.notBlurredReason ?: "copy-only mode"}). " +
+                                        "Backup ID: ${blurResult.backupId}"
+                                )
+                            }
 
                             // Step 2: Send alert to parent (metadata only, no image)
                             alertRepository.createInappropriateImageAlert(

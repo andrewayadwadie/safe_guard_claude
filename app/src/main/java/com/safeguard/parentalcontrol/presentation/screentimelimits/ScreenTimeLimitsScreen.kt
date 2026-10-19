@@ -7,8 +7,6 @@ import com.safeguard.parentalcontrol.presentation.theme.rememberScreenWidth
 import com.safeguard.parentalcontrol.presentation.theme.responsiveContentWidth
 import com.safeguard.parentalcontrol.presentation.theme.responsiveScreenPadding
 
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -23,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -35,8 +34,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.safeguard.parentalcontrol.R
 import com.safeguard.parentalcontrol.presentation.designsystem.mirrorInRtl
 import com.safeguard.parentalcontrol.util.formatAsHoursMinutes
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * Data class representing an installed app
@@ -124,13 +121,9 @@ fun ScreenTimeLimitsScreen(
                 }
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.saveRules() }
-            ) {
-                Icon(Icons.Default.Save, stringResource(R.string.common_save))
-            }
-        },
+        // No save button. Every control on this screen persists its own change as it is made;
+        // the save action that used to live here was an unlabeled FAB a parent had no reason
+        // to press, and a lock that was never pressed into was never sent.
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(
@@ -154,6 +147,7 @@ fun ScreenTimeLimitsScreen(
                         item {
                             RulesActiveCard(
                                 isActive = uiState.isActive,
+                                saving = RuleField.ACTIVE in uiState.savingFields,
                                 onToggle = { viewModel.setRulesActive(it) }
                             )
                         }
@@ -164,6 +158,7 @@ fun ScreenTimeLimitsScreen(
                                 enabled = uiState.dailyLimitEnabled,
                                 hours = uiState.dailyLimitHours,
                                 minutes = uiState.dailyLimitMinutes,
+                                saving = RuleField.DAILY_LIMIT in uiState.savingFields,
                                 onEnabledChange = { viewModel.setDailyLimitEnabled(it) },
                                 onTimeClick = { showTimePickerDialog = TimePickerType.DAILY_LIMIT }
                             )
@@ -175,6 +170,7 @@ fun ScreenTimeLimitsScreen(
                                 enabled = uiState.bedtimeEnabled,
                                 startTime = uiState.bedtimeStart,
                                 endTime = uiState.bedtimeEnd,
+                                saving = RuleField.BEDTIME in uiState.savingFields,
                                 onEnabledChange = { viewModel.setBedtimeEnabled(it) },
                                 onStartTimeClick = { showTimePickerDialog = TimePickerType.BEDTIME_START },
                                 onEndTimeClick = { showTimePickerDialog = TimePickerType.BEDTIME_END }
@@ -187,6 +183,7 @@ fun ScreenTimeLimitsScreen(
                                 enabled = uiState.studyTimeEnabled,
                                 startTime = uiState.studyTimeStart,
                                 endTime = uiState.studyTimeEnd,
+                                saving = RuleField.STUDY_TIME in uiState.savingFields,
                                 onEnabledChange = { viewModel.setStudyTimeEnabled(it) },
                                 onStartTimeClick = { showTimePickerDialog = TimePickerType.STUDY_TIME_START },
                                 onEndTimeClick = { showTimePickerDialog = TimePickerType.STUDY_TIME_END }
@@ -199,6 +196,7 @@ fun ScreenTimeLimitsScreen(
                                 SectionHeader(
                                     title = stringResource(R.string.screentime_allowed_study),
                                     actionText = stringResource(R.string.screentime_add_app),
+                                    saving = RuleField.STUDY_TIME_APPS in uiState.savingFields,
                                     onAction = { showAddStudyTimeAppDialog = true }
                                 )
                             }
@@ -228,8 +226,10 @@ fun ScreenTimeLimitsScreen(
                             LockPhoneCard(
                                 isLocked = uiState.isDeviceLocked,
                                 message = uiState.deviceLockedMessage,
+                                saving = RuleField.DEVICE_LOCK in uiState.savingFields,
                                 onLockedChange = { viewModel.setDeviceLocked(it) },
-                                onMessageChange = { viewModel.setDeviceLockedMessage(it) }
+                                onMessageChange = { viewModel.setDeviceLockedMessage(it) },
+                                onMessageCommit = { viewModel.commitDeviceLockedMessage() }
                             )
                         }
 
@@ -238,6 +238,7 @@ fun ScreenTimeLimitsScreen(
                             SectionHeader(
                                 title = stringResource(R.string.screentime_per_app_limits),
                                 actionText = stringResource(R.string.screentime_add_app),
+                                saving = RuleField.APP_LIMITS in uiState.savingFields,
                                 onAction = { showAddAppLimitDialog = true }
                             )
                         }
@@ -267,6 +268,7 @@ fun ScreenTimeLimitsScreen(
                             SectionHeader(
                                 title = stringResource(R.string.screentime_blocked_apps),
                                 actionText = stringResource(R.string.screentime_block_app),
+                                saving = RuleField.BLOCKED_APPS in uiState.savingFields,
                                 onAction = { showAddBlockedAppDialog = true }
                             )
                         }
@@ -291,13 +293,15 @@ fun ScreenTimeLimitsScreen(
                         }
 
                         item {
-                            Spacer(modifier = Modifier.height(72.dp)) // FAB clearance
+                            Spacer(modifier = Modifier.height(24.dp)) // bottom breathing room
                         }
                     }
                 }
             }
 
-            // Show loading overlay when saving
+            // A save in flight is shown on the control that is saving, not as a screen-wide
+            // bar: one control saving must never read as the whole screen being busy, because
+            // the parent is free to change another control while the first is still in flight.
             if (uiState.isLoading && uiState.rules != null) {
                 LinearProgressIndicator(
                     modifier = Modifier
@@ -426,9 +430,35 @@ private enum class TimePickerType {
     STUDY_TIME_END
 }
 
+/**
+ * A switch that shows its own control's save in flight.
+ *
+ * Per-control rather than screen-wide on purpose: the parent may change a second control while
+ * the first is still saving, so a single spinner across the whole screen would both overstate
+ * what is busy and hide which control the pending change belongs to.
+ */
+@Composable
+private fun SavingSwitch(
+    checked: Boolean,
+    saving: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (saving) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
+    }
+}
+
 @Composable
 private fun RulesActiveCard(
     isActive: Boolean,
+    saving: Boolean,
     onToggle: (Boolean) -> Unit
 ) {
     Card(
@@ -464,15 +494,26 @@ private fun RulesActiveCard(
                         text = if (isActive) stringResource(R.string.screentime_rules_active) else stringResource(R.string.screentime_rules_disabled),
                         style = MaterialTheme.typography.titleMedium
                     )
+                    // While this is off the child enforces nothing, so a populated Blocked
+                    // Apps list below must not be readable as active protection.
                     Text(
-                        text = if (isActive) stringResource(R.string.screentime_rules_enforced) else stringResource(R.string.screentime_no_restrictions),
+                        text = if (isActive) {
+                            stringResource(R.string.screentime_rules_enforced)
+                        } else {
+                            stringResource(R.string.screentime_rules_disabled_warning)
+                        },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (isActive) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        }
                     )
                 }
             }
-            Switch(
+            SavingSwitch(
                 checked = isActive,
+                saving = saving,
                 onCheckedChange = onToggle
             )
         }
@@ -484,6 +525,7 @@ private fun DailyLimitCard(
     enabled: Boolean,
     hours: Int,
     minutes: Int,
+    saving: Boolean,
     onEnabledChange: (Boolean) -> Unit,
     onTimeClick: () -> Unit
 ) {
@@ -512,8 +554,9 @@ private fun DailyLimitCard(
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
-                Switch(
+                SavingSwitch(
                     checked = enabled,
+                    saving = saving,
                     onCheckedChange = onEnabledChange
                 )
             }
@@ -544,6 +587,7 @@ private fun BedtimeCard(
     enabled: Boolean,
     startTime: String,
     endTime: String,
+    saving: Boolean,
     onEnabledChange: (Boolean) -> Unit,
     onStartTimeClick: () -> Unit,
     onEndTimeClick: () -> Unit
@@ -580,8 +624,9 @@ private fun BedtimeCard(
                         )
                     }
                 }
-                Switch(
+                SavingSwitch(
                     checked = enabled,
+                    saving = saving,
                     onCheckedChange = onEnabledChange
                 )
             }
@@ -621,6 +666,7 @@ private fun StudyTimeCard(
     enabled: Boolean,
     startTime: String,
     endTime: String,
+    saving: Boolean,
     onEnabledChange: (Boolean) -> Unit,
     onStartTimeClick: () -> Unit,
     onEndTimeClick: () -> Unit
@@ -657,8 +703,9 @@ private fun StudyTimeCard(
                         )
                     }
                 }
-                Switch(
+                SavingSwitch(
                     checked = enabled,
+                    saving = saving,
                     onCheckedChange = onEnabledChange
                 )
             }
@@ -697,8 +744,10 @@ private fun StudyTimeCard(
 private fun LockPhoneCard(
     isLocked: Boolean,
     message: String,
+    saving: Boolean,
     onLockedChange: (Boolean) -> Unit,
-    onMessageChange: (String) -> Unit
+    onMessageChange: (String) -> Unit,
+    onMessageCommit: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -739,20 +788,34 @@ private fun LockPhoneCard(
                         )
                     }
                 }
-                Switch(
+                SavingSwitch(
                     checked = isLocked,
+                    saving = saving,
                     onCheckedChange = onLockedChange
                 )
             }
 
             if (isLocked) {
                 Spacer(modifier = Modifier.height(12.dp))
+                // Typing is not an edit-finish signal: saving per keystroke would send a
+                // request for every half-written word. The message is persisted when the field
+                // loses focus, which is what finishing an edit looks like here.
+                var hadFocus by remember { mutableStateOf(false) }
                 OutlinedTextField(
                     value = message,
                     onValueChange = onMessageChange,
                     label = { Text(stringResource(R.string.screentime_message_child)) },
                     placeholder = { Text(stringResource(R.string.screentime_message_hint)) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                hadFocus = true
+                            } else if (hadFocus) {
+                                hadFocus = false
+                                onMessageCommit()
+                            }
+                        },
                     singleLine = false,
                     maxLines = 2
                 )
@@ -843,6 +906,7 @@ private fun StudyTimeAllowedAppItem(
 private fun SectionHeader(
     title: String,
     actionText: String,
+    saving: Boolean = false,
     onAction: () -> Unit
 ) {
     Row(
@@ -854,6 +918,10 @@ private fun SectionHeader(
             text = title,
             style = MaterialTheme.typography.titleMedium
         )
+        if (saving) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            Spacer(modifier = Modifier.width(8.dp))
+        }
         TextButton(onClick = onAction) {
             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(4.dp))
@@ -1046,42 +1114,6 @@ private fun BlockedAppItem(
             }
         }
     }
-}
-
-/**
- * Get list of installed user apps (excluding system apps)
- */
-@Composable
-private fun rememberInstalledApps(excludePackages: Set<String> = emptySet()): List<InstalledApp> {
-    val context = LocalContext.current
-    var apps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
-
-    LaunchedEffect(excludePackages) {
-        apps = withContext(Dispatchers.IO) {
-            val pm = context.packageManager
-            pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                .filter { appInfo ->
-                    // Include user-installed apps and some common system apps
-                    val isUserApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
-                    val isUpdatedSystemApp = (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
-                    val hasLaunchIntent = pm.getLaunchIntentForPackage(appInfo.packageName) != null
-
-                    (isUserApp || isUpdatedSystemApp || hasLaunchIntent) &&
-                        appInfo.packageName != context.packageName &&
-                        appInfo.packageName !in excludePackages
-                }
-                .map { appInfo ->
-                    InstalledApp(
-                        packageName = appInfo.packageName,
-                        appName = pm.getApplicationLabel(appInfo).toString(),
-                        icon = try { pm.getApplicationIcon(appInfo) } catch (e: Exception) { null }
-                    )
-                }
-                .sortedBy { it.appName.lowercase() }
-        }
-    }
-
-    return apps
 }
 
 @Composable
@@ -1829,7 +1861,7 @@ private fun TimePickerDialogWrapper(
 private fun ScreenTimeLimitsPreviewContent() {
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            DailyLimitCard(true, 2, 30, {}, {})
+            DailyLimitCard(enabled = true, hours = 2, minutes = 30, saving = false, onEnabledChange = {}, onTimeClick = {})
         }
     }
 }

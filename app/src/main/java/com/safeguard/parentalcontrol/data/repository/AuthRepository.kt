@@ -8,6 +8,7 @@ import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import retrofit2.Response
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -184,6 +185,55 @@ class AuthRepository @Inject constructor(
         safeApiCall { apiService.getCurrentUser() }
     }
 
+    /**
+     * Proves the signed-in parent's identity to the server before a child's account is deleted:
+     * `DELETE family/child` takes no credential, so the password is checked through the existing
+     * login endpoint. The server must authenticate the SAME user that is signed in here.
+     *
+     * A missing stored email or a different user returns [DeletionError.CODE_ACCOUNT_MISMATCH],
+     * never 401: this endpoint bypasses AuthInterceptor, so no redirect to Login would happen, and
+     * 401 already means "wrong password" here. Neither the password nor the email is logged.
+     */
+    suspend fun reauthenticateWithPassword(password: String): NetworkResult<Unit> = withContext(Dispatchers.IO) {
+        val email = preferencesManager.userEmail
+            ?: return@withContext NetworkResult.Error("no session", DeletionError.CODE_ACCOUNT_MISMATCH)
+        reauthenticate { apiService.login(LoginRequest(email = email, password = password)) }
+    }
+
+    /** Same as [reauthenticateWithPassword] for a Google account: a fresh Google ID token. */
+    suspend fun reauthenticateWithGoogle(idToken: String): NetworkResult<Unit> = withContext(Dispatchers.IO) {
+        reauthenticate { apiService.googleAuth(GoogleAuthRequest(idToken = idToken, role = null)) }
+    }
+
+    private suspend fun reauthenticate(call: suspend () -> Response<TokenResponse>): NetworkResult<Unit> {
+        val result = safeApiCall(call)
+        Timber.tag(DELETION_TAG).i("reauth code=%s", (result as? NetworkResult.Error)?.code ?: "2xx")
+        return when (result) {
+            is NetworkResult.Success -> {
+                if (result.data.user.id == preferencesManager.userId) {
+                    // The server rotates the tokens on login, exactly as AuthRepository.login handles it.
+                    tokenManager.saveTokens(result.data.accessToken, result.data.refreshToken)
+                    NetworkResult.Success(Unit)
+                } else {
+                    NetworkResult.Error("account mismatch", DeletionError.CODE_ACCOUNT_MISMATCH)
+                }
+            }
+            is NetworkResult.Error -> NetworkResult.Error(result.message, result.code)
+            NetworkResult.Loading -> NetworkResult.Error("unexpected state", null)
+        }
+    }
+
+    /**
+     * Permanently delete the signed-in account. Success is any 2xx, whatever the body.
+     * Only the status is logged: never the request body, the password, or any token.
+     */
+    suspend fun deleteAccount(request: DeleteAccountRequest): NetworkResult<Unit> = withContext(Dispatchers.IO) {
+        Timber.tag(DELETION_TAG).i("self delete start")
+        val raw = safeApiCall { apiService.deleteAccount(request) }
+        Timber.tag(DELETION_TAG).i("self delete code=%s", (raw as? NetworkResult.Error)?.code ?: "2xx")
+        raw.treatEmpty2xxAsSuccess()
+    }
+
     // ==================== Push token registration ====================
 
     /**
@@ -289,4 +339,7 @@ class AuthRepository @Inject constructor(
         return preferencesManager.isChild
     }
 
+    private companion object {
+        const val DELETION_TAG = "AccountDeletion"
+    }
 }

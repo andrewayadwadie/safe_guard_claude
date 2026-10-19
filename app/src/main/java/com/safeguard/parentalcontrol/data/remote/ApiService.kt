@@ -36,6 +36,15 @@ interface ApiService {
     suspend fun getCurrentUser(): Response<User>
 
     /**
+     * Permanently delete the signed-in account. A plain @DELETE cannot carry a body, hence @HTTP.
+     * 200 = deleted, 400 = wrong password/confirmation, 401 = session over, 403 = supervised
+     * child, 429 = rate-limited. `Response<Unit>` because the success body shape is not
+     * guaranteed (may be empty or 204).
+     */
+    @HTTP(method = "DELETE", path = "auth/account", hasBody = true)
+    suspend fun deleteAccount(@Body request: DeleteAccountRequest): Response<Unit>
+
+    /**
      * Register/refresh this user's push token, or clear it by sending null.
      *
      * Parent devices have no device record of their own, so this — not `PUT /devices/{id}` —
@@ -317,6 +326,14 @@ interface ApiService {
      */
     @DELETE("family/link/{childId}")
     suspend fun removeFamilyLink(@Path("childId") childId: Int): Response<MessageResponse>
+
+    /**
+     * Permanently delete a linked child's ACCOUNT (parent only). NOT [removeFamilyLink], which
+     * only unlinks and keeps the account. [childId] MUST be `FamilyLink.childId` (the child's
+     * user id), never `FamilyLink.id` (the link id, which returns 404). No body.
+     */
+    @DELETE("family/child/{childId}")
+    suspend fun deleteChildAccount(@Path("childId") childId: Int): Response<Unit>
 
     // ==================== Screen Time Rules Endpoints ====================
 

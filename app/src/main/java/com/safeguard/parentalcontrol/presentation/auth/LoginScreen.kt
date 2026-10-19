@@ -1,11 +1,15 @@
 package com.safeguard.parentalcontrol.presentation.auth
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
@@ -81,9 +85,38 @@ fun LoginScreen(
         }
     }
 
+    // Confirm a permanent account deletion. A parent has nothing further to see, so the flag is
+    // cleared once the message has been shown; a child device keeps the uninstall note below
+    // until it is dismissed or the user signs in again (FR-022a).
+    val notice = uiState.deletionNotice
+    val accountDeletedMessage = stringResource(R.string.login_account_deleted)
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            snackbarHostState.showSnackbar(message = accountDeletedMessage, duration = SnackbarDuration.Long)
+            if (!notice.showUninstallNote) viewModel.dismissDeletionNotice()
+        }
+    }
+
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
         LoginContent(
             modifier = Modifier.padding(padding),
+            topNotice = if (notice?.showUninstallNote == true) {
+                {
+                    UninstallNoteCard(
+                        onOpenSettings = {
+                            runCatching {
+                                context.startActivity(
+                                    Intent(
+                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                        Uri.fromParts("package", context.packageName, null)
+                                    )
+                                )
+                            }
+                        },
+                        onDismiss = viewModel::dismissDeletionNotice
+                    )
+                }
+            } else null,
             email = email,
             onEmailChange = { email = it },
             password = password,
@@ -123,6 +156,7 @@ private fun LoginContent(
     onNavigateToRegister: () -> Unit,
     onNavigateToForgotPassword: () -> Unit = {},
     modifier: Modifier = Modifier,
+    topNotice: @Composable (() -> Unit)? = null,
 ) {
     val focusManager = LocalFocusManager.current
     Column(
@@ -152,6 +186,11 @@ private fun LoginContent(
         }
 
         Spacer(modifier = Modifier.height(SafeGuardDimens.stackLg))
+
+        if (topNotice != null) {
+            topNotice()
+            Spacer(modifier = Modifier.height(SafeGuardDimens.stackMd))
+        }
 
         Text(
             text = stringResource(R.string.login_title),
@@ -259,6 +298,46 @@ private fun LoginContent(
         }
 
         Spacer(modifier = Modifier.height(SafeGuardDimens.stackLg))
+    }
+}
+
+/**
+ * Shown on a child device after its account was deleted: protection is off, and the app or its
+ * permissions can now be removed. The permissions themselves can only be revoked by the user.
+ */
+@Composable
+private fun UninstallNoteCard(onOpenSettings: () -> Unit, onDismiss: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(top = 8.dp)) {
+                Text(
+                    text = stringResource(R.string.login_uninstall_note_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Text(
+                    text = stringResource(R.string.login_uninstall_note_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                TextButton(onClick = onOpenSettings) {
+                    Text(stringResource(R.string.login_uninstall_note_button))
+                }
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = stringResource(R.string.login_uninstall_note_dismiss),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
     }
 }
 

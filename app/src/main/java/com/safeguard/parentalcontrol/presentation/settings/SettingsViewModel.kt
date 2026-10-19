@@ -15,6 +15,7 @@ import com.safeguard.parentalcontrol.data.repository.AuthRepository
 import com.safeguard.parentalcontrol.service.ContentFilterVpnService
 import com.safeguard.parentalcontrol.util.ImageBlurManager
 import com.safeguard.parentalcontrol.util.LocaleHelper
+import com.safeguard.parentalcontrol.util.MediaWriteAccess
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.ProtectionStatusHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,6 +38,12 @@ data class SettingsUiState(
     val userRole: UserRole = UserRole.CHILD,
     val isContentFilteringEnabled: Boolean = false,
     val isMaximumProtectionEnabled: Boolean = false,
+    /**
+     * Maximum Protection is on but no picture folder has been granted, so nothing is actually being
+     * blurred. The screen uses this to send the parent to the permissions flow rather than leaving a
+     * switch that reads "on" while the gallery is untouched.
+     */
+    val needsFolderAccessForBlur: Boolean = false,
     val notificationsEnabled: Boolean = false,
     val isLoading: Boolean = false,
     val logoutSuccess: Boolean = false,
@@ -57,6 +64,7 @@ class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val preferencesManager: PreferencesManager,
     private val imageBlurManager: ImageBlurManager,
+    private val mediaWriteAccess: MediaWriteAccess,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -102,7 +110,11 @@ class SettingsViewModel @Inject constructor(
      */
     fun refreshMaximumProtectionState() {
         _uiState.update {
-            it.copy(isMaximumProtectionEnabled = preferencesManager.isMaximumProtectionEnabled)
+            it.copy(
+                isMaximumProtectionEnabled = preferencesManager.isMaximumProtectionEnabled,
+                needsFolderAccessForBlur = preferencesManager.isMaximumProtectionEnabled &&
+                    !mediaWriteAccess.hasAnyGrant()
+            )
         }
     }
 
@@ -112,10 +124,28 @@ class SettingsViewModel @Inject constructor(
      *
      * When enabling, kick off a retroactive blur pass so images flagged copy-only while the
      * setting was OFF get blurred now. The pass is idempotent and runs off the main thread.
+     *
+     * Blurring also needs folder access, which the parent grants once per picture folder through the
+     * system picker. Enabling the setting without it would leave a switch that reads "on" while
+     * nothing is blurred, so [SettingsUiState.needsFolderAccessForBlur] is raised and the screen sends
+     * the parent to the permissions flow to finish the job. The setting itself is still stored —
+     * the parent asked for it, and the retroactive pass will catch up once access is granted.
      */
     fun setMaximumProtection(enabled: Boolean) {
         preferencesManager.isMaximumProtectionEnabled = enabled
-        _uiState.update { it.copy(isMaximumProtectionEnabled = enabled) }
+
+        val needsFolderAccess = enabled && !mediaWriteAccess.hasAnyGrant()
+        _uiState.update {
+            it.copy(
+                isMaximumProtectionEnabled = enabled,
+                needsFolderAccessForBlur = needsFolderAccess
+            )
+        }
+
+        if (needsFolderAccess) {
+            Timber.i("Maximum Protection enabled without folder access; prompting the parent to grant it")
+            return
+        }
 
         if (enabled) {
             viewModelScope.launch(Dispatchers.IO) {

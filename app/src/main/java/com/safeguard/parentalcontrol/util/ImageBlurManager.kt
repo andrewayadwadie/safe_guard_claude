@@ -19,8 +19,6 @@ import androidx.annotation.RequiresApi
 import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -44,10 +42,20 @@ import javax.inject.Singleton
  */
 @Singleton
 class ImageBlurManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val mediaWriteAccess: MediaWriteAccess
 ) {
     companion object {
         private const val TAG = "ImageBlurManager"
+
+        // Why an in-place blur did not happen. Stored verbatim in the metadata file and mapped to
+        // parent-facing copy at the UI layer, so the wording can change without rewriting history.
+        const val REASON_NO_FOLDER_ACCESS = "no_folder_access"
+        const val REASON_FOLDER_ACCESS_REVOKED = "folder_access_revoked"
+        const val REASON_FOLDER_NOT_GRANTABLE = "folder_not_grantable"
+        const val REASON_IMAGE_MISSING = "image_missing"
+        const val REASON_WRITE_FAILED = "write_failed"
+        const val REASON_BLUR_FAILED = "blur_failed"
 
         // Backup directory name (in app-private storage)
         private const val BACKUP_DIR = "image_backup"
@@ -104,11 +112,29 @@ class ImageBlurManager @Inject constructor(
                 return BlurResult.AlreadyBlurred(backupId)
             }
 
-            // Step 2: Backup original to app-private storage
+            // Step 2: Backup original to app-private storage.
             originalFile.copyTo(backupFile, overwrite = true)
-            Timber.d("$TAG: Original backed up to: ${backupFile.absolutePath}")
 
-            // Step 3: Save metadata
+            // Step 3: VERIFY the backup before anything touches the gallery file.
+            //
+            // Replacing an image opens its document for writing, which truncates it first, so a
+            // failure part-way through would leave a truncated file where the child's photo was.
+            // The backup is the only recovery source at that moment, so an unverified backup is not
+            // a backup. Nothing below this point can destroy the original.
+            if (!isBackupIntact(backupFile, originalFile)) {
+                backupFile.delete()
+                Timber.e("$TAG: Backup verification failed, refusing to touch the gallery image")
+                return BlurResult.Error("Backup verification failed")
+            }
+            Timber.d("$TAG: Original backed up and verified: ${backupFile.absolutePath}")
+
+            // Steps 4-6: blur, write through the parent-granted folder access, verify the result.
+            // Returns null on success, or the reason the gallery image was left alone. On a failure
+            // that had already opened the document, the original is restored from the backup.
+            val notBlurredReason = writeBlurredToGallery(imagePath, backupFile)
+
+            // Step 7: record what actually happened. blurApplied is true only for a verified write,
+            // so the parent is never told an image was blurred when it was not.
             val metadata = ImageMetadata(
                 backupId = backupId,
                 originalPath = imagePath,
@@ -117,36 +143,21 @@ class ImageBlurManager @Inject constructor(
                 timestamp = System.currentTimeMillis(),
                 originalSize = originalFile.length(),
                 originalName = originalFile.name,
-                blurApplied = true
+                blurApplied = notBlurredReason == null,
+                notBlurredReason = notBlurredReason
             )
             saveMetadata(metadataFile, metadata)
 
-            // Step 4: Create blurred version
-            val blurredBitmap = createBlurredBitmap(imagePath)
-            if (blurredBitmap == null) {
-                // Cleanup backup if blur fails
-                backupFile.delete()
-                metadataFile.delete()
-                Timber.e("$TAG: Failed to create blurred bitmap")
-                return BlurResult.Error("Failed to create blurred image")
+            if (notBlurredReason == null) {
+                // Update MediaStore so the gallery thumbnail shows the blurred version.
+                refreshMediaStore(imagePath)
+                Timber.i("$TAG: Successfully blurred image. Backup ID: $backupId")
+            } else {
+                // The violation is still backed up and must still reach the parent — the alert is
+                // what protects the child. Only the in-place blur was unavailable.
+                Timber.w("$TAG: Backed up without blurring ($notBlurredReason). Backup ID: $backupId")
             }
 
-            // Step 5: Replace original with blurred version
-            val replaced = replaceWithBlurred(originalFile, blurredBitmap)
-            blurredBitmap.recycle()
-
-            if (!replaced) {
-                // Cleanup backup if replace fails
-                backupFile.delete()
-                metadataFile.delete()
-                Timber.e("$TAG: Failed to replace original with blurred")
-                return BlurResult.Error("Failed to replace original")
-            }
-
-            // Step 6: Update MediaStore so gallery shows blurred version
-            refreshMediaStore(imagePath)
-
-            Timber.i("$TAG: Successfully blurred image. Backup ID: $backupId")
             return BlurResult.Success(backupId, metadata)
 
         } catch (e: Exception) {
@@ -236,24 +247,29 @@ class ImageBlurManager @Inject constructor(
             }
 
             try {
-                val blurredBitmap = createBlurredBitmap(metadata.originalPath)
-                if (blurredBitmap == null) {
-                    Timber.e("$TAG: Retro-blur failed to create bitmap: ${metadata.originalPath}")
+                val backupFile = File(backupDir, "${metadata.backupId}.jpg")
+                val metadataFile = File(backupDir, "${metadata.backupId}$METADATA_EXT")
+
+                // The existing backup is the recovery source, so it must still be intact before the
+                // gallery file is opened for writing. If it is not, leave the image alone.
+                if (!backupFile.exists() || backupFile.length() <= 0L) {
+                    Timber.w("$TAG: Retro-blur skip (backup missing): ${metadata.originalPath}")
                     continue
                 }
 
-                val replaced = replaceWithBlurred(originalFile, blurredBitmap)
-                blurredBitmap.recycle()
-                if (!replaced) {
-                    Timber.e("$TAG: Retro-blur failed to replace original: ${metadata.originalPath}")
+                val notBlurredReason = writeBlurredToGallery(metadata.originalPath, backupFile)
+                if (notBlurredReason != null) {
+                    // Record why, so the parent sees a reason instead of a silently unblurred image,
+                    // and so the next run does not retry a folder that cannot be written at all.
+                    saveMetadata(metadataFile, metadata.copy(notBlurredReason = notBlurredReason))
+                    Timber.w("$TAG: Retro-blur could not write ($notBlurredReason): ${metadata.originalPath}")
                     continue
                 }
 
                 refreshMediaStore(metadata.originalPath)
 
                 // Mark this backup as now-blurred so it is not processed again.
-                val metadataFile = File(backupDir, "${metadata.backupId}$METADATA_EXT")
-                saveMetadata(metadataFile, metadata.copy(blurApplied = true))
+                saveMetadata(metadataFile, metadata.copy(blurApplied = true, notBlurredReason = null))
 
                 blurredCount++
                 Timber.i("$TAG: Retroactively blurred: ${metadata.originalPath}")
@@ -289,13 +305,29 @@ class ImageBlurManager @Inject constructor(
             return false
         }
 
+        // A copy-only backup never altered the gallery image, so there is nothing to write back —
+        // approving it just means dropping the private copy.
+        if (!metadata.blurApplied) {
+            backupFile.delete()
+            metadataFile.delete()
+            Timber.i("$TAG: Copy-only backup discarded on approval: ${metadata.originalPath}")
+            return true
+        }
+
         return try {
-            val originalPath = File(metadata.originalPath)
+            // Write the original back through the parent-granted folder access.
+            val result = mediaWriteAccess.write(metadata.originalPath) { out ->
+                backupFile.inputStream().use { input -> input.copyTo(out) }
+            }
 
-            // Restore original
-            backupFile.copyTo(originalPath, overwrite = true)
+            if (result !is MediaWriteAccess.WriteResult.Success) {
+                // Keep the backup. Losing it here would make the original unrecoverable, which is a
+                // far worse outcome than asking the parent to restore folder access and try again.
+                Timber.e("$TAG: Could not restore original ($result), keeping the backup: $backupId")
+                return false
+            }
 
-            // Clean up backup
+            // Only now is it safe to drop the backup.
             backupFile.delete()
             metadataFile.delete()
 
@@ -307,6 +339,30 @@ class ImageBlurManager @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "$TAG: Error restoring original: $backupId")
             false
+        }
+    }
+
+    /** A parent decision on a reviewed image. */
+    enum class ReviewAction { APPROVE, REJECT }
+
+    /**
+     * Why [action] cannot be carried out on [backupId] right now, or null when it can.
+     *
+     * Lets the review screen tell the parent what to fix *before* they tap, instead of failing after.
+     * Approving a copy-only backup needs no folder access at all — the gallery image was never
+     * altered, so approval just drops the private copy — whereas rejecting always has to remove the
+     * image from the device.
+     */
+    fun reviewBlockedReason(backupId: String, action: ReviewAction): String? {
+        val metadata = getMetadata(backupId) ?: return null
+
+        if (action == ReviewAction.APPROVE && !metadata.blurApplied) return null
+
+        return when (mediaWriteAccess.grantStateForPath(metadata.originalPath)) {
+            MediaWriteAccess.GrantState.GRANTED -> null
+            MediaWriteAccess.GrantState.REVOKED -> REASON_FOLDER_ACCESS_REVOKED
+            MediaWriteAccess.GrantState.UNGRANTABLE -> REASON_FOLDER_NOT_GRANTABLE
+            MediaWriteAccess.GrantState.NOT_REQUESTED -> REASON_NO_FOLDER_ACCESS
         }
     }
 
@@ -325,14 +381,17 @@ class ImageBlurManager @Inject constructor(
         val metadata = loadMetadata(metadataFile)
 
         return try {
-            // Delete the blurred version (in original location)
+            // Remove the image from the device through the parent-granted folder access. An image
+            // that has already gone counts as success — the desired end state holds.
             metadata?.let {
-                val blurredFile = File(it.originalPath)
-                if (blurredFile.exists()) {
-                    blurredFile.delete()
-                    // Remove from MediaStore
-                    removeFromMediaStore(it.originalPath)
+                val result = mediaWriteAccess.deleteDocument(it.originalPath)
+                if (result !is MediaWriteAccess.WriteResult.Success) {
+                    // Keep both files. Dropping the backup while the image is still on the device
+                    // would leave the child's copy in place with no way to act on it.
+                    Timber.e("$TAG: Could not delete the device image ($result), keeping the backup: $backupId")
+                    return false
                 }
+                removeFromMediaStore(it.originalPath)
             }
 
             // Delete backup
@@ -746,30 +805,119 @@ class ImageBlurManager @Inject constructor(
     }
 
     /**
-     * Replace original file with blurred bitmap.
+     * Blur the image at [imagePath] and write it over the gallery copy through the parent-granted
+     * folder access.
+     *
+     * @param backupFile the already-verified recovery source, used if the write fails after the
+     *   document has been opened (and therefore truncated).
+     * @return null when the gallery copy now holds a verified blurred image, otherwise the reason it
+     *   does not. A non-null return always means the original is still intact.
      */
-    private fun replaceWithBlurred(originalFile: File, blurredBitmap: Bitmap): Boolean {
-        return try {
-            FileOutputStream(originalFile).use { out ->
+    private fun writeBlurredToGallery(imagePath: String, backupFile: File): String? {
+        // Nothing is opened, and so nothing can be damaged, unless access is actually held.
+        when (val access = mediaWriteAccess.grantStateForPath(imagePath)) {
+            MediaWriteAccess.GrantState.GRANTED -> Unit
+            MediaWriteAccess.GrantState.REVOKED -> return REASON_FOLDER_ACCESS_REVOKED
+            MediaWriteAccess.GrantState.UNGRANTABLE -> return REASON_FOLDER_NOT_GRANTABLE
+            MediaWriteAccess.GrantState.NOT_REQUESTED -> {
+                Timber.d("$TAG: No folder access for $imagePath ($access)")
+                return REASON_NO_FOLDER_ACCESS
+            }
+        }
+
+        val blurredBitmap = createBlurredBitmap(imagePath)
+        if (blurredBitmap == null) {
+            Timber.e("$TAG: Failed to create blurred bitmap")
+            return REASON_BLUR_FAILED
+        }
+
+        val result = try {
+            mediaWriteAccess.write(imagePath) { out ->
                 blurredBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
             }
-            true
-        } catch (e: Exception) {
-            Timber.e(e, "$TAG: Error replacing with blurred")
-            false
+        } finally {
+            blurredBitmap.recycle()
+        }
+
+        return when (result) {
+            is MediaWriteAccess.WriteResult.Success -> null
+
+            // These two never opened the document, so the original was never touched.
+            is MediaWriteAccess.WriteResult.NoAccess -> when (result.state) {
+                MediaWriteAccess.GrantState.REVOKED -> REASON_FOLDER_ACCESS_REVOKED
+                MediaWriteAccess.GrantState.UNGRANTABLE -> REASON_FOLDER_NOT_GRANTABLE
+                else -> REASON_NO_FOLDER_ACCESS
+            }
+            is MediaWriteAccess.WriteResult.DocumentMissing -> REASON_IMAGE_MISSING
+
+            // These two may have truncated the gallery file. Put the original back.
+            is MediaWriteAccess.WriteResult.Failed -> {
+                Timber.e("$TAG: Write failed (${result.message}), restoring the original")
+                restoreFromBackup(imagePath, backupFile)
+                REASON_WRITE_FAILED
+            }
+            is MediaWriteAccess.WriteResult.VerificationFailed -> {
+                Timber.e(
+                    "$TAG: Write verification failed (wrote ${result.expectedBytes}, " +
+                        "found ${result.actualBytes}), restoring the original"
+                )
+                restoreFromBackup(imagePath, backupFile)
+                REASON_WRITE_FAILED
+            }
         }
     }
 
     /**
-     * Refresh MediaStore to show updated image.
+     * Put the original bytes back over a gallery file whose write failed part-way through.
+     *
+     * If this also fails the original is not lost — the verified backup still holds it and the parent
+     * can restore from the review screen — but it is logged at error level because the child is left
+     * looking at a damaged file until they do.
+     */
+    private fun restoreFromBackup(imagePath: String, backupFile: File) {
+        val result = mediaWriteAccess.write(imagePath) { out ->
+            backupFile.inputStream().use { input -> input.copyTo(out) }
+        }
+        if (result is MediaWriteAccess.WriteResult.Success) {
+            refreshMediaStore(imagePath)
+            Timber.i("$TAG: Original restored after a failed write: $imagePath")
+        } else {
+            Timber.e("$TAG: Could not restore the original after a failed write ($result). " +
+                "The backup still holds it: ${backupFile.name}")
+        }
+    }
+
+    /**
+     * Whether a freshly written backup is a usable recovery source.
+     *
+     * Size comparison rather than a hash: this runs on every violation, the copy was made moments
+     * ago from the same file, and the failure being guarded against is a truncated or empty copy.
+     */
+    private fun isBackupIntact(backupFile: File, originalFile: File): Boolean =
+        backupFile.exists() &&
+            backupFile.length() > 0L &&
+            backupFile.length() == originalFile.length()
+
+    /**
+     * Refresh MediaStore so the gallery thumbnail matches the bytes on disk.
+     *
+     * Failures are swallowed deliberately. This is a cosmetic follow-up to an operation that has
+     * already succeeded, and it is called from the success path of blurring, restoring and the
+     * retroactive pass. Letting it throw would propagate into those callers' catch blocks and report
+     * a completed restore as a failure — telling the parent their approval did not work when the
+     * original is already back in place.
      */
     private fun refreshMediaStore(imagePath: String) {
-        MediaScannerConnection.scanFile(
-            context,
-            arrayOf(imagePath),
-            arrayOf("image/jpeg"),
-            null
-        )
+        try {
+            MediaScannerConnection.scanFile(
+                context,
+                arrayOf(imagePath),
+                arrayOf("image/jpeg"),
+                null
+            )
+        } catch (e: Exception) {
+            Timber.w(e, "$TAG: Could not refresh the gallery for $imagePath; the file itself is correct")
+        }
     }
 
     /**
@@ -810,6 +958,9 @@ class ImageBlurManager @Inject constructor(
             appendLine("originalSize=${metadata.originalSize}")
             appendLine("originalName=${metadata.originalName}")
             appendLine("blurApplied=${metadata.blurApplied}")
+            // Written only when there is a reason, so a deliberately copy-only backup stays
+            // distinguishable from one that wanted blurring and could not get it.
+            metadata.notBlurredReason?.let { appendLine("notBlurredReason=$it") }
         })
     }
 
@@ -836,7 +987,10 @@ class ImageBlurManager @Inject constructor(
                 originalSize = map["originalSize"]?.toLongOrNull() ?: 0L,
                 originalName = map["originalName"] ?: "",
                 // Missing key ⇒ legacy file from the always-blur era ⇒ treat as blurred.
-                blurApplied = map["blurApplied"]?.toBooleanStrictOrNull() ?: true
+                blurApplied = map["blurApplied"]?.toBooleanStrictOrNull() ?: true,
+                // Absent on every metadata file written before feature 016, which reads as "no
+                // reason recorded" rather than as an error. Those backups stay fully usable.
+                notBlurredReason = map["notBlurredReason"]
             )
         } catch (e: Exception) {
             Timber.e(e, "$TAG: Error loading metadata")
@@ -851,6 +1005,12 @@ class ImageBlurManager @Inject constructor(
      * replaced with a blurred version (Maximum Protection ON); false = copy-only, the gallery
      * original is untouched (Maximum Protection OFF). Legacy metadata files (written before
      * copy-only existed) have no such field and are parsed as true — they were always blurred.
+     *
+     * [notBlurredReason] separates the two ways [blurApplied] can be false. Null means copy-only was
+     * the intent — Maximum Protection was off, and nothing went wrong. A reason code means blurring
+     * was wanted and could not happen: no folder access, access revoked, a folder the platform will
+     * not grant such as `Download`, the image gone, or a failed write. It exists so the parent is
+     * given an explanation instead of an image that is quietly still visible.
      */
     data class ImageMetadata(
         val backupId: String,
@@ -860,7 +1020,8 @@ class ImageBlurManager @Inject constructor(
         val timestamp: Long,
         val originalSize: Long,
         val originalName: String,
-        val blurApplied: Boolean = true
+        val blurApplied: Boolean = true,
+        val notBlurredReason: String? = null
     )
 
     /**

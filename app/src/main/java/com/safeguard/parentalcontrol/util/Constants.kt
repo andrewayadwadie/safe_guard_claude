@@ -47,6 +47,17 @@ object Constants {
     // Parent dismissed the "notifications are disabled" banner. Purely informational; the
     // banner never blocks any functionality. Cleared on logout by clearAll().
     const val KEY_NOTIFICATION_BANNER_DISMISSED = "notification_banner_dismissed"
+    // Names of the picture-folder grant targets the parent has completed the system picker for.
+    // NOT a mirror of the grants themselves — the platform's persisted-permission list is the only
+    // authority on what the app may write, and a stale copy would make the app claim access it does
+    // not have. This records only what was asked and answered, so a folder whose grant has since
+    // been revoked can be described as "access was turned off" rather than "never set up".
+    // Cleared on logout by clearAll().
+    const val KEY_COMPLETED_FOLDER_GRANTS = "completed_folder_grants"
+    // The parent has been shown, once, the notice that images saved to the Download folder cannot
+    // be blurred in place (the platform refuses to grant that folder from Android 11 onward).
+    // Informational and shown once; never repeated per alert. Cleared on logout by clearAll().
+    const val KEY_DOWNLOAD_BLUR_NOTICE_SHOWN = "download_blur_notice_shown"
 
     // Deep link (violation notification -> Alerts screen). Carried as MainActivity intent
     // extras; consumed once by the nav graph so screen recreation does not re-navigate.

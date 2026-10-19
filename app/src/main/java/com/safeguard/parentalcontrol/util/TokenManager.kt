@@ -29,6 +29,9 @@ sealed class AuthEvent {
     object SessionExpired : AuthEvent()
     object TokenRevoked : AuthEvent()
     object ManualLogout : AuthEvent()
+
+    /** The signed-in account was permanently deleted (confirmed by the server). */
+    object AccountDeleted : AuthEvent()
 }
 
 @Singleton
@@ -205,6 +208,18 @@ class TokenManager @Inject constructor(
         encryptedPrefs.edit().clear().apply()
         Timber.d("Tokens cleared (token revoked)")
         _authEvents.tryEmit(AuthEvent.TokenRevoked)
+    }
+
+    /**
+     * Clear tokens because the account was permanently deleted.
+     * Emits [AuthEvent.AccountDeleted] (no "session ended" toast) only when [emit] is true; the
+     * recovery path for a session already gone passes false because the revocation event was
+     * already emitted when the interceptor cleared the tokens.
+     */
+    fun clearTokensDueToAccountDeletion(emit: Boolean) {
+        encryptedPrefs.edit().clear().apply()
+        Timber.tag("AccountDeletion").i("Tokens cleared (account deleted)")
+        if (emit) _authEvents.tryEmit(AuthEvent.AccountDeleted)
     }
 
     /**

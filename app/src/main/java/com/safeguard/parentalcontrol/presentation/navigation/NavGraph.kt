@@ -24,6 +24,7 @@ import com.safeguard.parentalcontrol.presentation.forgotpassword.ResetPasswordSc
 import com.safeguard.parentalcontrol.presentation.blacklist.BlacklistScreen
 import com.safeguard.parentalcontrol.presentation.children.ChildrenScreen
 import com.safeguard.parentalcontrol.presentation.dashboard.DashboardScreen
+import com.safeguard.parentalcontrol.presentation.deleteaccount.DeleteAccountScreen
 import com.safeguard.parentalcontrol.presentation.devices.DevicesScreen
 import com.safeguard.parentalcontrol.presentation.devicesetup.DeviceSetupScreen
 import com.safeguard.parentalcontrol.presentation.imagereview.ImageReviewScreen
@@ -49,6 +50,9 @@ private const val FORGOT_PASSWORD_FLOW_ROUTE = "forgot_password_flow"
 
 /** Result key set on the Login entry when a password reset completes. */
 private const val PASSWORD_RESET_SUCCESS_KEY = "password_reset_success"
+
+/** Set on the Dashboard entry when a child's account was deleted, so it reloads its data (FR-023). */
+private const val CHILDREN_CHANGED_KEY = "children_changed"
 
 /**
  * Navigate to the existing Alerts route for a pending notification deep link.
@@ -77,6 +81,7 @@ sealed class Screen(val route: String) {
     }
     data object Settings : Screen("settings")
     data object ChangePassword : Screen("change_password")
+    data object DeleteAccount : Screen("delete_account")
 
     /**
      * Forgot-password recovery flow. Both steps live in a nested graph
@@ -336,8 +341,13 @@ fun SafeGuardNavGraph(
         }
 
         // Dashboard Screen
-        composable(Screen.Dashboard.route) {
+        composable(Screen.Dashboard.route) { dashboardEntry ->
+            val childrenChanged by dashboardEntry.savedStateHandle
+                .getStateFlow(CHILDREN_CHANGED_KEY, false)
+                .collectAsStateWithLifecycle()
             DashboardScreen(
+                childrenChanged = childrenChanged,
+                onChildrenChangeHandled = { dashboardEntry.savedStateHandle[CHILDREN_CHANGED_KEY] = false },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
                 },
@@ -384,11 +394,26 @@ fun SafeGuardNavGraph(
                 onNavigateToImageReview = { navController.navigate(Screen.ImageReview.route) },
                 onNavigateToTextReview = { navController.navigate(Screen.TextReview.route) },
                 onNavigateToChangePassword = { navController.navigate(Screen.ChangePassword.route) },
+                onNavigateToDeleteAccount = { navController.navigate(Screen.DeleteAccount.route) },
                 onNavigateToPrivacyPolicy = { navController.navigate(Screen.Legal.createRoute("privacy")) },
                 onNavigateToTerms = { navController.navigate(Screen.Legal.createRoute("terms")) },
                 onLogout = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // Permanent account deletion. On success the whole back stack is replaced by Login; the
+        // MainActivity AccountDeleted handler does the same, and launchSingleTop makes the two idempotent.
+        composable(Screen.DeleteAccount.route) {
+            DeleteAccountScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onDeleted = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                        launchSingleTop = true
                     }
                 }
             )
@@ -472,6 +497,10 @@ fun SafeGuardNavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToChildDevices = { childId, childName ->
                     navController.navigate(Screen.ChildDevices.createRoute(childId, childName))
+                },
+                // The Dashboard sits right below this screen; tell it to reload its devices and alerts.
+                onChildrenChanged = {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(CHILDREN_CHANGED_KEY, true)
                 }
             )
         }

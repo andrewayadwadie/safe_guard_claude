@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -18,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.safeguard.parentalcontrol.data.account.AccountDeletionCoordinator
 import com.safeguard.parentalcontrol.presentation.navigation.SafeGuardNavGraph
 import com.safeguard.parentalcontrol.presentation.navigation.Screen
 import com.safeguard.parentalcontrol.presentation.theme.SafeGuardTheme
@@ -27,12 +29,18 @@ import com.safeguard.parentalcontrol.util.AuthEvent
 import com.safeguard.parentalcontrol.util.Constants
 import com.safeguard.parentalcontrol.util.DeepLinkHolder
 import com.safeguard.parentalcontrol.util.LocaleHelper
+import com.safeguard.parentalcontrol.util.NetworkMonitor
 import com.safeguard.parentalcontrol.util.PendingDeepLink
 import com.safeguard.parentalcontrol.util.PreferencesManager
 import com.safeguard.parentalcontrol.util.TokenManager
 import com.safeguard.parentalcontrol.worker.PushTokenSyncScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -54,6 +62,12 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var pushTokenSyncScheduler: PushTokenSyncScheduler
 
+    @Inject
+    lateinit var accountDeletionCoordinator: AccountDeletionCoordinator
+
+    @Inject
+    lateinit var networkMonitor: NetworkMonitor
+
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleHelper.wrap(newBase))
     }
@@ -66,7 +80,17 @@ class MainActivity : ComponentActivity() {
 
         // Start MonitoringService if user is logged in and device is registered
         // This ensures enforcement works even if the service wasn't started on boot
-        startMonitoringServiceIfNeeded()
+        if (accountDeletionCoordinator.hasPendingRecovery()) {
+            // A deletion this device never saw the end of must be settled BEFORE anything is
+            // started, so a deleted account's protection cannot come back to life first (FR-016a).
+            lifecycleScope.launch {
+                accountDeletionCoordinator.resumePendingIfAny()
+                startMonitoringServiceIfNeeded()
+                retryDeletionRecoveryWhenOnline()
+            }
+        } else {
+            startMonitoringServiceIfNeeded()
+        }
 
         // Publish this device's push token on every start with a live session. Registering
         // only at sign-in would leave anyone already signed in before this shipped
@@ -91,6 +115,19 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * Recovery that hit a network error leaves its marker in place. Try again each time
+     * connectivity comes back while this Activity is alive, until nothing is pending.
+     * `drop(1)` skips the current state: only a fresh transition to online is worth a retry.
+     */
+    private suspend fun retryDeletionRecoveryWhenOnline() {
+        val backOnline = networkMonitor.isConnected.distinctUntilChanged().drop(1).filter { it }
+        while (accountDeletionCoordinator.hasPendingRecovery()) {
+            backOnline.first()
+            accountDeletionCoordinator.resumePendingIfAny()
         }
     }
 
@@ -162,6 +199,12 @@ fun SafeGuardApp(
                 is AuthEvent.ManualLogout -> {
                     // Manual logout is handled by the logout flow, no need for toast
                     Timber.d("Manual logout")
+                }
+                is AuthEvent.AccountDeleted -> {
+                    // No "session ended" toast: the Login screen shows the "account deleted"
+                    // confirmation from the durable notice flag, which survives a cold start.
+                    Timber.tag("AccountDeletion").i("account deleted event, redirecting to login")
+                    navigateToLogin(navController)
                 }
             }
         }

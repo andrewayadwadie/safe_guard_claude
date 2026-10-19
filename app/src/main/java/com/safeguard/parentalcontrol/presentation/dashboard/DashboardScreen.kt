@@ -73,11 +73,21 @@ fun DashboardScreen(
     onNavigateToScreenTimeLimits: (deviceId: Int, deviceName: String) -> Unit = { _, _ -> },
     onNavigateToPermissionsSetup: () -> Unit = {},
     onNavigateToLinkParent: () -> Unit = {},
+    childrenChanged: Boolean = false,
+    onChildrenChangeHandled: () -> Unit = {},
     onLogout: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    // A child's account was deleted from the Children screen: reload so its devices and alerts go (FR-023).
+    LaunchedEffect(childrenChanged) {
+        if (childrenChanged) {
+            viewModel.refreshAll()
+            onChildrenChangeHandled()
+        }
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
 

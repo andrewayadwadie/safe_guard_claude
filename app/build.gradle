@@ -55,8 +55,8 @@ android {
         applicationId "com.safeguard.parentalcontrol"
         minSdk 26
         targetSdk 36
-        versionCode 7
-        versionName "1.2.0"
+        versionCode 12
+        versionName "1.2.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -196,6 +196,126 @@ tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
                     "\n\nRelease build blocked - fix secrets.properties:\n" +
                     failures.collect { "  * ${it}" }.join("\n") +
                     "\n\nSee specs/013-play-store-release-readiness/contracts/build-guards.md\n")
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Banned-permission and foreground-service declaration guard.
+// See specs/015-remove-datasync-fgs-permission/contracts/build-guard.md
+//     specs/016-remove-all-files-access/contracts/build-guard.md
+//
+// Deleting a permission from the app manifest fixes the problem once; it does not keep it
+// fixed. A dependency upgrade can contribute a <uses-permission> node or a
+// foregroundServiceType attribute into the MERGED manifest with no change to any file a
+// reviewer reads. This guard reads the merged manifest and blocks the build.
+//
+// Feature 016 extended this guard rather than adding a second one: the manifest-locating,
+// comment-stripping and origin-reporting logic is identical, and two guards reading the same
+// file at the same point in the same build would mean a future reader had to check both to
+// know what is enforced.
+//
+// Hooked to the manifest-processing task rather than preReleaseBuild: at preReleaseBuild
+// time the merged manifest does not exist yet, so there is nothing to inspect. Both
+// bundleRelease and assembleRelease depend on processReleaseMainManifest, so the guard
+// cannot be skipped while producing a release artifact. Debug is checked too, so the
+// failure surfaces during ordinary development instead of at release time.
+// ---------------------------------------------------------------------------
+tasks.matching { it.name ==~ /process(Debug|Release)MainManifest/ }.configureEach {
+    doLast { manifestTask ->
+        def candidates = []
+        manifestTask.outputs.files.files.each { f ->
+            if (f.isDirectory()) {
+                f.eachFileRecurse { if (it.name == 'AndroidManifest.xml') candidates << it }
+            } else if (f.name == 'AndroidManifest.xml') {
+                candidates << f
+            }
+        }
+
+        // A guard that silently skips when its input is missing reports safety it never
+        // checked, so an unresolvable manifest is a failure and not a pass.
+        if (candidates.isEmpty()) {
+            throw new GradleException(
+                    "\n\nManifest guard could not locate the merged manifest " +
+                    "produced by '${manifestTask.name}'.\n" +
+                    "The guard must not pass without inspecting it.\n\n" +
+                    "See specs/015-remove-datasync-fgs-permission/contracts/build-guard.md\n" +
+                    "    specs/016-remove-all-files-access/contracts/build-guard.md\n")
+        }
+
+        // Permissions that must never appear in the shipped manifest, and why. The reason is
+        // printed on failure so the next developer does not simply add the permission back.
+        def bannedPermissions = [
+                'android.permission.FOREGROUND_SERVICE_DATA_SYNC':
+                        'A dataSync foreground service is capped at ~6 cumulative hours per 24 on\n' +
+                        '  API 35+ and cannot be started from BOOT_COMPLETED. For a 24/7\n' +
+                        '  child-protection monitor both failures are silent.\n' +
+                        '  See specs/015-remove-datasync-fgs-permission/contracts/build-guard.md',
+
+                'android.permission.MANAGE_EXTERNAL_STORAGE':
+                        'Google Play restricts all-files access to file managers, backup/restore,\n' +
+                        '  anti-virus, document management, on-device file search, disk encryption and\n' +
+                        '  device migration. Parental control is NOT a permitted use, so declaring it\n' +
+                        '  blocks the release review. Photos are read with READ_MEDIA_IMAGES; flagged\n' +
+                        '  images are modified through parent-granted folder access (MediaWriteAccess).\n' +
+                        '  See specs/016-remove-all-files-access/contracts/build-guard.md',
+
+                'android.permission.QUERY_ALL_PACKAGES':
+                        'Google Play treats the list of installed apps as personal and sensitive\n' +
+                        '  data and restricts this permission to apps whose core purpose is broad app\n' +
+                        '  visibility (device search, anti-virus, file managers). Parental control is\n' +
+                        '  NOT a permitted use, so declaring it forces a sensitive-permission\n' +
+                        '  declaration and blocks the release review. The app list, per-app limits and\n' +
+                        '  app blocking run on the filtered <queries> block (ACTION_MAIN +\n' +
+                        '  CATEGORY_LAUNCHER / CATEGORY_HOME) in app/src/main/AndroidManifest.xml.'
+        ]
+
+        def failures = []
+
+        candidates.each { manifestFile ->
+            def text = manifestFile.getText('UTF-8')
+
+            // Strip XML comments BEFORE matching. The manifest deliberately documents why the
+            // type is specialUse and NOT dataSync, and why all-files access is absent and must
+            // not return. That prose is the human guardrail against these same regressions, so a
+            // substring search would fail the build on our own documentation.
+            def stripped = text.replaceAll(/(?s)<!--.*?-->/, '')
+
+            // V-1: compare the android:name attribute VALUE for equality against the banned set.
+            def permMatcher = stripped =~ /(?s)<uses-permission\b[^>]*?android:name\s*=\s*"([^"]+)"/
+            while (permMatcher.find()) {
+                def declared = permMatcher.group(1)
+                if (bannedPermissions.containsKey(declared)) {
+                    failures << (declared + " is present in the merged manifest (" +
+                            manifestFile.name + ")\n    " + bannedPermissions[declared])
+                }
+            }
+
+            // V-2: split each foregroundServiceType attribute VALUE on '|' and compare
+            // token-wise, so combined forms such as "dataSync|specialUse" are caught.
+            stripped.split(/(?=<service\b)/).each { chunk ->
+                def typeMatcher = chunk =~ /android:foregroundServiceType\s*=\s*"([^"]+)"/
+                if (typeMatcher.find()) {
+                    def value = typeMatcher.group(1)
+                    def tokens = value.split(/\|/).collect { it.trim() }
+                    if (tokens.contains('dataSync')) {
+                        def nameMatcher = chunk =~ /android:name\s*=\s*"([^"]+)"/
+                        def svc = nameMatcher.find() ? nameMatcher.group(1) : '(unnamed service)'
+                        failures << ('<service android:name="' + svc + '"> declares ' +
+                                'foregroundServiceType="' + value + '"\n    ' +
+                                bannedPermissions['android.permission.FOREGROUND_SERVICE_DATA_SYNC'])
+                    }
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            def variant = manifestTask.name.contains('Release') ? 'release' : 'debug'
+            throw new GradleException(
+                    "\n\nBuild blocked - banned manifest declaration present:\n" +
+                    failures.unique().collect { "  * ${it}" }.join("\n") +
+                    "\n\n  Origin: see app/build/outputs/logs/manifest-merger-" + variant + "-report.txt\n" +
+                    "  (that report names the contributing library when it is not our own manifest)\n")
         }
     }
 }
